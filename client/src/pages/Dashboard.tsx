@@ -53,20 +53,13 @@ export default function Dashboard() {
   });
 
   const handleScrapeComplete = async (newProducts: Product[]) => {
-    try {
-      await saveProductsMutation.mutateAsync(newProducts);
-      toast({
-        title: "Extraction Complete",
-        description: `Successfully saved ${newProducts.length} products to the database.`,
-        variant: "default",
-      });
-    } catch (error) {
-      toast({
-        title: "Save Failed",
-        description: "Failed to save products to database",
-        variant: "destructive",
-      });
-    }
+    // Products are already saved by the /api/scrape endpoint, just refresh the list
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    toast({
+      title: "Extraction Complete",
+      description: `Successfully saved ${newProducts.length} products to the database.`,
+      variant: "default",
+    });
   };
 
   const filteredProducts = products.filter(p => 
