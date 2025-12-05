@@ -101,93 +101,110 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         images.push(mainImageUrl);
       }
 
-      // Key Features - dynamically extract from various patterns
+      // Key Features - dynamically extract from the product content area
       const keyFeatures: string[] = [];
 
-      // Method 1: Look for "Key Features" heading and extract content after it
-      const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      let featureSection: Element | null = null;
-      
-      Array.from(allHeadings).forEach(heading => {
-        if (!featureSection && heading.textContent?.toLowerCase().includes('feature')) {
-          featureSection = heading.parentElement;
-        }
-      });
-
-      if (featureSection && featureSection instanceof Element) {
-        // Look for strong tags (bold headings) followed by text
-        const strongTags = featureSection.querySelectorAll('strong, b');
-        Array.from(strongTags).forEach((strong: Element) => {
-          const text = strong.textContent?.trim() || '';
-          let fullText = text;
-          
-          // Get following text/paragraph
-          let nextEl = strong.nextSibling;
-          while (nextEl && nextEl.nodeType === Node.TEXT_NODE && nextEl.textContent?.trim() === '') {
-            nextEl = nextEl.nextSibling;
-          }
-          
-          if (nextEl) {
-            const nextContent = (nextEl as any).textContent?.trim() || '';
-            if (nextContent) {
-              fullText = fullText + ' - ' + nextContent;
-            }
-          }
-          
-          if (fullText.length > 10 && fullText.length < 500 && keyFeatures.length < 10) {
-            keyFeatures.push(fullText);
+      // Look for "Key Features" heading specifically in main content area
+      const mainContent = document.querySelector('.entry-content, .product-content, article, main, .container');
+      if (mainContent) {
+        // Find "Key Features" heading within main content
+        const allHeadings = mainContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        let featuresHeading: Element | null = null;
+        
+        Array.from(allHeadings).forEach((heading: Element) => {
+          if (!featuresHeading && heading.textContent?.toLowerCase().includes('key feature')) {
+            featuresHeading = heading;
           }
         });
+
+        if (featuresHeading) {
+          // Get the section after this heading
+          let currentEl = featuresHeading.nextElementSibling;
+          let depth = 0;
+          
+          while (currentEl && depth < 15) {
+            // Stop if we hit another h2/h3 heading
+            if (currentEl.tagName.match(/^H[1-3]$/i) && !currentEl.textContent?.toLowerCase().includes('key feature')) {
+              break;
+            }
+
+            // Look for strong tags with following paragraphs
+            const strongs = currentEl.querySelectorAll(':scope > strong, :scope > b');
+            Array.from(strongs).forEach((strong: Element) => {
+              const boldText = strong.textContent?.trim() || '';
+              
+              // Get following text from parent or next element
+              let description = '';
+              let nextNode = strong.nextSibling;
+              
+              // Collect text nodes and elements after the bold text
+              while (nextNode && description.length < 300) {
+                if (nextNode.nodeType === Node.TEXT_NODE) {
+                  const text = (nextNode as any).textContent?.trim() || '';
+                  if (text && text !== '-') {
+                    description += text + ' ';
+                  }
+                } else if (nextNode.nodeType === Node.ELEMENT_NODE) {
+                  const el = nextNode as Element;
+                  if (el.tagName === 'BR') {
+                    break;
+                  } else if (el.tagName === 'STRONG' || el.tagName === 'B') {
+                    break;
+                  } else {
+                    const text = el.textContent?.trim() || '';
+                    if (text) {
+                      description += text;
+                      break;
+                    }
+                  }
+                }
+                nextNode = nextNode.nextSibling;
+              }
+              
+              // If we got a bold heading, add it as a feature
+              if (boldText.length > 3 && boldText.length < 100) {
+                let featureText = boldText;
+                if (description.length > 5) {
+                  featureText = boldText + ' - ' + description.substring(0, 300).trim();
+                }
+                if (keyFeatures.length < 10) {
+                  keyFeatures.push(featureText);
+                }
+              }
+            });
+
+            currentEl = currentEl.nextElementSibling;
+            depth++;
+          }
+        }
       }
 
-      // Method 2: Look for feature lists (li elements)
+      // Method 2: Look for feature lists (li elements) if Method 1 didn't find features
       if (keyFeatures.length === 0) {
-        const featureEls = document.querySelectorAll('.features li, .key-features li, .feature-list li, [class*="feature"] li, ul li');
-        featureEls.forEach(el => {
+        const featureEls = document.querySelectorAll('.features li, .key-features li, .feature-list li, ul li');
+        Array.from(featureEls).forEach((el: Element) => {
           const text = el.textContent?.trim();
-          if (text && text.length > 5 && text.length < 300 && keyFeatures.length < 10) {
+          if (text && text.length > 5 && text.length < 300 && !text.toLowerCase().includes('shop') && !text.toLowerCase().includes('resource') && keyFeatures.length < 10) {
             keyFeatures.push(text);
           }
         });
       }
 
-      // Method 3: Look for feature cards or boxes with headings
-      if (keyFeatures.length === 0) {
-        const cards = document.querySelectorAll('.feature-card, .feature-box, .card, [class*="card"]');
-        cards.forEach(card => {
-          const heading = card.querySelector('h3, h4, strong, .title, .heading');
-          const content = card.querySelector('p, .content, .description');
+      // Method 3: Look for strong tags with following paragraphs in main content
+      if (keyFeatures.length === 0 && mainContent) {
+        const strongs = mainContent.querySelectorAll('strong, b');
+        Array.from(strongs).forEach((strong: Element) => {
+          const boldText = strong.textContent?.trim() || '';
           
-          if (heading) {
-            let text = heading.textContent?.trim() || '';
-            if (content) {
-              const contentText = content.textContent?.trim() || '';
-              if (contentText) {
-                text = text + ' - ' + contentText;
-              }
-            }
-            if (text.length > 10 && text.length < 500 && keyFeatures.length < 10) {
-              keyFeatures.push(text);
-            }
-          }
-        });
-      }
-
-      // Method 4: Look for definition lists (dt/dd pairs)
-      if (keyFeatures.length === 0) {
-        const dts = document.querySelectorAll('dl dt');
-        dts.forEach(dt => {
-          const text = dt.textContent?.trim() || '';
-          const dd = dt.nextElementSibling;
-          const ddText = dd?.textContent?.trim() || '';
-          
-          let fullText = text;
-          if (ddText) {
-            fullText = text + ' - ' + ddText;
+          // Get the parent paragraph if it exists
+          let context = '';
+          const parent = strong.closest('p, div, section');
+          if (parent) {
+            context = parent.textContent?.trim().substring(0, 400) || '';
           }
           
-          if (fullText.length > 10 && fullText.length < 500 && keyFeatures.length < 10) {
-            keyFeatures.push(fullText);
+          if (boldText.length > 3 && boldText.length < 100 && context.length > 20 && keyFeatures.length < 10) {
+            keyFeatures.push(boldText + ' - ' + context.replace(boldText, '').trim());
           }
         });
       }
