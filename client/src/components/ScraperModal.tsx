@@ -18,47 +18,47 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
   const [logs, setLogs] = useState<string[]>([]);
   const [foundCount, setFoundCount] = useState(0);
 
-  const startScrape = () => {
+  const startScrape = async () => {
     setStatus('scanning');
     setProgress(0);
     setLogs(['Initializing scraper...', 'Connecting to www.viaglobalhealth.com...']);
     setFoundCount(0);
+
+    try {
+      // Simulate progress while scraping
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => Math.min(prev + 3, 90));
+        setLogs((prev) => [...prev, `Scanning page...`].slice(-5));
+      }, 800);
+
+      // Call the real scraping API
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      clearInterval(progressInterval);
+
+      if (!response.ok) {
+        throw new Error('Scraping failed');
+      }
+
+      const data = await response.json();
+      
+      setStatus('completed');
+      setProgress(100);
+      setFoundCount(data.products.length);
+      setLogs((prev) => [...prev, `Successfully extracted ${data.products.length} products!`]);
+      onComplete(data.products);
+    } catch (error) {
+      setStatus('error');
+      setLogs((prev) => [...prev, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`]);
+    }
   };
 
   useEffect(() => {
-    if (status === 'scanning') {
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 30) {
-            setStatus('extracting');
-            return 30;
-          }
-          return prev + 2;
-        });
-        setLogs((prev) => [...prev, `Scanning page ${Math.floor(Math.random() * 10) + 1}...`].slice(-5));
-      }, 500);
-      return () => clearInterval(interval);
-    }
-
-    if (status === 'extracting') {
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            setStatus('completed');
-            const newProducts = Array.from({ length: 5 }, (_, i) => 
-              generateMockProduct(`new-${Date.now()}-${i}`)
-            );
-            onComplete(newProducts);
-            return 100;
-          }
-          return prev + 5;
-        });
-        setFoundCount((prev) => prev + 1);
-        setLogs((prev) => [...prev, `Extracted product data...`].slice(-5));
-      }, 300);
-      return () => clearInterval(interval);
-    }
-  }, [status, onComplete]);
+    // Cleanup - no longer needed since we're using async/await
+  }, []);
 
   const reset = () => {
     setStatus('idle');
@@ -97,10 +97,12 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
                 <span className="font-medium capitalize flex items-center gap-2">
                   {status === 'completed' ? (
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : status === 'error' ? (
+                    <AlertCircle className="h-4 w-4 text-red-500" />
                   ) : (
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   )}
-                  {status === 'completed' ? 'Scraping Complete' : status}
+                  {status === 'completed' ? 'Scraping Complete' : status === 'error' ? 'Scraping Failed' : status}
                 </span>
                 <span className="text-muted-foreground">{Math.round(progress)}%</span>
               </div>
@@ -132,6 +134,11 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
             </div>
           ) : status === 'completed' ? (
             <Button className="w-full" onClick={reset}>Done</Button>
+          ) : status === 'error' ? (
+            <div className="flex w-full gap-2">
+              <Button variant="outline" className="flex-1" onClick={reset}>Close</Button>
+              <Button className="flex-1" onClick={startScrape}>Retry</Button>
+            </div>
           ) : (
             <Button variant="destructive" className="w-full" onClick={reset}>Stop Extraction</Button>
           )}
