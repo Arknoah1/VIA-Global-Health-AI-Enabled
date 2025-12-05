@@ -17,6 +17,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
   try {
     browser = await puppeteer.launch({
       headless: true,
+      executablePath: '/run/current-system/sw/bin/chromium',
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
