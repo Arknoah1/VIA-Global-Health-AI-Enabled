@@ -186,96 +186,182 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         });
       }
 
-      // Specifications - Extract ONLY from the Specifications section
+      // Specifications - Extract from the Specifications section dynamically
       const specifications: Record<string, string> = {};
       const faqs: Array<{question: string, answer: string}> = [];
       
-      // Find the "Specifications" heading
-      const allPageHeadings = Array.from(document.querySelectorAll('h2, h3, h4, strong'));
-      const specHeader = allPageHeadings.find((h) => {
-        const text = h.textContent?.trim().toLowerCase() || '';
-        return text === 'specifications';
-      });
-      const faqHeader = allPageHeadings.find((h) => {
+      // Find the "Specifications" heading or tab content
+      const allElements = Array.from(document.querySelectorAll('h2, h3, h4, strong, .woocommerce-Tabs-panel, #tab-specifications'));
+      let specSection: Element | null = null;
+      
+      // First try to find a specifications tab panel
+      specSection = document.querySelector('#tab-specifications, .woocommerce-Tabs-panel--specifications, [id*="specifications"]');
+      
+      // If no tab panel, find the Specifications heading
+      if (!specSection) {
+        const specHeader = allElements.find((h) => {
+          const text = h.textContent?.trim().toLowerCase() || '';
+          return text === 'specifications';
+        });
+        if (specHeader) {
+          // Get the parent container or use the header's parent
+          specSection = specHeader.closest('.wpb_text_column, .vc_column_text, .elementor-widget-container, .entry-content, article') || specHeader.parentElement;
+        }
+      }
+      
+      // Find FAQs header
+      const faqHeader = allElements.find((h) => {
         const text = h.textContent?.trim().toLowerCase() || '';
         return text === 'faqs' || text === 'faq' || text.includes('frequently asked');
       });
       
-      // Extract specifications from within the Specifications section only
-      if (specHeader) {
-        let currentEl: Element | null = specHeader.nextElementSibling;
-        let depth = 0;
+      // Extract specifications by finding all bold headings followed by lists
+      if (specSection) {
+        // Get all strong/bold elements within the spec section
+        const boldElements = specSection.querySelectorAll('strong, b, h3, h4, h5');
         
-        while (currentEl && depth < 50) {
-          // Stop if we hit the FAQ section or another major section
-          const elText = currentEl.textContent?.trim().toLowerCase() || '';
-          if (elText === 'faqs' || elText === 'faq' || elText.includes('frequently asked') || 
-              elText === 'related products' || elText === 'reviews') {
+        Array.from(boldElements).forEach((boldEl) => {
+          const headingText = boldEl.textContent?.trim() || '';
+          if (headingText.length < 3 || headingText.length > 100) return;
+          
+          // Skip if it's the main "Specifications" heading
+          if (headingText.toLowerCase() === 'specifications') return;
+          
+          // Skip FAQ-like questions
+          const headingLower = headingText.toLowerCase();
+          const isFaqLike = headingText.includes('?') ||
+                           headingLower.startsWith('how do') ||
+                           headingLower.startsWith('how to') ||
+                           headingLower.startsWith('what is') ||
+                           headingLower.startsWith('what\'s') ||
+                           headingLower.startsWith('what if') ||
+                           headingLower.startsWith('can i') ||
+                           headingLower.startsWith('is there') ||
+                           headingLower.startsWith('how does') ||
+                           headingLower.startsWith('how many') ||
+                           headingLower.startsWith('why ') ||
+                           headingLower.startsWith('when ') ||
+                           headingLower.startsWith('where ');
+          
+          if (isFaqLike) {
+            // This is an FAQ - extract it with answer
+            let answerEl = boldEl.parentElement?.nextElementSibling;
+            if (!answerEl) {
+              // Try getting next sibling of the bold element's grandparent
+              answerEl = boldEl.closest('p')?.nextElementSibling || null;
+            }
+            let answerText = '';
+            if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
+                            answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
+              answerText = answerEl.textContent?.trim() || '';
+            }
+            if (headingText.length > 5 && answerText.length > 10) {
+              faqs.push({ question: headingText, answer: answerText });
+            }
+            return;
+          }
+          
+          // Look for the UL/OL that follows this bold element
+          // The list might be a sibling of the bold element's parent (typically a <p>)
+          let searchEl: Element | null = boldEl.parentElement;
+          if (searchEl && searchEl.tagName !== 'P' && searchEl.tagName !== 'DIV') {
+            searchEl = boldEl.closest('p, div');
+          }
+          
+          let foundList: Element | null = null;
+          let searchCount = 0;
+          
+          while (searchEl && searchCount < 5) {
+            const nextSibling = searchEl.nextElementSibling;
+            if (!nextSibling) break;
+            
+            if (nextSibling.tagName === 'UL' || nextSibling.tagName === 'OL') {
+              foundList = nextSibling;
+              break;
+            }
+            // If we hit another bold heading, stop
+            if (nextSibling.querySelector('strong, b') || nextSibling.tagName === 'STRONG' || nextSibling.tagName === 'B') {
+              break;
+            }
+            searchEl = nextSibling;
+            searchCount++;
+          }
+          
+          if (foundList) {
+            const items = foundList.querySelectorAll('li');
+            const allItems: string[] = [];
+            
+            Array.from(items).forEach((item) => {
+              const text = item.textContent?.trim() || '';
+              if (text.length > 3) {
+                allItems.push(text);
+              }
+            });
+            
+            if (allItems.length > 0) {
+              specifications[headingText] = allItems.map(item => '• ' + item).join('\n');
+            }
+          }
+        });
+      }
+      
+      // Fallback: If no specs found, try walking through all elements after "Specifications" text
+      if (Object.keys(specifications).length === 0) {
+        const walker = document.createTreeWalker(
+          document.body,
+          NodeFilter.SHOW_ELEMENT,
+          null
+        );
+        
+        let foundSpecsHeader = false;
+        let currentHeading = '';
+        let currentItems: string[] = [];
+        
+        while (walker.nextNode()) {
+          const node = walker.currentNode as Element;
+          const text = node.textContent?.trim().toLowerCase() || '';
+          
+          // Start capturing after we find "Specifications"
+          if (!foundSpecsHeader && (node.tagName === 'H2' || node.tagName === 'H3' || node.tagName === 'STRONG') && text === 'specifications') {
+            foundSpecsHeader = true;
+            continue;
+          }
+          
+          if (!foundSpecsHeader) continue;
+          
+          // Stop at FAQs or Related Products
+          if (text === 'faqs' || text === 'faq' || text === 'related products' || text === 'reviews') {
+            if (currentHeading && currentItems.length > 0) {
+              specifications[currentHeading] = currentItems.map(item => '• ' + item).join('\n');
+            }
             break;
           }
           
-          // Check if this is a subsection heading (strong or h3/h4/h5)
-          const tag = currentEl.tagName;
-          const isSubHeading = tag === 'STRONG' || tag === 'H3' || tag === 'H4' || tag === 'H5' ||
-                               currentEl.querySelector('strong, b');
-          
-          if (isSubHeading) {
-            const headingText = currentEl.textContent?.trim() || '';
-            const headingLower = headingText.toLowerCase();
-            
-            // Skip FAQ-like headings (questions) - these go to FAQs
-            const isFaq = headingText.includes('?') ||
-                         headingLower.startsWith('how do') ||
-                         headingLower.startsWith('how to') ||
-                         headingLower.startsWith('what is') ||
-                         headingLower.startsWith('what\'s') ||
-                         headingLower.startsWith('what if') ||
-                         headingLower.startsWith('can i') ||
-                         headingLower.startsWith('is there') ||
-                         headingLower.startsWith('how does') ||
-                         headingLower.startsWith('how many') ||
-                         headingLower.startsWith('why ') ||
-                         headingLower.startsWith('when ') ||
-                         headingLower.startsWith('where ');
-            
-            if (isFaq) {
-              currentEl = currentEl.nextElementSibling;
-              depth++;
-              continue;
-            }
-            
-            // Look for the list following this heading
-            let nextEl = currentEl.nextElementSibling;
-            let searchDepth = 0;
-            
-            while (nextEl && searchDepth < 5) {
-              if (nextEl.tagName === 'UL' || nextEl.tagName === 'OL') {
-                const items = nextEl.querySelectorAll('li');
-                const allItems: string[] = [];
-                
-                Array.from(items).forEach((item: Element) => {
-                  const text = item.textContent?.trim() || '';
-                  if (text.length > 5) {
-                    allItems.push(text);
-                  }
-                });
-                
-                if (allItems.length > 0 && headingText.length > 3) {
-                  specifications[headingText] = '• ' + allItems.join('\n• ');
-                }
-                break;
-              } else if (nextEl.tagName === 'STRONG' || nextEl.tagName === 'H2' || nextEl.tagName === 'H3' || 
-                         nextEl.tagName === 'H4' || nextEl.tagName === 'H5') {
-                // Hit next heading without finding a list
-                break;
+          // Check if this is a bold heading
+          if ((node.tagName === 'STRONG' || node.tagName === 'B') && node.textContent) {
+            const headingText = node.textContent.trim();
+            if (headingText.length > 3 && headingText.length < 100 && !headingText.includes('?')) {
+              // Save previous heading if we had items
+              if (currentHeading && currentItems.length > 0) {
+                specifications[currentHeading] = currentItems.map(item => '• ' + item).join('\n');
               }
-              nextEl = nextEl.nextElementSibling;
-              searchDepth++;
+              currentHeading = headingText;
+              currentItems = [];
             }
           }
           
-          currentEl = currentEl.nextElementSibling;
-          depth++;
+          // Capture list items under current heading
+          if (node.tagName === 'LI' && currentHeading) {
+            const itemText = node.textContent?.trim() || '';
+            if (itemText.length > 3) {
+              currentItems.push(itemText);
+            }
+          }
+        }
+        
+        // Don't forget the last heading
+        if (currentHeading && currentItems.length > 0) {
+          specifications[currentHeading] = currentItems.map(item => '• ' + item).join('\n');
         }
       }
       
@@ -316,58 +402,45 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
       }
       
       // Also extract FAQs from within/after Specifications (questions mixed with specs)
-      if (specHeader && faqs.length === 0) {
-        let currentEl: Element | null = specHeader.nextElementSibling;
-        let depth = 0;
-        
-        while (currentEl && depth < 60) {
-          const elText = currentEl.textContent?.trim().toLowerCase() || '';
-          if (elText === 'related products' || elText === 'reviews') {
-            break;
-          }
+      if (specSection && faqs.length === 0) {
+        const boldElements = specSection.querySelectorAll('strong, b');
+        Array.from(boldElements).forEach((boldEl) => {
+          const headingText = boldEl.textContent?.trim() || '';
+          const hLower = headingText.toLowerCase();
           
-          const headingTag = currentEl.tagName;
-          const isHeading = headingTag === 'STRONG' || headingTag === 'H3' || headingTag === 'H4' || headingTag === 'H5' ||
-                           currentEl.querySelector('strong, b');
+          // Check if this is a question (FAQ)
+          const isQuestion = headingText.includes('?') ||
+                            hLower.startsWith('how do') ||
+                            hLower.startsWith('how to') ||
+                            hLower.startsWith('what is') ||
+                            hLower.startsWith('what\'s') ||
+                            hLower.startsWith('what if') ||
+                            hLower.startsWith('can i') ||
+                            hLower.startsWith('is there') ||
+                            hLower.startsWith('how does') ||
+                            hLower.startsWith('how many') ||
+                            hLower.startsWith('why ') ||
+                            hLower.startsWith('when ') ||
+                            hLower.startsWith('where ');
           
-          if (isHeading) {
-            const headingText = currentEl.textContent?.trim() || '';
-            const hLower = headingText.toLowerCase();
+          if (isQuestion && headingText.length > 5) {
+            // Get the answer from the next element
+            let answerEl = boldEl.parentElement?.nextElementSibling;
+            if (!answerEl) {
+              answerEl = boldEl.closest('p')?.nextElementSibling || null;
+            }
+            let answerText = '';
             
-            // Check if this is a question (FAQ) - inline check
-            const isQuestion = headingText.includes('?') ||
-                              hLower.startsWith('how do') ||
-                              hLower.startsWith('how to') ||
-                              hLower.startsWith('what is') ||
-                              hLower.startsWith('what\'s') ||
-                              hLower.startsWith('what if') ||
-                              hLower.startsWith('can i') ||
-                              hLower.startsWith('is there') ||
-                              hLower.startsWith('how does') ||
-                              hLower.startsWith('how many') ||
-                              hLower.startsWith('why ') ||
-                              hLower.startsWith('when ') ||
-                              hLower.startsWith('where ');
+            if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
+                            answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
+              answerText = answerEl.textContent?.trim() || '';
+            }
             
-            if (isQuestion) {
-              // Get the answer from the next element
-              let answerEl = currentEl.nextElementSibling;
-              let answerText = '';
-              
-              if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
-                              answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
-                answerText = answerEl.textContent?.trim() || '';
-              }
-              
-              if (headingText.length > 5 && answerText.length > 10) {
-                faqs.push({ question: headingText, answer: answerText });
-              }
+            if (answerText.length > 10) {
+              faqs.push({ question: headingText, answer: answerText });
             }
           }
-          
-          currentEl = currentEl.nextElementSibling;
-          depth++;
-        }
+        });
       }
       
       // Fallback: If no specs found via section method, try table extraction
