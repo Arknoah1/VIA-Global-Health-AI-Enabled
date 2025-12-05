@@ -24,6 +24,12 @@ function sanitizePrice(price: number): number {
 export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
   let browser;
   const products: InsertProduct[] = [];
+  const timestamp = Date.now();
+  let productIndex = 0;
+
+  function generateUniqueSKU(): string {
+    return `VIA-${timestamp}-${productIndex++}`;
+  }
 
   try {
     browser = await puppeteer.launch({
@@ -148,7 +154,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
             price: sanitizePrice(productDetails.price),
             currency: 'USD',
             category: previewProducts[i]?.category || 'Medical Device',
-            sku: `VIA-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+            sku: generateUniqueSKU(),
             imageUrl: productDetails.imageUrl || previewProducts[i]?.imageUrl || '',
             images: [productDetails.imageUrl || previewProducts[i]?.imageUrl || ''].filter(Boolean),
             keyFeatures: [
@@ -193,7 +199,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
             price: sanitizePrice(preview.price),
             currency: 'USD',
             category: preview.category,
-            sku: `VIA-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+            sku: generateUniqueSKU(),
             imageUrl: preview.imageUrl,
             images: [preview.imageUrl].filter(Boolean),
             keyFeatures: [
