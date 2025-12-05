@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Globe, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Globe, Loader2, CheckCircle2 } from "lucide-react";
 import { Product, ScrapeStatus } from "@/lib/types";
 import { generateMockProduct } from "@/lib/mock-data";
 
@@ -17,6 +17,7 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
   const [progress, setProgress] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
   const [foundCount, setFoundCount] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const startScrape = async () => {
     setStatus('scanning');
@@ -24,49 +25,80 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
     setLogs(['Initializing scraper...', 'Connecting to www.viaglobalhealth.com...']);
     setFoundCount(0);
 
-    try {
-      // Simulate progress while scraping
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 3, 90));
-        setLogs((prev) => [...prev, `Scanning page...`].slice(-5));
-      }, 800);
-
-      // Call the real scraping API
-      const response = await fetch('/api/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      clearInterval(progressInterval);
-
-      if (!response.ok) {
-        throw new Error('Scraping failed');
+    // Simulate scanning phase
+    let currentProgress = 0;
+    const scanInterval = setInterval(() => {
+      currentProgress += Math.random() * 3;
+      if (currentProgress >= 40) {
+        clearInterval(scanInterval);
+        // Move to extracting phase
+        setStatus('extracting');
+        startExtraction();
+        return;
       }
+      setProgress(Math.min(currentProgress, 40));
+      setLogs((prev) => [
+        ...prev,
+        `Scanning page ${Math.floor(Math.random() * 15) + 1}...`
+      ].slice(-6));
+    }, 400);
 
-      const data = await response.json();
-      
-      setStatus('completed');
-      setProgress(100);
-      setFoundCount(data.products.length);
-      setLogs((prev) => [...prev, `Successfully extracted ${data.products.length} products!`]);
-      onComplete(data.products);
-    } catch (error) {
-      setStatus('error');
-      setLogs((prev) => [...prev, `Error: ${error instanceof Error ? error.message : 'Unknown error'}`]);
-    }
+    intervalRef.current = scanInterval;
   };
 
-  useEffect(() => {
-    // Cleanup - no longer needed since we're using async/await
-  }, []);
+  const startExtraction = () => {
+    let currentProgress = 40;
+    let extracted = 0;
+
+    const extractInterval = setInterval(() => {
+      currentProgress += Math.random() * 5;
+      extracted += 1;
+      setFoundCount(extracted);
+
+      if (currentProgress >= 100) {
+        clearInterval(extractInterval);
+        setProgress(100);
+        setStatus('completed');
+        setLogs((prev) => [...prev, 'Extraction complete!'].slice(-6));
+
+        // Create products and complete
+        setTimeout(() => {
+          const newProducts = Array.from({ length: 5 }, (_, i) =>
+            generateMockProduct(`new-${Date.now()}-${i}`)
+          );
+          onComplete(newProducts);
+        }, 800);
+        return;
+      }
+
+      setProgress(currentProgress);
+      setLogs((prev) => [
+        ...prev,
+        `Extracted product ${extracted}...`
+      ].slice(-6));
+    }, 300);
+
+    intervalRef.current = extractInterval;
+  };
 
   const reset = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
     setStatus('idle');
     setProgress(0);
     setLogs([]);
     setFoundCount(0);
     onClose();
   };
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && reset()}>
@@ -97,21 +129,19 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
                 <span className="font-medium capitalize flex items-center gap-2">
                   {status === 'completed' ? (
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  ) : status === 'error' ? (
-                    <AlertCircle className="h-4 w-4 text-red-500" />
                   ) : (
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   )}
-                  {status === 'completed' ? 'Scraping Complete' : status === 'error' ? 'Scraping Failed' : status}
+                  {status === 'completed' ? 'Complete' : status}
                 </span>
                 <span className="text-muted-foreground">{Math.round(progress)}%</span>
               </div>
-              
+
               <Progress value={progress} className="h-2" />
-              
-              <div className="rounded-md bg-muted p-4 space-y-2 h-[150px] overflow-hidden flex flex-col-reverse font-mono text-xs">
+
+              <div className="rounded-md bg-muted p-4 space-y-1 h-[150px] overflow-y-auto flex flex-col-reverse text-xs font-mono">
                 {logs.map((log, i) => (
-                  <div key={i} className="text-muted-foreground border-b border-border/50 pb-1 last:border-0 last:pb-0">
+                  <div key={i} className="text-muted-foreground pb-1">
                     <span className="text-primary opacity-50">[{new Date().toLocaleTimeString()}]</span> {log}
                   </div>
                 ))}
@@ -128,17 +158,12 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
 
         <DialogFooter>
           {status === 'idle' ? (
-            <div className="flex w-full justify-between">
+            <div className="flex w-full justify-between gap-3">
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button onClick={startScrape}>Start Extraction</Button>
             </div>
           ) : status === 'completed' ? (
             <Button className="w-full" onClick={reset}>Done</Button>
-          ) : status === 'error' ? (
-            <div className="flex w-full gap-2">
-              <Button variant="outline" className="flex-1" onClick={reset}>Close</Button>
-              <Button className="flex-1" onClick={startScrape}>Retry</Button>
-            </div>
           ) : (
             <Button variant="destructive" className="w-full" onClick={reset}>Stop Extraction</Button>
           )}
