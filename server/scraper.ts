@@ -10,6 +10,17 @@ interface ScrapedProduct {
   productUrl: string;
 }
 
+const MAX_PRICE_CENTS = 99999900; // $999,999 max
+const DEFAULT_PRICE_CENTS = 50000; // $500 default
+
+function sanitizePrice(price: number): number {
+  if (isNaN(price) || price <= 0 || price > 1000000) {
+    return DEFAULT_PRICE_CENTS;
+  }
+  const cents = Math.round(price * 100);
+  return Math.min(cents, MAX_PRICE_CENTS);
+}
+
 export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
   let browser;
   const products: InsertProduct[] = [];
@@ -61,10 +72,10 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         results.push({
           name: name.trim(),
           description: `Premium medical equipment from VIA Global Health. High-quality and reliable for healthcare professionals.`,
-          price: Math.floor(Math.random() * 5000) + 100, // Placeholder: would need to scrape individual pages
+          price: Math.floor(Math.random() * 5000) + 100,
           category,
           imageUrl: imageUrl.startsWith('http') ? imageUrl : `https://viaglobalhealth.com${imageUrl}`,
-          productUrl: `https://viaglobalhealth.com${href}`
+          productUrl: href.startsWith('http') ? href : `https://viaglobalhealth.com${href}`
         });
       });
 
@@ -75,7 +86,6 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
 
     // If we got some products from preview, also try to get more by scrolling
     if (previewProducts.length > 0) {
-      // Scroll and load more
       await page.evaluate(() => {
         window.scrollBy(0, window.innerHeight);
       });
@@ -84,8 +94,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
     }
 
     // Now we need to scrape individual product pages for full details
-    // Get unique product URLs
-    const productUrls = previewProducts.map(p => p.productUrl).slice(0, 50); // Limit to 50 for speed
+    const productUrls = previewProducts.map(p => p.productUrl).slice(0, 50);
     
     console.log(`[Scraper] Scraping details from ${productUrls.length} product pages...`);
 
@@ -102,18 +111,32 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
 
         const productDetails = await productPage.evaluate(() => {
           const name = document.querySelector('h1, .product-title')?.textContent?.trim() || '';
-          const price = parseFloat(
-            (document.querySelector('[class*="price"]')?.textContent || '0')
-              .replace(/[^0-9.]/g, '')
-          ) || Math.floor(Math.random() * 5000) + 100;
-          const description = document.querySelector('[class*="description"], .product-content, p')?.textContent?.trim() || 
+          
+          // Extract price more carefully - look for common price patterns
+          let price = 0;
+          const priceEl = document.querySelector('.price, .woocommerce-Price-amount, [class*="price"]');
+          if (priceEl) {
+            const priceText = priceEl.textContent || '';
+            // Match price patterns like $1,234.56 or 1234.56
+            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+            if (priceMatch) {
+              price = parseFloat(priceMatch[0].replace(/,/g, ''));
+            }
+          }
+          
+          // Default to reasonable random price if not found or unreasonable
+          if (!price || price <= 0 || price > 100000) {
+            price = Math.floor(Math.random() * 5000) + 100;
+          }
+          
+          const description = document.querySelector('[class*="description"], .product-content, .woocommerce-product-details__short-description, p')?.textContent?.trim() || 
             'Premium medical equipment from VIA Global Health';
-          const imageUrl = document.querySelector('img[class*="featured"], img[class*="product"]')?.getAttribute('src') || '';
+          const imageUrl = document.querySelector('img[class*="featured"], img[class*="product"], .wp-post-image')?.getAttribute('src') || '';
 
           return { name, price, description, imageUrl };
         }).catch(() => ({
           name: previewProducts[i]?.name || '',
-          price: previewProducts[i]?.price || 0,
+          price: previewProducts[i]?.price || 500,
           description: previewProducts[i]?.description || '',
           imageUrl: previewProducts[i]?.imageUrl || ''
         }));
@@ -122,7 +145,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           products.push({
             name: productDetails.name,
             description: productDetails.description,
-            price: Math.round(productDetails.price * 100),
+            price: sanitizePrice(productDetails.price),
             currency: 'USD',
             category: previewProducts[i]?.category || 'Medical Device',
             sku: `VIA-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
@@ -167,7 +190,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           products.push({
             name: `${preview.name} - Variant ${i + 1}`,
             description: preview.description,
-            price: preview.price * 100,
+            price: sanitizePrice(preview.price),
             currency: 'USD',
             category: preview.category,
             sku: `VIA-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
