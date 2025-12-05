@@ -111,11 +111,12 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         }
       });
       if (keyFeatures.length === 0) {
-        keyFeatures.push('First-aid device for hypovolemic shock stabilization');
-        keyFeatures.push('Designed for obstetric hemorrhage treatment');
-        keyFeatures.push('Non-pneumatic technology - no air pump required');
-        keyFeatures.push('Reusable and durable construction');
-        keyFeatures.push('Easy to apply in emergency situations');
+        keyFeatures.push('Globally Trusted - Delivered to dozens of countries, used to manage postpartum hemorrhage complications across Africa, South Asia, and Latin America');
+        keyFeatures.push('Usability - Minimal training required for frontline health providers to successfully apply the garment');
+        keyFeatures.push('Reusable Quality - Independently tested for up to 144 uses, ensuring durability and cost-effectiveness');
+        keyFeatures.push('Patient Accessibility - Can remain in place for uterine examinations and vaginal procedures');
+        keyFeatures.push('Transportable - Lightweight and easily packed; stabilizes patients for up to three days during transport');
+        keyFeatures.push('Expert Developed - Created in collaboration with UCSF and Safe Motherhood Program experts');
       }
 
       // Specifications - look for spec tables
