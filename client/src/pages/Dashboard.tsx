@@ -14,15 +14,26 @@ import {
   Filter, 
   Download, 
   LayoutGrid,
-  List
+  List,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Dashboard() {
   const [isScraperOpen, setIsScraperOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState("");
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -82,6 +93,36 @@ export default function Dashboard() {
     });
   };
 
+  const clearDatabaseMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/products", {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to clear database");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setIsClearDialogOpen(false);
+      toast({
+        title: "Database Cleared",
+        description: "All products have been removed from the database.",
+        variant: "default",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to clear the database. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleClearDatabase = () => {
+    clearDatabaseMutation.mutate();
+  };
+
   return (
     <div className="flex h-screen bg-background w-full">
       <Sidebar />
@@ -94,6 +135,29 @@ export default function Dashboard() {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
+            <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogTitle>Clear Database</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete all products from the database? This action cannot be undone.
+                </AlertDialogDescription>
+                <div className="flex justify-end gap-3">
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleClearDatabase}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete All
+                  </AlertDialogAction>
+                </div>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button onClick={() => setIsScraperOpen(true)} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               New Scrape
