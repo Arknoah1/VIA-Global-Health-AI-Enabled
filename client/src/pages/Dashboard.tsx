@@ -3,7 +3,6 @@ import { Sidebar } from "@/components/Sidebar";
 import { ProductTable } from "@/components/ProductTable";
 import { ProductCard } from "@/components/ProductCard";
 import { ScraperModal } from "@/components/ScraperModal";
-import { INITIAL_PRODUCTS } from "@/lib/mock-data";
 import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +17,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isScraperOpen, setIsScraperOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,7 +111,14 @@ export default function Dashboard() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
-          {viewMode === 'table' ? (
+          {filteredProducts.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <p className="text-lg font-medium text-muted-foreground">No products yet</p>
+                <p className="text-sm text-muted-foreground">Start a new scrape to populate the database</p>
+              </div>
+            </div>
+          ) : viewMode === 'table' ? (
             <ProductTable products={filteredProducts} />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
