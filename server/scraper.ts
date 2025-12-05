@@ -201,12 +201,23 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         return text === 'faqs' || text === 'faq' || text.includes('frequently asked');
       });
       
-      // Known specification section headings for Via Global Health
-      const specSectionNames = [
-        'power parameters', 'dimensions and weight', 'operating conditions',
-        'transport and storage', 'general info', 'technical specifications',
-        'product specifications', 'features', 'components'
-      ];
+      // Helper function to check if text is a FAQ-style question
+      const isFaqQuestion = (text: string): boolean => {
+        const lower = text.toLowerCase();
+        return text.includes('?') ||
+               lower.startsWith('how do') ||
+               lower.startsWith('how to') ||
+               lower.startsWith('what is') ||
+               lower.startsWith('what\'s') ||
+               lower.startsWith('what if') ||
+               lower.startsWith('can i') ||
+               lower.startsWith('is there') ||
+               lower.startsWith('how does') ||
+               lower.startsWith('how many') ||
+               lower.startsWith('why ') ||
+               lower.startsWith('when ') ||
+               lower.startsWith('where ');
+      };
       
       // Extract specifications from within the Specifications section only
       if (specHeader) {
@@ -228,31 +239,9 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           
           if (isSubHeading) {
             const headingText = currentEl.textContent?.trim() || '';
-            const headingLower = headingText.toLowerCase();
             
-            // Skip FAQ-like headings (questions)
-            if (headingText.includes('?') ||
-                headingLower.includes('how do') ||
-                headingLower.includes('how to') ||
-                headingLower.includes('what is') ||
-                headingLower.includes('what if') ||
-                headingLower.includes('can i') ||
-                headingLower.includes('is there') ||
-                headingLower.includes('how does') ||
-                headingLower.includes('how many')) {
-              // This is a FAQ question, skip it for specs
-              currentEl = currentEl.nextElementSibling;
-              depth++;
-              continue;
-            }
-            
-            // Only capture known spec section types
-            const isValidSpecSection = specSectionNames.some(name => 
-              headingLower.includes(name) || headingLower === name
-            );
-            
-            if (!isValidSpecSection && headingText.length > 30) {
-              // Skip long headings that aren't known spec sections
+            // Skip FAQ-like headings (questions) - these go to FAQs
+            if (isFaqQuestion(headingText)) {
               currentEl = currentEl.nextElementSibling;
               depth++;
               continue;
@@ -262,7 +251,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
             let nextEl = currentEl.nextElementSibling;
             let searchDepth = 0;
             
-            while (nextEl && searchDepth < 3) {
+            while (nextEl && searchDepth < 5) {
               if (nextEl.tagName === 'UL' || nextEl.tagName === 'OL') {
                 const items = nextEl.querySelectorAll('li');
                 const allItems: string[] = [];
@@ -345,19 +334,9 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           
           if (isHeading) {
             const headingText = currentEl.textContent?.trim() || '';
-            const headingLower = headingText.toLowerCase();
             
-            // Check if this is a question (FAQ)
-            if (headingText.includes('?') ||
-                headingLower.includes('how do') ||
-                headingLower.includes('how to') ||
-                headingLower.includes('what is') ||
-                headingLower.includes('what\'s') ||
-                headingLower.includes('can i') ||
-                headingLower.includes('is there') ||
-                headingLower.includes('how does') ||
-                headingLower.includes('how many')) {
-              
+            // Check if this is a question (FAQ) using the helper function
+            if (isFaqQuestion(headingText)) {
               // Get the answer from the next element
               let answerEl = currentEl.nextElementSibling;
               let answerText = '';
