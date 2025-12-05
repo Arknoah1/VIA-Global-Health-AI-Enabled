@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/Sidebar";
 import { ProductTable } from "@/components/ProductTable";
 import { ProductCard } from "@/components/ProductCard";
@@ -18,20 +19,54 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
-  const [products, setProducts] = useState<Product[]>([]);
   const [isScraperOpen, setIsScraperOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleScrapeComplete = (newProducts: Product[]) => {
-    setProducts(prev => [...newProducts, ...prev]);
-    toast({
-      title: "Extraction Complete",
-      description: `Successfully added ${newProducts.length} new products to the database.`,
-      variant: "default",
-    });
+  // Fetch products from API
+  const { data: products = [], isLoading } = useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const response = await fetch("/api/products");
+      if (!response.ok) throw new Error("Failed to fetch products");
+      return response.json();
+    },
+  });
+
+  // Mutation to save scraped products
+  const saveProductsMutation = useMutation({
+    mutationFn: async (newProducts: Product[]) => {
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProducts),
+      });
+      if (!response.ok) throw new Error("Failed to save products");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+
+  const handleScrapeComplete = async (newProducts: Product[]) => {
+    try {
+      await saveProductsMutation.mutateAsync(newProducts);
+      toast({
+        title: "Extraction Complete",
+        description: `Successfully saved ${newProducts.length} products to the database.`,
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Failed to save products to database",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredProducts = products.filter(p => 
@@ -113,7 +148,13 @@ export default function Dashboard() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
-          {filteredProducts.length === 0 ? (
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <p className="text-lg font-medium text-muted-foreground">Loading products...</p>
+              </div>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center space-y-3">
                 <p className="text-lg font-medium text-muted-foreground">No products yet</p>

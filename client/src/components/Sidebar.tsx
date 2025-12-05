@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
   Database, 
@@ -18,6 +18,18 @@ export function Sidebar() {
     { href: "/exports", label: "Exports", icon: Download },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
+
+  // Fetch product count
+  const { data: products = [] } = useQuery<any[]>({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const response = await fetch("/api/products");
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
+  const activeCount = products.filter(p => p.status === 'active').length;
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col gap-4">
@@ -49,11 +61,14 @@ export function Sidebar() {
         <div className="rounded-lg bg-muted/50 p-4">
           <div className="text-xs font-medium text-muted-foreground">Database Status</div>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-sm font-bold">1,248</span>
-            <span className="text-xs text-green-600">Active</span>
+            <span className="text-sm font-bold">{products.length}</span>
+            <span className="text-xs text-green-600">{activeCount} Active</span>
           </div>
           <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
-            <div className="h-full w-3/4 rounded-full bg-primary"></div>
+            <div 
+              className="h-full rounded-full bg-primary"
+              style={{ width: products.length > 0 ? `${(activeCount / products.length) * 100}%` : '0%' }}
+            ></div>
           </div>
         </div>
       </div>
