@@ -101,22 +101,95 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         images.push(mainImageUrl);
       }
 
-      // Key Features - look for feature lists
+      // Key Features - dynamically extract from various patterns
       const keyFeatures: string[] = [];
-      const featureEls = document.querySelectorAll('.features li, .key-features li, ul li, [class*="feature"] li');
-      featureEls.forEach(el => {
-        const text = el.textContent?.trim();
-        if (text && text.length > 5 && text.length < 200 && keyFeatures.length < 10) {
-          keyFeatures.push(text);
+
+      // Method 1: Look for "Key Features" heading and extract content after it
+      const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      let featureSection: Element | null = null;
+      
+      Array.from(allHeadings).forEach(heading => {
+        if (!featureSection && heading.textContent?.toLowerCase().includes('feature')) {
+          featureSection = heading.parentElement;
         }
       });
+
+      if (featureSection && featureSection instanceof Element) {
+        // Look for strong tags (bold headings) followed by text
+        const strongTags = featureSection.querySelectorAll('strong, b');
+        Array.from(strongTags).forEach((strong: Element) => {
+          const text = strong.textContent?.trim() || '';
+          let fullText = text;
+          
+          // Get following text/paragraph
+          let nextEl = strong.nextSibling;
+          while (nextEl && nextEl.nodeType === Node.TEXT_NODE && nextEl.textContent?.trim() === '') {
+            nextEl = nextEl.nextSibling;
+          }
+          
+          if (nextEl) {
+            const nextContent = (nextEl as any).textContent?.trim() || '';
+            if (nextContent) {
+              fullText = fullText + ' - ' + nextContent;
+            }
+          }
+          
+          if (fullText.length > 10 && fullText.length < 500 && keyFeatures.length < 10) {
+            keyFeatures.push(fullText);
+          }
+        });
+      }
+
+      // Method 2: Look for feature lists (li elements)
       if (keyFeatures.length === 0) {
-        keyFeatures.push('Globally Trusted - Delivered to dozens of countries, used to manage postpartum hemorrhage complications across Africa, South Asia, and Latin America');
-        keyFeatures.push('Usability - Minimal training required for frontline health providers to successfully apply the garment');
-        keyFeatures.push('Reusable Quality - Independently tested for up to 144 uses, ensuring durability and cost-effectiveness');
-        keyFeatures.push('Patient Accessibility - Can remain in place for uterine examinations and vaginal procedures');
-        keyFeatures.push('Transportable - Lightweight and easily packed; stabilizes patients for up to three days during transport');
-        keyFeatures.push('Expert Developed - Created in collaboration with UCSF and Safe Motherhood Program experts');
+        const featureEls = document.querySelectorAll('.features li, .key-features li, .feature-list li, [class*="feature"] li, ul li');
+        featureEls.forEach(el => {
+          const text = el.textContent?.trim();
+          if (text && text.length > 5 && text.length < 300 && keyFeatures.length < 10) {
+            keyFeatures.push(text);
+          }
+        });
+      }
+
+      // Method 3: Look for feature cards or boxes with headings
+      if (keyFeatures.length === 0) {
+        const cards = document.querySelectorAll('.feature-card, .feature-box, .card, [class*="card"]');
+        cards.forEach(card => {
+          const heading = card.querySelector('h3, h4, strong, .title, .heading');
+          const content = card.querySelector('p, .content, .description');
+          
+          if (heading) {
+            let text = heading.textContent?.trim() || '';
+            if (content) {
+              const contentText = content.textContent?.trim() || '';
+              if (contentText) {
+                text = text + ' - ' + contentText;
+              }
+            }
+            if (text.length > 10 && text.length < 500 && keyFeatures.length < 10) {
+              keyFeatures.push(text);
+            }
+          }
+        });
+      }
+
+      // Method 4: Look for definition lists (dt/dd pairs)
+      if (keyFeatures.length === 0) {
+        const dts = document.querySelectorAll('dl dt');
+        dts.forEach(dt => {
+          const text = dt.textContent?.trim() || '';
+          const dd = dt.nextElementSibling;
+          const ddText = dd?.textContent?.trim() || '';
+          
+          let fullText = text;
+          if (ddText) {
+            fullText = text + ' - ' + ddText;
+          }
+          
+          if (fullText.length > 10 && fullText.length < 500 && keyFeatures.length < 10) {
+            keyFeatures.push(fullText);
+          }
+        });
       }
 
       // Specifications - look for spec tables
