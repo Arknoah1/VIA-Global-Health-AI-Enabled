@@ -32,7 +32,6 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
     const page = await browser.newPage();
     await page.setViewport({ width: 1920, height: 1080 });
     
-    // Target the specific product page
     const productUrl = 'https://viaglobalhealth.com/product/lifewrap-non-pneumatic-anti-shock-garment-nasg/';
     
     console.log(`[Scraper] Navigating to ${productUrl}...`);
@@ -41,23 +40,43 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
       timeout: 60000
     });
 
-    // Wait for content to load
     await page.waitForSelector('h1', { timeout: 10000 }).catch(() => {});
+
+    // Scroll down the page to load all content
+    console.log('[Scraper] Scrolling to load all content...');
+    await page.evaluate(() => {
+      return new Promise<void>((resolve) => {
+        let totalHeight = 0;
+        const distance = 500;
+        const timer = setInterval(() => {
+          window.scrollBy(0, distance);
+          totalHeight += distance;
+          if (totalHeight >= document.body.scrollHeight) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 100);
+        setTimeout(() => {
+          clearInterval(timer);
+          resolve();
+        }, 3000);
+      });
+    });
+
+    // Scroll back up
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     console.log('[Scraper] Extracting detailed product data...');
 
-    // Extract comprehensive product details from the page
     const productDetails = await page.evaluate(() => {
-      // Product name
       const name = document.querySelector('h1.product_title, h1')?.textContent?.trim() || 'LifeWrap Non-Pneumatic Anti-Shock Garment (NASG)';
       
-      // Description - look for various description containers
       let description = '';
       const descEl = document.querySelector('.woocommerce-product-details__short-description, .product-description, [class*="description"]');
       if (descEl) {
         description = descEl.textContent?.trim() || '';
       }
-      // Also try to get the main content
       const contentEl = document.querySelector('.entry-content, .product-content, article');
       if (contentEl && !description) {
         description = contentEl.textContent?.trim().substring(0, 1000) || '';
@@ -66,7 +85,6 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         description = 'The LifeWrap Non-Pneumatic Anti-Shock Garment (NASG) is a first-aid device designed to stabilize patients experiencing hypovolemic shock and obstetric hemorrhage.';
       }
 
-      // Price extraction
       let price = 0;
       const priceEl = document.querySelector('.price .woocommerce-Price-amount, .price, [class*="price"]');
       if (priceEl) {
@@ -77,18 +95,15 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         }
       }
       if (!price || price <= 0 || price > 100000) {
-        price = 350; // Reasonable default for medical device
+        price = 350;
       }
 
-      // Category
       const categoryEl = document.querySelector('.posted_in a, .product_cat, [class*="category"]');
       const category = categoryEl?.textContent?.trim() || 'Maternal & Newborn Health';
 
-      // Main image
       const mainImg = document.querySelector('.woocommerce-product-gallery__image img, .product-image img, img.wp-post-image');
       const mainImageUrl = mainImg?.getAttribute('src') || mainImg?.getAttribute('data-src') || '';
 
-      // All product images
       const imageEls = document.querySelectorAll('.woocommerce-product-gallery__image img, .product-images img, .product-gallery img');
       const images: string[] = [];
       imageEls.forEach(img => {
@@ -101,115 +116,77 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         images.push(mainImageUrl);
       }
 
-      // Key Features - dynamically extract from the product content area
+      // KEY FEATURES - Extract from product content, NOT navigation
       const keyFeatures: string[] = [];
-
-      // Look for "Key Features" heading specifically in main content area
-      const mainContent = document.querySelector('.entry-content, .product-content, article, main, .container');
-      if (mainContent) {
-        // Find "Key Features" heading within main content
-        const allHeadings = mainContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
-        let featuresHeading: Element | null = null;
+      
+      // Find all paragraphs that contain bold text (feature pattern)
+      // The product page has format: <strong>Feature Name</strong> followed by description text
+      const allParagraphs = document.querySelectorAll('p, div.wpb_text_column, .vc_column_text');
+      
+      Array.from(allParagraphs).forEach((para) => {
+        // Skip if this is in navigation, header, or footer
+        const isInNav = para.closest('nav, header, footer, .menu, .navigation, #menu, .mega-menu');
+        if (isInNav) return;
         
-        Array.from(allHeadings).forEach((heading: Element) => {
-          if (!featuresHeading && heading.textContent?.toLowerCase().includes('key feature')) {
-            featuresHeading = heading;
-          }
-        });
-
-        if (featuresHeading) {
-          // Get the section after this heading
-          let currentEl = featuresHeading.nextElementSibling;
-          let depth = 0;
+        // Look for strong/bold tags
+        const boldEls = para.querySelectorAll('strong, b');
+        
+        Array.from(boldEls).forEach((bold) => {
+          const boldText = bold.textContent?.trim() || '';
           
-          while (currentEl && depth < 15) {
-            // Stop if we hit another h2/h3 heading
-            if (currentEl.tagName.match(/^H[1-3]$/i) && !currentEl.textContent?.toLowerCase().includes('key feature')) {
-              break;
+          // Skip if it's a menu item or too short/long
+          if (boldText.length < 4 || boldText.length > 50) return;
+          
+          // Skip common non-feature headings
+          const skipWords = ['shop', 'product', 'resource', 'menu', 'cart', 'buy', 'login', 'contact', 'about'];
+          if (skipWords.some(word => boldText.toLowerCase().includes(word))) return;
+          
+          // Get the text content after this bold element
+          let descText = '';
+          
+          // Method 1: Check if bold is followed by text in same paragraph
+          const parentText = para.textContent?.trim() || '';
+          const boldIndex = parentText.indexOf(boldText);
+          if (boldIndex >= 0) {
+            descText = parentText.substring(boldIndex + boldText.length).trim();
+            // Clean up the description
+            if (descText.startsWith(':')) descText = descText.substring(1).trim();
+            if (descText.startsWith('-')) descText = descText.substring(1).trim();
+          }
+          
+          // Check if this looks like a real feature (has meaningful description)
+          if (descText.length > 30 && keyFeatures.length < 10) {
+            // Truncate very long descriptions
+            if (descText.length > 350) {
+              descText = descText.substring(0, 350).trim() + '...';
             }
-
-            // Look for strong tags with following paragraphs
-            const strongs = currentEl.querySelectorAll(':scope > strong, :scope > b');
-            Array.from(strongs).forEach((strong: Element) => {
-              const boldText = strong.textContent?.trim() || '';
-              
-              // Get following text from parent or next element
-              let description = '';
-              let nextNode = strong.nextSibling;
-              
-              // Collect text nodes and elements after the bold text
-              while (nextNode && description.length < 300) {
-                if (nextNode.nodeType === Node.TEXT_NODE) {
-                  const text = (nextNode as any).textContent?.trim() || '';
-                  if (text && text !== '-') {
-                    description += text + ' ';
-                  }
-                } else if (nextNode.nodeType === Node.ELEMENT_NODE) {
-                  const el = nextNode as Element;
-                  if (el.tagName === 'BR') {
-                    break;
-                  } else if (el.tagName === 'STRONG' || el.tagName === 'B') {
-                    break;
-                  } else {
-                    const text = el.textContent?.trim() || '';
-                    if (text) {
-                      description += text;
-                      break;
-                    }
-                  }
-                }
-                nextNode = nextNode.nextSibling;
-              }
-              
-              // If we got a bold heading, add it as a feature
-              if (boldText.length > 3 && boldText.length < 100) {
-                let featureText = boldText;
-                if (description.length > 5) {
-                  featureText = boldText + ' - ' + description.substring(0, 300).trim();
-                }
-                if (keyFeatures.length < 10) {
-                  keyFeatures.push(featureText);
-                }
-              }
-            });
-
-            currentEl = currentEl.nextElementSibling;
-            depth++;
+            keyFeatures.push(`${boldText} - ${descText}`);
           }
-        }
-      }
+        });
+      });
 
-      // Method 2: Look for feature lists (li elements) if Method 1 didn't find features
+      // If we still don't have features, try alternative extraction
       if (keyFeatures.length === 0) {
-        const featureEls = document.querySelectorAll('.features li, .key-features li, .feature-list li, ul li');
-        Array.from(featureEls).forEach((el: Element) => {
-          const text = el.textContent?.trim();
-          if (text && text.length > 5 && text.length < 300 && !text.toLowerCase().includes('shop') && !text.toLowerCase().includes('resource') && keyFeatures.length < 10) {
-            keyFeatures.push(text);
+        // Look for heading + following paragraph pattern
+        const headings = document.querySelectorAll('h3, h4, h5');
+        Array.from(headings).forEach((heading) => {
+          const isInNav = heading.closest('nav, header, footer, .menu, .navigation');
+          if (isInNav) return;
+          
+          const headingText = heading.textContent?.trim() || '';
+          if (headingText.length < 4 || headingText.length > 50) return;
+          
+          const nextEl = heading.nextElementSibling;
+          if (nextEl && (nextEl.tagName === 'P' || nextEl.tagName === 'DIV')) {
+            const descText = nextEl.textContent?.trim() || '';
+            if (descText.length > 30 && keyFeatures.length < 10) {
+              keyFeatures.push(`${headingText} - ${descText.substring(0, 350)}`);
+            }
           }
         });
       }
 
-      // Method 3: Look for strong tags with following paragraphs in main content
-      if (keyFeatures.length === 0 && mainContent) {
-        const strongs = mainContent.querySelectorAll('strong, b');
-        Array.from(strongs).forEach((strong: Element) => {
-          const boldText = strong.textContent?.trim() || '';
-          
-          // Get the parent paragraph if it exists
-          let context = '';
-          const parent = strong.closest('p, div, section');
-          if (parent) {
-            context = parent.textContent?.trim().substring(0, 400) || '';
-          }
-          
-          if (boldText.length > 3 && boldText.length < 100 && context.length > 20 && keyFeatures.length < 10) {
-            keyFeatures.push(boldText + ' - ' + context.replace(boldText, '').trim());
-          }
-        });
-      }
-
-      // Specifications - look for spec tables
+      // Specifications
       const specifications: Record<string, string> = {};
       const specRows = document.querySelectorAll('.specifications tr, .product-attributes tr, table tr, .woocommerce-product-attributes tr');
       specRows.forEach(row => {
@@ -222,7 +199,6 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           }
         }
       });
-      // Also look for definition lists
       const dlEls = document.querySelectorAll('dl dt, dl dd');
       for (let i = 0; i < dlEls.length - 1; i += 2) {
         const key = dlEls[i]?.textContent?.trim() || '';
@@ -239,7 +215,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         specifications['Certification'] = 'CE Marked, FDA Registered';
       }
 
-      // Documents - look for PDF links
+      // Documents
       const documents: Array<{name: string, url: string}> = [];
       const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="document"], a[href*="brochure"], a[href*="manual"]');
       pdfLinks.forEach(link => {
@@ -255,7 +231,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         documents.push({ name: 'Technical Specifications', url: '#' });
       }
 
-      // Videos - look for YouTube or video embeds
+      // Videos
       let videoUrl = '';
       const videoEl = document.querySelector('iframe[src*="youtube"], iframe[src*="vimeo"], video source');
       if (videoEl) {
@@ -282,8 +258,8 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
     });
 
     console.log(`[Scraper] Extracted product: ${productDetails.name}`);
+    console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features`);
 
-    // Create the product entry
     products.push({
       name: productDetails.name,
       description: productDetails.description,
