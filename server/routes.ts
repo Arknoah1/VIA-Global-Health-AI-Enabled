@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
+import { scrapeViaGlobalHealth } from "./scraper";
 import { insertProductSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -34,7 +35,31 @@ export async function registerRoutes(
     }
   });
 
-  // Create products (bulk insert from scraper)
+  // Scrape products from ViaGlobal and save to database
+  app.post("/api/scrape", async (req, res) => {
+    try {
+      console.log("[API] Starting scrape request");
+      const scrapedProducts = await scrapeViaGlobalHealth();
+      console.log(`[API] Scraped ${scrapedProducts.length} products, saving to database...`);
+      
+      const saved = await storage.createProducts(scrapedProducts);
+      console.log(`[API] Saved ${saved.length} products to database`);
+      
+      res.json({ 
+        success: true, 
+        count: saved.length,
+        products: saved
+      });
+    } catch (error) {
+      console.error("Error during scraping:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Scraping failed" 
+      });
+    }
+  });
+
+  // Create products (bulk insert from scraper or manual)
   app.post("/api/products", async (req, res) => {
     try {
       const body = req.body;
