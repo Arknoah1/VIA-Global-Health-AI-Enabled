@@ -113,7 +113,7 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
               <div className="space-y-1">
                 <p className="font-medium">Ready to start</p>
                 <p className="text-sm text-muted-foreground">
-                  Will scrape: https://viaglobalhealth.com/product-categories/shop-by-category/
+                  Will scrape: https://viaglobalhealth.com/product/
                 </p>
               </div>
             </div>
