@@ -17,6 +17,7 @@ export const products = pgTable("products", {
   keyFeatures: jsonb("key_features").notNull().default(sql`'[]'::jsonb`),
   documents: jsonb("documents").notNull().default(sql`'[]'::jsonb`),
   specifications: jsonb("specifications").notNull().default(sql`'{}'::jsonb`),
+  faqs: jsonb("faqs").notNull().default(sql`'[]'::jsonb`),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   scrapedAt: timestamp("scraped_at").notNull().defaultNow(),
 });

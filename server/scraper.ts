@@ -186,91 +186,211 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         });
       }
 
-      // Specifications - Extract from multiple formats
+      // Specifications - Extract ONLY from the Specifications section
       const specifications: Record<string, string> = {};
+      const faqs: Array<{question: string, answer: string}> = [];
       
-      // Method 1: Look for table-based specifications
-      const specRows = document.querySelectorAll('.specifications tr, .product-attributes tr, table tr, .woocommerce-product-attributes tr');
-      specRows.forEach(row => {
-        const cells = row.querySelectorAll('td, th');
-        if (cells.length >= 2) {
-          const key = cells[0].textContent?.trim() || '';
-          const value = cells[1].textContent?.trim() || '';
-          if (key && value && key.length < 100 && value.length < 200) {
-            specifications[key] = value;
-          }
-        }
+      // Find the "Specifications" heading
+      const allPageHeadings = Array.from(document.querySelectorAll('h2, h3, h4, strong'));
+      const specHeader = allPageHeadings.find((h) => {
+        const text = h.textContent?.trim().toLowerCase() || '';
+        return text === 'specifications';
+      });
+      const faqHeader = allPageHeadings.find((h) => {
+        const text = h.textContent?.trim().toLowerCase() || '';
+        return text === 'faqs' || text === 'faq' || text.includes('frequently asked');
       });
       
-      // Method 2: Look for definition lists
-      const dlEls = document.querySelectorAll('dl dt, dl dd');
-      for (let i = 0; i < dlEls.length - 1; i += 2) {
-        const key = dlEls[i]?.textContent?.trim() || '';
-        const value = dlEls[i + 1]?.textContent?.trim() || '';
-        if (key && value) {
-          specifications[key] = value;
+      // Known specification section headings for Via Global Health
+      const specSectionNames = [
+        'power parameters', 'dimensions and weight', 'operating conditions',
+        'transport and storage', 'general info', 'technical specifications',
+        'product specifications', 'features', 'components'
+      ];
+      
+      // Extract specifications from within the Specifications section only
+      if (specHeader) {
+        let currentEl: Element | null = specHeader.nextElementSibling;
+        let depth = 0;
+        
+        while (currentEl && depth < 50) {
+          // Stop if we hit the FAQ section or another major section
+          const elText = currentEl.textContent?.trim().toLowerCase() || '';
+          if (elText === 'faqs' || elText === 'faq' || elText.includes('frequently asked') || 
+              elText === 'related products' || elText === 'reviews') {
+            break;
+          }
+          
+          // Check if this is a subsection heading (strong or h3/h4/h5)
+          const isSubHeading = currentEl.tagName === 'STRONG' || 
+                               currentEl.tagName.match(/^H[3-5]$/i) ||
+                               currentEl.querySelector('strong, b');
+          
+          if (isSubHeading) {
+            const headingText = currentEl.textContent?.trim() || '';
+            const headingLower = headingText.toLowerCase();
+            
+            // Skip FAQ-like headings (questions)
+            if (headingText.includes('?') ||
+                headingLower.includes('how do') ||
+                headingLower.includes('how to') ||
+                headingLower.includes('what is') ||
+                headingLower.includes('what if') ||
+                headingLower.includes('can i') ||
+                headingLower.includes('is there') ||
+                headingLower.includes('how does') ||
+                headingLower.includes('how many')) {
+              // This is a FAQ question, skip it for specs
+              currentEl = currentEl.nextElementSibling;
+              depth++;
+              continue;
+            }
+            
+            // Only capture known spec section types
+            const isValidSpecSection = specSectionNames.some(name => 
+              headingLower.includes(name) || headingLower === name
+            );
+            
+            if (!isValidSpecSection && headingText.length > 30) {
+              // Skip long headings that aren't known spec sections
+              currentEl = currentEl.nextElementSibling;
+              depth++;
+              continue;
+            }
+            
+            // Look for the list following this heading
+            let nextEl = currentEl.nextElementSibling;
+            let searchDepth = 0;
+            
+            while (nextEl && searchDepth < 3) {
+              if (nextEl.tagName === 'UL' || nextEl.tagName === 'OL') {
+                const items = nextEl.querySelectorAll('li');
+                const allItems: string[] = [];
+                
+                Array.from(items).forEach((item: Element) => {
+                  const text = item.textContent?.trim() || '';
+                  if (text.length > 5) {
+                    allItems.push(text);
+                  }
+                });
+                
+                if (allItems.length > 0 && headingText.length > 3) {
+                  specifications[headingText] = '• ' + allItems.join('\n• ');
+                }
+                break;
+              } else if (nextEl.tagName === 'STRONG' || nextEl.tagName.match(/^H[2-5]$/i)) {
+                // Hit next heading without finding a list
+                break;
+              }
+              nextEl = nextEl.nextElementSibling;
+              searchDepth++;
+            }
+          }
+          
+          currentEl = currentEl.nextElementSibling;
+          depth++;
         }
       }
       
-      // Method 3: Look for heading + bullet list format (common on VIA Global Health)
-      if (Object.keys(specifications).length === 0) {
-        const headings = document.querySelectorAll('h2, h3, h4, h5, strong');
-        Array.from(headings).forEach((heading) => {
-          const headingText = heading.textContent?.trim() || '';
-          
-          // Skip small headings or navigation
-          if (headingText.length < 4 || headingText.length > 80) return;
-          const isInNav = heading.closest('nav, header, footer, .menu');
-          if (isInNav || headingText.toLowerCase().includes('related') || headingText.toLowerCase().includes('menu')) return;
-          
-          // Look for lists or bullet content after this heading
-          let currentEl = heading.nextElementSibling;
-          let depth = 0;
-          let allItems: string[] = [];
-          
-          while (currentEl && depth < 5) {
-            // Check for lists
-            if (currentEl.tagName === 'UL' || currentEl.tagName === 'OL') {
-              const items = currentEl.querySelectorAll('li');
-              Array.from(items).forEach((item) => {
-                const text = item.textContent?.trim() || '';
-                if (text.length > 5 && !text.toLowerCase().includes('cart') && !text.toLowerCase().includes('shop')) {
-                  allItems.push(text);
-                }
-              });
-              break;
-            }
-            // Check for divs/containers with bullet points (•)
-            else if (currentEl.tagName === 'DIV' || currentEl.tagName === 'P') {
-              const text = currentEl.textContent?.trim() || '';
-              if (text && (text.includes('•') || text.length > 100)) {
-                // Split by bullet points if they exist
-                const lines = text.split('•').map(s => s.trim()).filter(s => s.length > 5);
-                allItems.push(...lines);
-                if (text.includes('•')) break; // Found bullet list, stop
-              }
-            }
-            // Stop at next heading
-            else if (currentEl.tagName.match(/^H[1-6]$/)) {
-              break;
-            }
-            currentEl = currentEl.nextElementSibling;
-            depth++;
+      // Extract FAQs - first from dedicated FAQ section, then from question-style headings anywhere
+      if (faqHeader) {
+        let currentEl: Element | null = faqHeader.nextElementSibling;
+        let depth = 0;
+        
+        while (currentEl && depth < 30) {
+          const elText = currentEl.textContent?.trim().toLowerCase() || '';
+          if (elText === 'related products' || elText === 'reviews' || elText === 'specifications') {
+            break;
           }
           
-          // If we found items, add them to specifications
-          if (allItems.length > 0) {
-            specifications[headingText] = allItems.join('\n• ').startsWith('•') 
-              ? allItems.join('\n• ')
-              : '• ' + allItems.join('\n• ');
+          const isQuestion = currentEl.tagName === 'STRONG' || 
+                            currentEl.tagName.match(/^H[3-5]$/i) ||
+                            currentEl.querySelector('strong, b');
+          
+          if (isQuestion) {
+            const questionText = currentEl.textContent?.trim() || '';
+            
+            let answerEl = currentEl.nextElementSibling;
+            let answerText = '';
+            
+            if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
+                            answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
+              answerText = answerEl.textContent?.trim() || '';
+            }
+            
+            if (questionText.length > 5 && answerText.length > 10) {
+              faqs.push({ question: questionText, answer: answerText });
+            }
           }
-        });
+          
+          currentEl = currentEl.nextElementSibling;
+          depth++;
+        }
       }
       
-      // Only use hardcoded defaults if absolutely nothing was found
+      // Also extract FAQs from within/after Specifications (questions mixed with specs)
+      if (specHeader && faqs.length === 0) {
+        let currentEl: Element | null = specHeader.nextElementSibling;
+        let depth = 0;
+        
+        while (currentEl && depth < 60) {
+          const elText = currentEl.textContent?.trim().toLowerCase() || '';
+          if (elText === 'related products' || elText === 'reviews') {
+            break;
+          }
+          
+          const isHeading = currentEl.tagName === 'STRONG' || 
+                           currentEl.tagName.match(/^H[3-5]$/i) ||
+                           currentEl.querySelector('strong, b');
+          
+          if (isHeading) {
+            const headingText = currentEl.textContent?.trim() || '';
+            const headingLower = headingText.toLowerCase();
+            
+            // Check if this is a question (FAQ)
+            if (headingText.includes('?') ||
+                headingLower.includes('how do') ||
+                headingLower.includes('how to') ||
+                headingLower.includes('what is') ||
+                headingLower.includes('what\'s') ||
+                headingLower.includes('can i') ||
+                headingLower.includes('is there') ||
+                headingLower.includes('how does') ||
+                headingLower.includes('how many')) {
+              
+              // Get the answer from the next element
+              let answerEl = currentEl.nextElementSibling;
+              let answerText = '';
+              
+              if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
+                              answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
+                answerText = answerEl.textContent?.trim() || '';
+              }
+              
+              if (headingText.length > 5 && answerText.length > 10) {
+                faqs.push({ question: headingText, answer: answerText });
+              }
+            }
+          }
+          
+          currentEl = currentEl.nextElementSibling;
+          depth++;
+        }
+      }
+      
+      // Fallback: If no specs found via section method, try table extraction
       if (Object.keys(specifications).length === 0) {
-        // Don't use product-specific defaults here - leave empty to indicate no specs found
-        // This prevents old data from showing up on new products
+        const specRows = document.querySelectorAll('.specifications tr, .product-attributes tr, .woocommerce-product-attributes tr');
+        specRows.forEach(row => {
+          const cells = row.querySelectorAll('td, th');
+          if (cells.length >= 2) {
+            const key = cells[0].textContent?.trim() || '';
+            const value = cells[1].textContent?.trim() || '';
+            if (key && value && key.length < 100 && value.length < 200) {
+              specifications[key] = value;
+            }
+          }
+        });
       }
 
       // Documents
@@ -309,6 +429,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         images,
         keyFeatures,
         specifications,
+        faqs,
         documents,
         videoUrl,
         sku
@@ -331,6 +452,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
       keyFeatures: productDetails.keyFeatures,
       documents: productDetails.documents,
       specifications: productDetails.specifications,
+      faqs: productDetails.faqs,
       status: 'active'
     });
 

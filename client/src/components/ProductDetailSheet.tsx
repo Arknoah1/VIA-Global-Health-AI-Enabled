@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, FileText, Play, Download, Image as ImageIcon } from "lucide-react";
+import { ExternalLink, FileText, Play, Download, Image as ImageIcon, HelpCircle } from "lucide-react";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -82,6 +82,14 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               >
                 Media & Files
               </TabsTrigger>
+              {product.faqs && product.faqs.length > 0 && (
+                <TabsTrigger 
+                  value="faqs" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
+                >
+                  FAQs
+                </TabsTrigger>
+              )}
             </TabsList>
             
             <TabsContent value="details" className="mt-6 space-y-6">
@@ -162,6 +170,26 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 </div>
               </div>
             </TabsContent>
+
+            {product.faqs && product.faqs.length > 0 && (
+              <TabsContent value="faqs" className="mt-6">
+                <div className="space-y-4">
+                  {product.faqs.map((faq, idx) => (
+                    <div key={idx} className="rounded-lg border bg-card p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                          <HelpCircle className="h-4 w-4" />
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-sm">{faq.question}</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
         

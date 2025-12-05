@@ -14,6 +14,7 @@ export interface Product {
   scrapedAt: string;
   status: 'active' | 'out_of_stock' | 'discontinued';
   specifications: Record<string, string>;
+  faqs: { question: string; answer: string }[];
 }
 
 export type ScrapeStatus = 'idle' | 'scanning' | 'extracting' | 'completed' | 'error';
