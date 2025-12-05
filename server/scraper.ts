@@ -186,8 +186,10 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         });
       }
 
-      // Specifications
+      // Specifications - Extract from multiple formats
       const specifications: Record<string, string> = {};
+      
+      // Method 1: Look for table-based specifications
       const specRows = document.querySelectorAll('.specifications tr, .product-attributes tr, table tr, .woocommerce-product-attributes tr');
       specRows.forEach(row => {
         const cells = row.querySelectorAll('td, th');
@@ -199,6 +201,8 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           }
         }
       });
+      
+      // Method 2: Look for definition lists
       const dlEls = document.querySelectorAll('dl dt, dl dd');
       for (let i = 0; i < dlEls.length - 1; i += 2) {
         const key = dlEls[i]?.textContent?.trim() || '';
@@ -207,12 +211,50 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           specifications[key] = value;
         }
       }
+      
+      // Method 3: Look for heading + bullet list format (common on VIA Global Health)
       if (Object.keys(specifications).length === 0) {
-        specifications['Size'] = 'Medium/Large';
-        specifications['Material'] = 'Neoprene and nylon';
-        specifications['Weight'] = 'Approximately 1.5 kg';
-        specifications['Manufacturer'] = 'LifeWrap';
-        specifications['Certification'] = 'CE Marked, FDA Registered';
+        const headings = document.querySelectorAll('h2, h3, h4, h5');
+        Array.from(headings).forEach((heading) => {
+          const headingText = heading.textContent?.trim() || '';
+          
+          // Skip navigation headings
+          const isInNav = heading.closest('nav, header, footer, .menu');
+          if (isInNav || headingText.toLowerCase().includes('related') || headingText.toLowerCase().includes('menu')) return;
+          
+          // Look for lists after this heading
+          let nextEl = heading.nextElementSibling;
+          let depth = 0;
+          
+          while (nextEl && depth < 3) {
+            if (nextEl.tagName === 'UL' || nextEl.tagName === 'OL') {
+              // Extract list items
+              const items = nextEl.querySelectorAll('li');
+              Array.from(items).forEach((item) => {
+                const itemText = item.textContent?.trim() || '';
+                // Use the heading + item count as key, full text as value
+                if (itemText.length > 5) {
+                  const itemKey = `${headingText}`;
+                  const existingValue = specifications[itemKey] || '';
+                  // Append bullet point
+                  specifications[itemKey] = existingValue ? existingValue + '\n• ' + itemText : '• ' + itemText;
+                }
+              });
+              break;
+            } else if (nextEl.tagName.match(/^H[1-6]$/)) {
+              // Stop at next heading
+              break;
+            }
+            nextEl = nextEl.nextElementSibling;
+            depth++;
+          }
+        });
+      }
+      
+      // Only use hardcoded defaults if absolutely nothing was found
+      if (Object.keys(specifications).length === 0) {
+        // Don't use product-specific defaults here - leave empty to indicate no specs found
+        // This prevents old data from showing up on new products
       }
 
       // Documents
