@@ -25,7 +25,7 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
     await page.setViewport({ width: 1920, height: 1080 });
     
     console.log('[Scraper] Navigating to ViaGlobal catalog...');
-    await page.goto('https://viaglobalhealth.com/product-categories/shop-by-category/', {
+    await page.goto('https://viaglobalhealth.com/product/', {
       waitUntil: 'networkidle2',
       timeout: 60000
     });
