@@ -233,8 +233,8 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           }
           
           // Check if this is a subsection heading (strong or h3/h4/h5)
-          const isSubHeading = currentEl.tagName === 'STRONG' || 
-                               currentEl.tagName.match(/^H[3-5]$/i) ||
+          const tag = currentEl.tagName;
+          const isSubHeading = tag === 'STRONG' || tag === 'H3' || tag === 'H4' || tag === 'H5' ||
                                currentEl.querySelector('strong, b');
           
           if (isSubHeading) {
@@ -267,7 +267,8 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
                   specifications[headingText] = '• ' + allItems.join('\n• ');
                 }
                 break;
-              } else if (nextEl.tagName === 'STRONG' || nextEl.tagName.match(/^H[2-5]$/i)) {
+              } else if (nextEl.tagName === 'STRONG' || nextEl.tagName === 'H2' || nextEl.tagName === 'H3' || 
+                         nextEl.tagName === 'H4' || nextEl.tagName === 'H5') {
                 // Hit next heading without finding a list
                 break;
               }
@@ -292,8 +293,8 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
             break;
           }
           
-          const isQuestion = currentEl.tagName === 'STRONG' || 
-                            currentEl.tagName.match(/^H[3-5]$/i) ||
+          const elTag = currentEl.tagName;
+          const isQuestion = elTag === 'STRONG' || elTag === 'H3' || elTag === 'H4' || elTag === 'H5' ||
                             currentEl.querySelector('strong, b');
           
           if (isQuestion) {
@@ -328,8 +329,8 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
             break;
           }
           
-          const isHeading = currentEl.tagName === 'STRONG' || 
-                           currentEl.tagName.match(/^H[3-5]$/i) ||
+          const headingTag = currentEl.tagName;
+          const isHeading = headingTag === 'STRONG' || headingTag === 'H3' || headingTag === 'H4' || headingTag === 'H5' ||
                            currentEl.querySelector('strong, b');
           
           if (isHeading) {
