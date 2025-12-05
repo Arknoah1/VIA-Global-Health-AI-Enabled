@@ -214,39 +214,55 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
       
       // Method 3: Look for heading + bullet list format (common on VIA Global Health)
       if (Object.keys(specifications).length === 0) {
-        const headings = document.querySelectorAll('h2, h3, h4, h5');
+        const headings = document.querySelectorAll('h2, h3, h4, h5, strong');
         Array.from(headings).forEach((heading) => {
           const headingText = heading.textContent?.trim() || '';
           
-          // Skip navigation headings
+          // Skip small headings or navigation
+          if (headingText.length < 4 || headingText.length > 80) return;
           const isInNav = heading.closest('nav, header, footer, .menu');
           if (isInNav || headingText.toLowerCase().includes('related') || headingText.toLowerCase().includes('menu')) return;
           
-          // Look for lists after this heading
-          let nextEl = heading.nextElementSibling;
+          // Look for lists or bullet content after this heading
+          let currentEl = heading.nextElementSibling;
           let depth = 0;
+          let allItems: string[] = [];
           
-          while (nextEl && depth < 3) {
-            if (nextEl.tagName === 'UL' || nextEl.tagName === 'OL') {
-              // Extract list items
-              const items = nextEl.querySelectorAll('li');
+          while (currentEl && depth < 5) {
+            // Check for lists
+            if (currentEl.tagName === 'UL' || currentEl.tagName === 'OL') {
+              const items = currentEl.querySelectorAll('li');
               Array.from(items).forEach((item) => {
-                const itemText = item.textContent?.trim() || '';
-                // Use the heading + item count as key, full text as value
-                if (itemText.length > 5) {
-                  const itemKey = `${headingText}`;
-                  const existingValue = specifications[itemKey] || '';
-                  // Append bullet point
-                  specifications[itemKey] = existingValue ? existingValue + '\n• ' + itemText : '• ' + itemText;
+                const text = item.textContent?.trim() || '';
+                if (text.length > 5 && !text.toLowerCase().includes('cart') && !text.toLowerCase().includes('shop')) {
+                  allItems.push(text);
                 }
               });
               break;
-            } else if (nextEl.tagName.match(/^H[1-6]$/)) {
-              // Stop at next heading
+            }
+            // Check for divs/containers with bullet points (•)
+            else if (currentEl.tagName === 'DIV' || currentEl.tagName === 'P') {
+              const text = currentEl.textContent?.trim() || '';
+              if (text && (text.includes('•') || text.length > 100)) {
+                // Split by bullet points if they exist
+                const lines = text.split('•').map(s => s.trim()).filter(s => s.length > 5);
+                allItems.push(...lines);
+                if (text.includes('•')) break; // Found bullet list, stop
+              }
+            }
+            // Stop at next heading
+            else if (currentEl.tagName.match(/^H[1-6]$/)) {
               break;
             }
-            nextEl = nextEl.nextElementSibling;
+            currentEl = currentEl.nextElementSibling;
             depth++;
+          }
+          
+          // If we found items, add them to specifications
+          if (allItems.length > 0) {
+            specifications[headingText] = allItems.join('\n• ').startsWith('•') 
+              ? allItems.join('\n• ')
+              : '• ' + allItems.join('\n• ');
           }
         });
       }
