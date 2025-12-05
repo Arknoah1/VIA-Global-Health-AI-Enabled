@@ -201,24 +201,6 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
         return text === 'faqs' || text === 'faq' || text.includes('frequently asked');
       });
       
-      // Helper function to check if text is a FAQ-style question
-      const isFaqQuestion = (text: string): boolean => {
-        const lower = text.toLowerCase();
-        return text.includes('?') ||
-               lower.startsWith('how do') ||
-               lower.startsWith('how to') ||
-               lower.startsWith('what is') ||
-               lower.startsWith('what\'s') ||
-               lower.startsWith('what if') ||
-               lower.startsWith('can i') ||
-               lower.startsWith('is there') ||
-               lower.startsWith('how does') ||
-               lower.startsWith('how many') ||
-               lower.startsWith('why ') ||
-               lower.startsWith('when ') ||
-               lower.startsWith('where ');
-      };
-      
       // Extract specifications from within the Specifications section only
       if (specHeader) {
         let currentEl: Element | null = specHeader.nextElementSibling;
@@ -239,9 +221,24 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           
           if (isSubHeading) {
             const headingText = currentEl.textContent?.trim() || '';
+            const headingLower = headingText.toLowerCase();
             
             // Skip FAQ-like headings (questions) - these go to FAQs
-            if (isFaqQuestion(headingText)) {
+            const isFaq = headingText.includes('?') ||
+                         headingLower.startsWith('how do') ||
+                         headingLower.startsWith('how to') ||
+                         headingLower.startsWith('what is') ||
+                         headingLower.startsWith('what\'s') ||
+                         headingLower.startsWith('what if') ||
+                         headingLower.startsWith('can i') ||
+                         headingLower.startsWith('is there') ||
+                         headingLower.startsWith('how does') ||
+                         headingLower.startsWith('how many') ||
+                         headingLower.startsWith('why ') ||
+                         headingLower.startsWith('when ') ||
+                         headingLower.startsWith('where ');
+            
+            if (isFaq) {
               currentEl = currentEl.nextElementSibling;
               depth++;
               continue;
@@ -335,9 +332,24 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
           
           if (isHeading) {
             const headingText = currentEl.textContent?.trim() || '';
+            const hLower = headingText.toLowerCase();
             
-            // Check if this is a question (FAQ) using the helper function
-            if (isFaqQuestion(headingText)) {
+            // Check if this is a question (FAQ) - inline check
+            const isQuestion = headingText.includes('?') ||
+                              hLower.startsWith('how do') ||
+                              hLower.startsWith('how to') ||
+                              hLower.startsWith('what is') ||
+                              hLower.startsWith('what\'s') ||
+                              hLower.startsWith('what if') ||
+                              hLower.startsWith('can i') ||
+                              hLower.startsWith('is there') ||
+                              hLower.startsWith('how does') ||
+                              hLower.startsWith('how many') ||
+                              hLower.startsWith('why ') ||
+                              hLower.startsWith('when ') ||
+                              hLower.startsWith('where ');
+            
+            if (isQuestion) {
               // Get the answer from the next element
               let answerEl = currentEl.nextElementSibling;
               let answerText = '';
