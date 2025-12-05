@@ -37,9 +37,7 @@ export function ProductTable({ products, isLoading, onSelectProduct }: ProductTa
             <TableHead className="w-[80px]">Image</TableHead>
             <TableHead>Product Name</TableHead>
             <TableHead>Category</TableHead>
-            <TableHead>Price</TableHead>
             <TableHead>SKU</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -72,18 +70,7 @@ export function ProductTable({ products, isLoading, onSelectProduct }: ProductTa
                   {product.category}
                 </Badge>
               </TableCell>
-              <TableCell>
-                {product.currency} {product.price.toLocaleString()}
-              </TableCell>
               <TableCell className="font-mono text-xs">{product.sku}</TableCell>
-              <TableCell>
-                <Badge 
-                  variant={product.status === 'active' ? 'default' : 'secondary'}
-                  className={product.status === 'active' ? 'bg-green-500/15 text-green-700 hover:bg-green-500/25 shadow-none border-green-200' : ''}
-                >
-                  {product.status.replace('_', ' ')}
-                </Badge>
-              </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

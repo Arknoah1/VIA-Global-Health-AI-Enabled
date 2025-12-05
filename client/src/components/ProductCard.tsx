@@ -21,14 +21,6 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
           alt={product.name} 
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        <div className="absolute top-2 right-2">
-          <Badge 
-            variant={product.status === 'active' ? 'default' : 'secondary'}
-            className={product.status === 'active' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}
-          >
-            {product.status.replace('_', ' ')}
-          </Badge>
-        </div>
       </div>
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">
@@ -42,10 +34,6 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
         <p className="text-sm text-muted-foreground line-clamp-2 h-10">
           {product.description}
         </p>
-        <div className="flex items-baseline gap-1">
-          <span className="text-sm font-medium text-muted-foreground">{product.currency}</span>
-          <span className="text-xl font-bold text-primary">{product.price.toLocaleString()}</span>
-        </div>
         <div className="text-xs font-mono text-muted-foreground">
           SKU: {product.sku}
         </div>

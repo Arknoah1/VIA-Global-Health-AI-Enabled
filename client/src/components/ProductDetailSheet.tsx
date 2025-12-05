@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, FileText, Play, ShoppingCart, Download, Image as ImageIcon } from "lucide-react";
+import { ExternalLink, FileText, Play, Download, Image as ImageIcon } from "lucide-react";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -27,29 +27,16 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0">
         <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b p-6 pb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <Badge variant="outline" className="mb-2">
-                {product.category}
-              </Badge>
-              <SheetTitle className="text-2xl font-bold leading-tight">
-                {product.name}
-              </SheetTitle>
-              <SheetDescription className="mt-1 font-mono text-xs text-muted-foreground">
-                SKU: {product.sku}
-              </SheetDescription>
-            </div>
-            <div className="text-right shrink-0">
-              <div className="text-2xl font-bold text-primary">
-                {product.currency} {product.price.toLocaleString()}
-              </div>
-              <Badge 
-                variant={product.status === 'active' ? 'default' : 'secondary'}
-                className={`mt-1 ${product.status === 'active' ? 'bg-green-500' : ''}`}
-              >
-                {product.status.replace('_', ' ')}
-              </Badge>
-            </div>
+          <div>
+            <Badge variant="outline" className="mb-2">
+              {product.category}
+            </Badge>
+            <SheetTitle className="text-2xl font-bold leading-tight">
+              {product.name}
+            </SheetTitle>
+            <SheetDescription className="mt-1 font-mono text-xs text-muted-foreground">
+              SKU: {product.sku}
+            </SheetDescription>
           </div>
         </div>
 
@@ -185,10 +172,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 <ExternalLink className="mr-2 h-4 w-4" />
                 View Source
               </a>
-            </Button>
-            <Button className="flex-1">
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Add to Order
             </Button>
           </div>
         </SheetFooter>
