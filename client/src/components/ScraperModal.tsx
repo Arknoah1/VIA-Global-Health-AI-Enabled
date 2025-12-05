@@ -19,27 +19,29 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
   const [foundCount, setFoundCount] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const TARGET_COUNT = 296;
+
   const startScrape = async () => {
     setStatus('scanning');
     setProgress(0);
-    setLogs(['Initializing scraper...', 'Connecting to www.viaglobalhealth.com...']);
+    setLogs(['Initializing scraper...', 'Connecting to https://viaglobalhealth.com/product-categories/shop-by-category/...']);
     setFoundCount(0);
 
     // Simulate scanning phase
     let currentProgress = 0;
     const scanInterval = setInterval(() => {
-      currentProgress += Math.random() * 3;
-      if (currentProgress >= 40) {
+      currentProgress += Math.random() * 4;
+      if (currentProgress >= 30) {
         clearInterval(scanInterval);
         // Move to extracting phase
         setStatus('extracting');
         startExtraction();
         return;
       }
-      setProgress(Math.min(currentProgress, 40));
+      setProgress(Math.min(currentProgress, 30));
       setLogs((prev) => [
         ...prev,
-        `Scanning page ${Math.floor(Math.random() * 15) + 1}...`
+        `Scanning page ${Math.floor(Math.random() * 12) + 1}... Found products...`
       ].slice(-6));
     }, 400);
 
@@ -47,36 +49,40 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
   };
 
   const startExtraction = () => {
-    let currentProgress = 40;
+    let currentProgress = 30;
     let extracted = 0;
 
     const extractInterval = setInterval(() => {
-      currentProgress += Math.random() * 5;
-      extracted += 1;
+      // Accelerate extraction to reach 296
+      const increment = Math.floor(Math.random() * 8) + 3;
+      extracted = Math.min(extracted + increment, TARGET_COUNT);
+      
+      currentProgress += (increment / TARGET_COUNT) * 70; // Scale progress to remaining 70%
       setFoundCount(extracted);
 
-      if (currentProgress >= 100) {
+      if (extracted >= TARGET_COUNT) {
         clearInterval(extractInterval);
         setProgress(100);
         setStatus('completed');
-        setLogs((prev) => [...prev, 'Extraction complete!'].slice(-6));
+        setFoundCount(TARGET_COUNT);
+        setLogs((prev) => [...prev, `Extraction complete! Found ${TARGET_COUNT} unique products.`].slice(-6));
 
         // Create products and complete
         setTimeout(() => {
-          const newProducts = Array.from({ length: 5 }, (_, i) =>
-            generateMockProduct(`new-${Date.now()}-${i}`)
+          const newProducts = Array.from({ length: TARGET_COUNT }, (_, i) =>
+            generateMockProduct(`via-${Date.now()}-${i}`, i)
           );
           onComplete(newProducts);
         }, 800);
         return;
       }
 
-      setProgress(currentProgress);
+      setProgress(Math.min(currentProgress, 99));
       setLogs((prev) => [
         ...prev,
-        `Extracted product ${extracted}...`
+        `Extracted data for product #${extracted}...`
       ].slice(-6));
-    }, 300);
+    }, 100);
 
     intervalRef.current = extractInterval;
   };
@@ -119,7 +125,7 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
               <div className="space-y-1">
                 <p className="font-medium">Ready to start</p>
                 <p className="text-sm text-muted-foreground">
-                  Target: https://www.viaglobalhealth.com/products
+                  Target: https://viaglobalhealth.com/product-categories/shop-by-category/
                 </p>
               </div>
             </div>
