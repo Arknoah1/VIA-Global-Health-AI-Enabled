@@ -7,6 +7,10 @@ export interface Product {
   category: string;
   sku: string;
   imageUrl: string;
+  images: string[];
+  videoUrl?: string;
+  keyFeatures: string[];
+  documents: { name: string; url: string }[];
   scrapedAt: string;
   status: 'active' | 'out_of_stock' | 'discontinued';
   specifications: Record<string, string>;

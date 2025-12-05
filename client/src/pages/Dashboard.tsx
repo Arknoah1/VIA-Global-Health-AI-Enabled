@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { ProductTable } from "@/components/ProductTable";
 import { ProductCard } from "@/components/ProductCard";
 import { ScraperModal } from "@/components/ScraperModal";
+import { ProductDetailSheet } from "@/components/ProductDetailSheet";
 import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isScraperOpen, setIsScraperOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
@@ -119,11 +121,18 @@ export default function Dashboard() {
               </div>
             </div>
           ) : viewMode === 'table' ? (
-            <ProductTable products={filteredProducts} />
+            <ProductTable 
+              products={filteredProducts} 
+              onSelectProduct={setSelectedProduct}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  onSelectProduct={setSelectedProduct}
+                />
               ))}
             </div>
           )}
@@ -134,6 +143,12 @@ export default function Dashboard() {
         isOpen={isScraperOpen} 
         onClose={() => setIsScraperOpen(false)}
         onComplete={handleScrapeComplete}
+      />
+
+      <ProductDetailSheet
+        product={selectedProduct}
+        isOpen={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
       />
     </div>
   );

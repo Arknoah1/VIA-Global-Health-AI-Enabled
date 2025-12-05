@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Product } from "@/lib/types";
 import { 
   Table, 
@@ -10,7 +9,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MoreHorizontal, ExternalLink } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,9 +21,10 @@ import {
 interface ProductTableProps {
   products: Product[];
   isLoading?: boolean;
+  onSelectProduct?: (product: Product) => void;
 }
 
-export function ProductTable({ products, isLoading }: ProductTableProps) {
+export function ProductTable({ products, isLoading, onSelectProduct }: ProductTableProps) {
   if (isLoading) {
     return <div className="p-8 text-center text-muted-foreground">Loading data...</div>;
   }
@@ -46,7 +45,11 @@ export function ProductTable({ products, isLoading }: ProductTableProps) {
         </TableHeader>
         <TableBody>
           {products.map((product) => (
-            <TableRow key={product.id}>
+            <TableRow 
+              key={product.id} 
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => onSelectProduct?.(product)}
+            >
               <TableCell>
                 <div className="h-10 w-10 overflow-hidden rounded-md border bg-muted">
                   <img 
@@ -84,13 +87,13 @@ export function ProductTable({ products, isLoading }: ProductTableProps) {
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onSelectProduct?.(product)}>
                       <Eye className="mr-2 h-4 w-4" /> View Details
                     </DropdownMenuItem>
                     <DropdownMenuItem>

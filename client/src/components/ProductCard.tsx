@@ -2,16 +2,20 @@ import { Product } from "@/lib/types";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, MoreHorizontal, ShoppingCart } from "lucide-react";
+import { Eye, MoreHorizontal } from "lucide-react";
 
 interface ProductCardProps {
   product: Product;
+  onSelectProduct?: (product: Product) => void;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
-      <div className="aspect-[4/3] w-full overflow-hidden bg-muted relative group">
+    <Card 
+      className="overflow-hidden transition-all hover:shadow-md cursor-pointer group"
+      onClick={() => onSelectProduct?.(product)}
+    >
+      <div className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
         <img 
           src={product.imageUrl} 
           alt={product.name} 
@@ -50,7 +54,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <Button variant="outline" size="sm" className="w-full">
           <Eye className="h-4 w-4 mr-2" /> Details
         </Button>
-        <Button variant="ghost" size="icon" className="shrink-0">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </CardFooter>

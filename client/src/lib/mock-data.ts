@@ -132,19 +132,40 @@ export function generateMockProduct(id: string, index?: number): Product {
   return {
     id,
     name: realProduct.name,
-    description: "High-precision medical equipment designed for professional healthcare settings. Features advanced monitoring capabilities and durable construction.",
+    description: "High-precision medical equipment designed for professional healthcare settings. This device features advanced monitoring capabilities, durable construction suitable for demanding environments, and an intuitive user interface.",
     price: realProduct.price,
     currency: "USD",
     category: realProduct.category,
     sku: `VIA-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
     imageUrl: realProduct.image,
+    // Add additional gallery images (simulated by using same image or others)
+    images: [
+      realProduct.image,
+      "https://viaglobalhealth.com/wp-content/uploads/2021/03/covid-essentials.jpg",
+      "https://viaglobalhealth.com/wp-content/uploads/2021/03/imaging-and-monitoring.jpg"
+    ],
+    videoUrl: Math.random() > 0.7 ? "https://www.youtube.com/embed/dQw4w9WgXcQ" : undefined,
+    keyFeatures: [
+      "ISO 13485 Certified",
+      "User-friendly interface with digital display",
+      "Low power consumption (15W)",
+      "Portable and lightweight design",
+      "Includes 2-year manufacturer warranty"
+    ],
+    documents: [
+      { name: "User Manual.pdf", url: "#" },
+      { name: "Technical Specifications.pdf", url: "#" },
+      { name: "CE Certificate.pdf", url: "#" }
+    ],
     scrapedAt: new Date().toISOString(),
     status: Math.random() > 0.8 ? 'out_of_stock' : 'active',
     specifications: {
       "Weight": `${Math.floor(Math.random() * 20)}kg`,
       "Dimensions": "40x30x20cm",
-      "Power": "110-240V",
-      "Warranty": "2 Years"
+      "Power Input": "110-240V AC, 50/60Hz",
+      "Operating Temp": "10°C to 40°C",
+      "Warranty": "2 Years",
+      "Manufacturer": "Global Health Tech Ltd"
     }
   };
 }
