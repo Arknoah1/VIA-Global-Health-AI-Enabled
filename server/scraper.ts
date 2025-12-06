@@ -12,7 +12,7 @@ function sanitizePrice(price: number): number {
   return Math.min(cents, MAX_PRICE_CENTS);
 }
 
-export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
+export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProduct[]> {
   let browser;
   const products: InsertProduct[] = [];
   const timestamp = Date.now();
@@ -21,6 +21,9 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
   function generateUniqueSKU(): string {
     return `VIA-${timestamp}-${productIndex++}`;
   }
+
+  // Default to thermocoagulator if no URLs provided
+  const urlsToScrape = urls && urls.length > 0 ? urls : ['https://viaglobalhealth.com/product/thermocoagulator/'];
 
   try {
     browser = await puppeteer.launch({
@@ -32,44 +35,50 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
     const page = await browser.newPage();
     await page.setViewport({ width: 1920, height: 1080 });
     
-    const productUrl = 'https://viaglobalhealth.com/product/thermocoagulator/';
+    // Scrape each URL
+    for (const productUrl of urlsToScrape) {
     
-    console.log(`[Scraper] Navigating to ${productUrl}...`);
-    await page.goto(productUrl, {
-      waitUntil: 'networkidle2',
-      timeout: 60000
-    });
+      console.log(`[Scraper] Navigating to ${productUrl}...`);
+      try {
+        await page.goto(productUrl, {
+          waitUntil: 'networkidle2',
+          timeout: 60000
+        });
+      } catch (err) {
+        console.log(`[Scraper] Warning: Could not navigate to ${productUrl}, skipping...`);
+        continue;
+      }
 
-    await page.waitForSelector('h1', { timeout: 10000 }).catch(() => {});
+      await page.waitForSelector('h1', { timeout: 10000 }).catch(() => {});
 
-    // Scroll down the page to load all content
-    console.log('[Scraper] Scrolling to load all content...');
-    await page.evaluate(() => {
-      return new Promise<void>((resolve) => {
-        let totalHeight = 0;
-        const distance = 500;
-        const timer = setInterval(() => {
-          window.scrollBy(0, distance);
-          totalHeight += distance;
-          if (totalHeight >= document.body.scrollHeight) {
+      // Scroll down the page to load all content
+      console.log('[Scraper] Scrolling to load all content...');
+      await page.evaluate(() => {
+        return new Promise<void>((resolve) => {
+          let totalHeight = 0;
+          const distance = 500;
+          const timer = setInterval(() => {
+            window.scrollBy(0, distance);
+            totalHeight += distance;
+            if (totalHeight >= document.body.scrollHeight) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 100);
+          setTimeout(() => {
             clearInterval(timer);
             resolve();
-          }
-        }, 100);
-        setTimeout(() => {
-          clearInterval(timer);
-          resolve();
-        }, 3000);
+          }, 3000);
+        });
       });
-    });
 
-    // Scroll back up
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await new Promise(resolve => setTimeout(resolve, 500));
+      // Scroll back up
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-    console.log('[Scraper] Extracting detailed product data...');
+      console.log('[Scraper] Extracting detailed product data...');
 
-    const productDetails = await page.evaluate(() => {
+      const productDetails = await page.evaluate(() => {
       const name = document.querySelector('h1.product_title, h1')?.textContent?.trim() || 'LifeWrap Non-Pneumatic Anti-Shock Garment (NASG)';
       
       let description = '';
@@ -501,27 +510,30 @@ export async function scrapeViaGlobalHealth(): Promise<InsertProduct[]> {
       };
     });
 
-    console.log(`[Scraper] Extracted product: ${productDetails.name}`);
-    console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features`);
+      if (productDetails) {
+        console.log(`[Scraper] Extracted product: ${productDetails.name}`);
+        console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features`);
 
-    products.push({
-      name: productDetails.name,
-      description: productDetails.description,
-      price: sanitizePrice(productDetails.price),
-      currency: 'USD',
-      category: productDetails.category,
-      sku: productDetails.sku || generateUniqueSKU(),
-      imageUrl: productDetails.imageUrl,
-      images: productDetails.images,
-      videoUrl: productDetails.videoUrl || null,
-      keyFeatures: productDetails.keyFeatures,
-      documents: productDetails.documents,
-      specifications: productDetails.specifications,
-      faqs: productDetails.faqs,
-      status: 'active'
-    });
+        products.push({
+          name: productDetails.name,
+          description: productDetails.description,
+          price: sanitizePrice(productDetails.price),
+          currency: 'USD',
+          category: productDetails.category,
+          sku: productDetails.sku || generateUniqueSKU(),
+          imageUrl: productDetails.imageUrl,
+          images: productDetails.images,
+          videoUrl: productDetails.videoUrl || null,
+          keyFeatures: productDetails.keyFeatures,
+          documents: productDetails.documents,
+          specifications: productDetails.specifications,
+          faqs: productDetails.faqs,
+          status: 'active'
+        });
+      }
+    }
 
-    console.log(`[Scraper] Successfully scraped 1 product with detailed information`);
+    console.log(`[Scraper] Successfully scraped ${products.length} product(s) with detailed information`);
     return products;
 
   } catch (error) {

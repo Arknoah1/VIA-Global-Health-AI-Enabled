@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { Globe, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Product, ScrapeStatus } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -18,18 +19,29 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
   const [logs, setLogs] = useState<string[]>([]);
   const [foundCount, setFoundCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [urls, setUrls] = useState<string>('https://viaglobalhealth.com/product/thermocoagulator/');
   const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
 
   const startScrape = async () => {
     setStatus('scanning');
     setProgress(0);
-    setLogs(['Connecting to www.viaglobalhealth.com...', 'Loading product catalog...']);
+    setLogs(['Parsing URLs...', 'Connecting to www.viaglobalhealth.com...']);
     setFoundCount(0);
     setError(null);
     abortControllerRef.current = new AbortController();
 
     try {
+      // Parse URLs (one per line)
+      const urlList = urls
+        .split('\n')
+        .map(u => u.trim())
+        .filter(u => u.length > 0 && u.startsWith('http'));
+
+      if (urlList.length === 0) {
+        throw new Error('Please enter at least one valid URL');
+      }
+
       // Show progress updates while scraping
       const progressInterval = setInterval(() => {
         setProgress((prev) => Math.min(prev + Math.random() * 10, 90));
@@ -37,6 +49,8 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
 
       const response = await fetch("/api/scrape", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls: urlList }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -106,16 +120,19 @@ export function ScraperModal({ isOpen, onClose, onComplete }: ScraperModalProps)
 
         <div className="py-6">
           {status === 'idle' ? (
-            <div className="flex flex-col items-center justify-center space-y-4 py-8 text-center">
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                <Globe className="h-6 w-6" />
+            <div className="flex flex-col space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Product URLs (one per line)</label>
+                <Textarea 
+                  placeholder="https://viaglobalhealth.com/product/thermocoagulator/&#10;https://viaglobalhealth.com/product/another-product/&#10;..."
+                  value={urls}
+                  onChange={(e) => setUrls(e.target.value)}
+                  className="min-h-[100px] font-mono text-sm"
+                />
               </div>
-              <div className="space-y-1">
-                <p className="font-medium">Ready to start</p>
-                <p className="text-sm text-muted-foreground">
-                  Will scrape: https://viaglobalhealth.com/product/
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter one URL per line. Each product will be scraped and saved to the database.
+              </p>
             </div>
           ) : (
             <div className="space-y-6">

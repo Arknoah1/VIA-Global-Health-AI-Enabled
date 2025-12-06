@@ -39,7 +39,8 @@ export async function registerRoutes(
   app.post("/api/scrape", async (req, res) => {
     try {
       console.log("[API] Starting scrape request");
-      const scrapedProducts = await scrapeViaGlobalHealth();
+      const { urls } = req.body;
+      const scrapedProducts = await scrapeViaGlobalHealth(urls);
       console.log(`[API] Scraped ${scrapedProducts.length} products, saving to database...`);
       
       const saved = await storage.createProducts(scrapedProducts);
