@@ -5,7 +5,9 @@ import {
   Database, 
   Settings, 
   Download, 
-  Menu
+  Menu,
+  Globe,
+  Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -13,10 +15,10 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 export function Sidebar() {
   const [location] = useLocation();
   const links = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/products", label: "Product Database", icon: Database },
-    { href: "/exports", label: "Exports", icon: Download },
-    { href: "/settings", label: "Settings", icon: Settings },
+    { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/admin/scraper", icon: Globe, label: "Scraper" },
+    { href: "/admin/products", icon: Package, label: "Products" },
+    { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 
   // Fetch product count
@@ -80,7 +82,7 @@ export function Sidebar() {
       <aside className="hidden w-64 flex-col border-r bg-sidebar md:flex">
         <SidebarContent />
       </aside>
-      
+
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden fixed top-4 left-4 z-40">
