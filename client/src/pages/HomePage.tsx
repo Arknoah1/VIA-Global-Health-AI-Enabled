@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { ArrowRight, Building2, Heart, HandshakeIcon, Globe, Zap, Users, Award } from "lucide-react";
 
 export default function HomePage() {
@@ -78,19 +80,8 @@ export default function HomePage() {
   const CurrentIcon = current.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Header/Navigation */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Globe className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-slate-900">VIA Global Health</h1>
-          </div>
-          <Link href="/catalog">
-            <Button variant="outline">Browse Catalog</Button>
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
+      <Header />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 md:py-24">
@@ -273,44 +264,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 text-slate-300 py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-semibold text-white mb-4">About VIA Global</h4>
-              <p className="text-sm">Leading provider of quality medical solutions across Africa.</p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">For Distributors</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="/catalog" className="hover:text-white transition">Wholesale Pricing</a></li>
-                <li><a href="/catalog" className="hover:text-white transition">Territory Partners</a></li>
-                <li><a href="/catalog" className="hover:text-white transition">Training Programs</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">For Healthcare</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="/catalog" className="hover:text-white transition">Medical Products</a></li>
-                <li><a href="/catalog" className="hover:text-white transition">Technical Support</a></li>
-                <li><a href="/catalog" className="hover:text-white transition">Financing</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">For NGOs</h4>
-              <ul className="space-y-2 text-sm">
-                <li><a href="/catalog" className="hover:text-white transition">Special Pricing</a></li>
-                <li><a href="/catalog" className="hover:text-white transition">Partnerships</a></li>
-                <li><a href="/catalog" className="hover:text-white transition">Donations</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-slate-700 pt-8 text-center text-sm">
-            <p>&copy; 2025 VIA Global Health. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

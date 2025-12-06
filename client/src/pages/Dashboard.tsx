@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { ProductTable } from "@/components/ProductTable";
 import { ProductCard } from "@/components/ProductCard";
