@@ -8,6 +8,7 @@ import Dashboard from "@/pages/Dashboard";
 import HomePage from "@/pages/HomePage";
 import AboutPage from "@/pages/AboutPage";
 import PublicCatalog from "@/pages/PublicCatalog";
+import QuoteRequestsPage from "@/pages/QuoteRequestsPage";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/catalog" component={PublicCatalog} />
       <Route path="/about" component={AboutPage} />
       <Route path="/admin" component={Dashboard} />
+      <Route path="/admin/quote-requests" component={QuoteRequestsPage} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

@@ -7,7 +7,8 @@ import {
   Download, 
   Menu,
   Globe,
-  Package
+  Package,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -16,7 +17,7 @@ export function Sidebar() {
   const [location] = useLocation();
   const links = [
     { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/admin/scraper", icon: Globe, label: "Scraper" },
+    { href: "/admin/quote-requests", icon: MessageSquare, label: "Quote Requests" },
     { href: "/admin/products", icon: Package, label: "Products" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
