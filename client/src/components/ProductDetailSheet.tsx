@@ -56,7 +56,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     if (showQuoteDialog && messages.length === 0 && product) {
       setMessages([{
         role: 'assistant',
-        content: `Hi! I'm here to help you get a quote for the ${product.name}. How many units are you interested in, and where would you need them shipped?`
+        content: 'How can we help you?'
       }]);
     }
   }, [showQuoteDialog, product]);
