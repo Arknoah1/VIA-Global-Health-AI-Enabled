@@ -107,9 +107,9 @@ export default function HomePage() {
       </section>
 
       {/* Audience Selection */}
-      <section className="container mx-auto px-4 py-8">
+      <section className="container mx-auto px-4 py-12">
         <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold text-slate-900 mb-2">How can we help you</h3>
+          <h3 className="text-3xl font-bold text-slate-900 mb-2">How can we help you?</h3>
           <p className="text-slate-600">Choose your role to see tailored solutions</p>
         </div>
 
