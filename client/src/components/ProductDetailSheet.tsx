@@ -2,17 +2,11 @@ import { Product } from "@/lib/types";
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, FileText, Play, Download, Image as ImageIcon, HelpCircle } from "lucide-react";
+import { FileText, Play, Download, HelpCircle, Check, ShoppingCart } from "lucide-react";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -23,186 +17,278 @@ interface ProductDetailSheetProps {
 export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSheetProps) {
   if (!product) return null;
 
+  const formatPrice = (price: number, currency: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency,
+    }).format(price / 100);
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0">
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b p-6 pb-4">
-          <div>
-            <Badge variant="outline" className="mb-2">
-              {product.category}
-            </Badge>
-            <SheetTitle className="text-2xl font-bold leading-tight">
-              {product.name}
-            </SheetTitle>
-            <SheetDescription className="mt-1 font-mono text-xs text-muted-foreground">
-              SKU: {product.sku}
-            </SheetDescription>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-8">
-          {/* Image Gallery */}
-          <div className="space-y-4">
-            <div className="aspect-video w-full overflow-hidden rounded-lg border bg-muted">
-              <img 
-                src={product.imageUrl} 
-                alt={product.name} 
-                className="h-full w-full object-contain bg-white"
-              />
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0 flex flex-col">
+        {/* Header with Close Button */}
+        <div className="sticky top-0 z-10 bg-gradient-to-b from-background to-background/80 backdrop-blur-sm border-b p-4 sm:p-6">
+          <button
+            onClick={onClose}
+            className="mb-4 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close product details"
+          >
+            ← Back
+          </button>
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <Badge variant="secondary" className="mb-2 bg-primary/10 text-primary border-0">
+                  {product.category}
+                </Badge>
+                <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground">
+                  {product.name}
+                </h2>
+              </div>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {product.images.map((img, idx) => (
-                <button 
-                  key={idx}
-                  className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border hover:ring-2 hover:ring-primary transition-all"
-                >
-                  <img src={img} alt={`View ${idx}`} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-              <TabsTrigger 
-                value="details" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-              >
-                Details
-              </TabsTrigger>
-              <TabsTrigger 
-                value="specs" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-              >
-                Specifications
-              </TabsTrigger>
-              <TabsTrigger 
-                value="media" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-              >
-                Media & Files
-              </TabsTrigger>
-              {product.faqs && product.faqs.length > 0 && (
-                <TabsTrigger 
-                  value="faqs" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  FAQs
-                </TabsTrigger>
-              )}
-            </TabsList>
             
-            <TabsContent value="details" className="mt-6 space-y-6">
-              <div>
-                <h3 className="font-semibold mb-2 text-lg">Description</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold mb-3 text-lg">Key Features</h3>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {product.keyFeatures.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </TabsContent>
+            {/* Price Highlight */}
+            <div className="flex items-baseline gap-3 bg-primary/5 rounded-lg p-3 border border-primary/20">
+              <span className="text-3xl sm:text-4xl font-bold text-primary">
+                {formatPrice(product.price, product.currency)}
+              </span>
+              <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
+            </div>
+          </div>
+        </div>
 
-            <TabsContent value="specs" className="mt-6">
-              <div className="rounded-lg border bg-card">
-                <div className="grid grid-cols-1 divide-y">
-                  {Object.entries(product.specifications).map(([key, value]) => (
-                    <div key={key} className="grid grid-cols-3 p-4 hover:bg-muted/50 transition-colors">
-                      <div className="font-medium text-sm text-muted-foreground">{key}</div>
-                      <div className="col-span-2 text-sm font-medium">{value}</div>
-                    </div>
-                  ))}
-                </div>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6 space-y-6">
+            {/* Image Gallery */}
+            <div className="space-y-3">
+              <div className="aspect-video w-full overflow-hidden rounded-xl border bg-muted/50">
+                <img 
+                  src={product.imageUrl} 
+                  alt={product.name} 
+                  className="h-full w-full object-contain bg-white"
+                  data-testid="product-image-main"
+                />
               </div>
-            </TabsContent>
-
-            <TabsContent value="media" className="mt-6 space-y-6">
-              {product.videoUrl && (
-                <div>
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Play className="h-4 w-4" /> Product Video
-                  </h3>
-                  <div className="aspect-video rounded-lg overflow-hidden bg-black/5 border">
-                     <iframe 
-                       width="100%" 
-                       height="100%" 
-                       src={product.videoUrl} 
-                       title="Product Video"
-                       frameBorder="0" 
-                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                       allowFullScreen
-                     ></iframe>
-                  </div>
+              {product.images && product.images.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {product.images.map((img, idx) => (
+                    <button 
+                      key={idx}
+                      className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-transparent hover:border-primary transition-all duration-200 hover:shadow-md"
+                      data-testid={`product-thumbnail-${idx}`}
+                    >
+                      <img src={img} alt={`Product view ${idx + 1}`} className="h-full w-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               )}
+            </div>
 
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> Documents & Downloads
-                </h3>
-                <div className="grid gap-3">
-                  {product.documents.map((doc, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center text-primary">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-sm">{doc.name}</div>
-                          <div className="text-xs text-muted-foreground">PDF Document</div>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+            {/* Quick Info Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {product.keyFeatures && product.keyFeatures.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3">
+                    Key Features
+                  </h3>
+                  <ul className="space-y-2">
+                    {product.keyFeatures.slice(0, 4).map((feature, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm">
+                        <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <span className="text-foreground">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-            </TabsContent>
+              )}
+              
+              {Object.keys(product.specifications).length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3">
+                    Quick Specs
+                  </h3>
+                  <dl className="space-y-2 text-sm">
+                    {Object.entries(product.specifications).slice(0, 4).map(([key, value]) => (
+                      <div key={key} className="flex justify-between">
+                        <dt className="text-muted-foreground">{key}:</dt>
+                        <dd className="font-medium text-foreground">{value as string}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              )}
+            </div>
 
-            {product.faqs && product.faqs.length > 0 && (
-              <TabsContent value="faqs" className="mt-6">
-                <div className="space-y-4">
-                  {product.faqs.map((faq, idx) => (
-                    <div key={idx} className="rounded-lg border bg-card p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                          <HelpCircle className="h-4 w-4" />
-                        </div>
-                        <div className="space-y-2">
-                          <h4 className="font-semibold text-sm">{faq.question}</h4>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* Tabs for Detailed Info */}
+            <Tabs defaultValue="details" className="w-full -mx-4 sm:-mx-6">
+              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent px-4 sm:px-6">
+                <TabsTrigger 
+                  value="details" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 mr-6"
+                >
+                  <span className="text-sm">Overview</span>
+                </TabsTrigger>
+                {Object.keys(product.specifications).length > 0 && (
+                  <TabsTrigger 
+                    value="specs" 
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 mr-6"
+                  >
+                    <span className="text-sm">Specs</span>
+                  </TabsTrigger>
+                )}
+                {(product.videoUrl || product.documents.length > 0) && (
+                  <TabsTrigger 
+                    value="media" 
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 mr-6"
+                  >
+                    <span className="text-sm">Media</span>
+                  </TabsTrigger>
+                )}
+                {product.faqs && product.faqs.length > 0 && (
+                  <TabsTrigger 
+                    value="faqs" 
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3"
+                  >
+                    <span className="text-sm">FAQs</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+              
+              {/* Overview Tab */}
+              <TabsContent value="details" className="space-y-6 px-4 sm:px-6 py-6">
+                {product.description && (
+                  <div>
+                    <h3 className="font-semibold mb-3 text-base">About This Product</h3>
+                    <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
+                      {product.description}
+                    </p>
+                  </div>
+                )}
+                
+                {product.keyFeatures && product.keyFeatures.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-3 text-base">Features</h3>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {product.keyFeatures.map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                          <Check className="h-5 w-5 text-primary shrink-0 mt-0" />
+                          <span className="text-sm text-foreground">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </TabsContent>
-            )}
-          </Tabs>
-        </div>
-        
-        <SheetFooter className="sticky bottom-0 p-6 bg-background/80 backdrop-blur-md border-t">
-          <div className="flex w-full gap-4">
-            <Button variant="outline" className="flex-1" asChild>
-              <a href="#" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                View Source
-              </a>
-            </Button>
+
+              {/* Specifications Tab */}
+              {Object.keys(product.specifications).length > 0 && (
+                <TabsContent value="specs" className="px-4 sm:px-6 py-6">
+                  <div className="space-y-2">
+                    {Object.entries(product.specifications).map(([key, value]) => (
+                      <div key={key} className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border-b last:border-b-0">
+                        <div className="font-semibold text-sm text-muted-foreground">{key}</div>
+                        <div className="sm:col-span-2 text-sm text-foreground">{value as string}</div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              )}
+
+              {/* Media & Files Tab */}
+              {(product.videoUrl || product.documents.length > 0) && (
+                <TabsContent value="media" className="space-y-6 px-4 sm:px-6 py-6">
+                  {product.videoUrl && (
+                    <div>
+                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
+                        <Play className="h-5 w-5" /> Product Video
+                      </h3>
+                      <div className="aspect-video rounded-lg overflow-hidden bg-black/5 border">
+                        <iframe 
+                          width="100%" 
+                          height="100%" 
+                          src={product.videoUrl} 
+                          title="Product Video"
+                          frameBorder="0" 
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                          allowFullScreen
+                          data-testid="product-video"
+                        ></iframe>
+                      </div>
+                    </div>
+                  )}
+
+                  {product.documents && product.documents.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
+                        <FileText className="h-5 w-5" /> Documents
+                      </h3>
+                      <div className="grid gap-3">
+                        {product.documents.map((doc, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                <FileText className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-sm">{(doc as any).name}</div>
+                                <div className="text-xs text-muted-foreground">PDF Document</div>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="sm" data-testid={`download-document-${idx}`}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              )}
+
+              {/* FAQs Tab */}
+              {product.faqs && product.faqs.length > 0 && (
+                <TabsContent value="faqs" className="px-4 sm:px-6 py-6">
+                  <div className="space-y-3">
+                    {product.faqs.map((faq, idx) => (
+                      <div key={idx} className="rounded-lg border bg-card p-4 hover:border-primary/50 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5">
+                            <HelpCircle className="h-4 w-4" />
+                          </div>
+                          <div className="space-y-2 flex-1">
+                            <h4 className="font-semibold text-sm leading-snug">{(faq as any).question}</h4>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{(faq as any).answer}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              )}
+            </Tabs>
           </div>
-        </SheetFooter>
+        </div>
+
+        {/* Action Footer */}
+        <div className="sticky bottom-0 p-4 sm:p-6 bg-background/80 backdrop-blur-sm border-t mt-4 space-y-3">
+          <Button 
+            className="w-full h-11 text-base font-semibold"
+            data-testid="button-add-to-cart"
+          >
+            <ShoppingCart className="mr-2 h-5 w-5" />
+            Add to Cart
+          </Button>
+          <Button 
+            variant="outline" 
+            className="w-full h-10"
+            onClick={onClose}
+            data-testid="button-close"
+          >
+            Close
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
   );
