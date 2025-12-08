@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { scrapeViaGlobalHealth } from "./scraper";
-import { insertProductSchema } from "@shared/schema";
+import { insertProductSchema, insertQuoteRequestSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
 
@@ -113,43 +113,33 @@ export async function registerRoutes(
     }
   });
 
-  // AI Quote Assistant endpoint
-  app.post("/api/quote-assistant", async (req, res) => {
+  // Save quote request to database
+  app.post("/api/quote-requests", async (req, res) => {
     try {
-      const { messages, product } = req.body;
+      const validated = insertQuoteRequestSchema.parse(req.body);
+      const saved = await storage.createQuoteRequest(validated);
       
-      const systemMessage = `You are a helpful product quote assistant for a medical/healthcare equipment company. You help customers get quotes for products and answer questions about specifications, pricing, and ordering.
-
-Current product being discussed:
-- Name: ${product.name}
-- SKU: ${product.sku}
-- Category: ${product.category}
-- Description: ${product.description || 'N/A'}
-- Key Features: ${product.keyFeatures?.join(', ') || 'N/A'}
-
-Your role is to:
-1. Help customers understand product details and specifications
-2. Collect information needed for a quote (quantity, shipping location, timeline)
-3. Answer questions about the product
-4. Be friendly, professional, and helpful
-
-Keep responses concise but informative.`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [
-          { role: "system", content: systemMessage },
-          ...messages
-        ],
-        max_completion_tokens: 1024,
-      });
-
-      res.json({ 
-        message: response.choices[0]?.message?.content || "I'm sorry, I couldn't process that request." 
-      });
+      console.log(`[Quote Request] New quote request from ${saved.firstName} ${saved.lastName} for ${saved.productName}`);
+      console.log(`[Quote Request] Email notification should go to: noah@viaglobalhealth.com`);
+      
+      res.json({ success: true, quoteRequest: saved });
     } catch (error) {
-      console.error("Error with AI assistant:", error);
-      res.status(500).json({ error: "Failed to get AI response" });
+      console.error("Error saving quote request:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid quote request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save quote request" });
+    }
+  });
+
+  // Get all quote requests
+  app.get("/api/quote-requests", async (req, res) => {
+    try {
+      const quoteRequests = await storage.getAllQuoteRequests();
+      res.json(quoteRequests);
+    } catch (error) {
+      console.error("Error fetching quote requests:", error);
+      res.status(500).json({ error: "Failed to fetch quote requests" });
     }
   });
 

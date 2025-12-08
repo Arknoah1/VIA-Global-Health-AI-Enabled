@@ -29,3 +29,28 @@ export const insertProductSchema = createInsertSchema(products).omit({
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
+
+export const quoteRequests = pgTable("quote_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id),
+  productName: text("product_name").notNull(),
+  productSku: text("product_sku"),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  organizationName: text("organization_name").notNull(),
+  organizationType: text("organization_type").notNull(),
+  orderQuantity: text("order_quantity").notNull(),
+  shippingCountry: text("shipping_country").notNull(),
+  importAssistance: text("import_assistance").notNull(),
+  initialIntent: text("initial_intent"),
+  conversation: jsonb("conversation").notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertQuoteRequestSchema = createInsertSchema(quoteRequests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertQuoteRequest = z.infer<typeof insertQuoteRequestSchema>;
+export type QuoteRequest = typeof quoteRequests.$inferSelect;

@@ -1,15 +1,16 @@
-import { type Product, type InsertProduct, products } from "@shared/schema";
+import { type Product, type InsertProduct, products, type QuoteRequest, type InsertQuoteRequest, quoteRequests } from "@shared/schema";
 import { db } from "../db";
 import { eq, ilike, or, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // Products
   getAllProducts(search?: string): Promise<Product[]>;
   getProductById(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   createProducts(products: InsertProduct[]): Promise<Product[]>;
   deleteProduct(id: string): Promise<void>;
   deleteAllProducts(): Promise<void>;
+  createQuoteRequest(quoteRequest: InsertQuoteRequest): Promise<QuoteRequest>;
+  getAllQuoteRequests(): Promise<QuoteRequest[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -51,6 +52,15 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAllProducts(): Promise<void> {
     await db.delete(products);
+  }
+
+  async createQuoteRequest(quoteRequest: InsertQuoteRequest): Promise<QuoteRequest> {
+    const result = await db.insert(quoteRequests).values(quoteRequest).returning();
+    return result[0];
+  }
+
+  async getAllQuoteRequests(): Promise<QuoteRequest[]> {
+    return await db.select().from(quoteRequests).orderBy(desc(quoteRequests.createdAt));
   }
 }
 
