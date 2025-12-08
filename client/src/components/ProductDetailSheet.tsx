@@ -225,7 +225,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           <div className="p-4 sm:p-6 space-y-6">
             {/* Image Gallery */}
             <div className="space-y-3">
-              <div className="aspect-video w-full overflow-hidden rounded-xl border bg-muted/50">
+              <div className="aspect-square w-full overflow-hidden rounded-xl border bg-muted/50 max-h-64">
                 <img 
                   src={product.imageUrl} 
                   alt={product.name} 
