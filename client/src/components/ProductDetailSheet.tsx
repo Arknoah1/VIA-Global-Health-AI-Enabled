@@ -10,7 +10,6 @@ import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loade
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ProductDetailSheetProps {
@@ -62,7 +61,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([]);
   const [isConversationComplete, setIsConversationComplete] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const startQuoteSession = async () => {
     if (!product) return;
@@ -107,9 +110,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   }, [showQuoteDialog, product]);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    scrollToBottom();
   }, [messages]);
 
   const handleSendMessage = async () => {
@@ -486,7 +487,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             </div>
           )}
           
-          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+          <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-4">
               {messages.map((msg, idx) => (
                 <div
@@ -541,8 +542,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
+          </div>
 
           <div className="p-4 border-t flex gap-2">
             <Input
