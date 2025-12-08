@@ -54,7 +54,7 @@ export default function HomePage() {
       cta: "Explore Medical Catalog"
     },
     ngos: {
-      title: "NGOs & Non-Profits",
+      title: "NGOs & Faith-based Organizations",
       icon: HandshakeIcon,
       color: "bg-purple-50 border-purple-200",
       textColor: "text-purple-700",
