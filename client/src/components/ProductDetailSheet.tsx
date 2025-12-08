@@ -14,6 +14,28 @@ interface ProductDetailSheetProps {
   onClose: () => void;
 }
 
+const formatBulletText = (text: string) => {
+  if (!text) return null;
+  
+  const hasBullets = text.includes('•');
+  if (!hasBullets) {
+    return <span>{text}</span>;
+  }
+  
+  const parts = text.split('•').map(part => part.trim()).filter(part => part.length > 0);
+  
+  return (
+    <ul className="space-y-2">
+      {parts.map((part, idx) => (
+        <li key={idx} className="flex items-start gap-2">
+          <span className="text-primary mt-1">•</span>
+          <span>{part}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSheetProps) {
   if (!product) return null;
 
@@ -91,11 +113,13 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3">
                     Quick Specs
                   </h3>
-                  <dl className="space-y-2 text-sm">
+                  <dl className="space-y-4 text-sm">
                     {Object.entries(product.specifications).slice(0, 4).map(([key, value]) => (
-                      <div key={key} className="flex justify-between">
-                        <dt className="text-muted-foreground">{key}:</dt>
-                        <dd className="font-medium text-foreground">{value as string}</dd>
+                      <div key={key} className="space-y-1">
+                        <dt className="text-muted-foreground font-medium">{key}</dt>
+                        <dd className="text-foreground pl-2">
+                          {formatBulletText(value as string)}
+                        </dd>
                       </div>
                     ))}
                   </dl>
@@ -143,9 +167,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 {product.description && (
                   <div>
                     <h3 className="font-semibold mb-3 text-base">About This Product</h3>
-                    <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
-                      {product.description}
-                    </p>
+                    <div className="text-muted-foreground leading-relaxed text-sm sm:text-base">
+                      {formatBulletText(product.description)}
+                    </div>
                   </div>
                 )}
                 
@@ -167,11 +191,13 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               {/* Specifications Tab */}
               {Object.keys(product.specifications).length > 0 && (
                 <TabsContent value="specs" className="px-4 sm:px-6 py-6">
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {Object.entries(product.specifications).map(([key, value]) => (
-                      <div key={key} className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border-b last:border-b-0">
-                        <div className="font-semibold text-sm text-muted-foreground">{key}</div>
-                        <div className="sm:col-span-2 text-sm text-foreground">{value as string}</div>
+                      <div key={key} className="p-4 rounded-lg border bg-card/50 hover:bg-muted/30 transition-colors">
+                        <div className="font-semibold text-sm text-foreground mb-2">{key}</div>
+                        <div className="text-sm text-muted-foreground pl-2">
+                          {formatBulletText(value as string)}
+                        </div>
                       </div>
                     ))}
                   </div>
