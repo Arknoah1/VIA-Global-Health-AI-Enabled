@@ -6,7 +6,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle } from "lucide-react";
+import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -213,6 +213,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             </h2>
             <p className="text-xs text-muted-foreground font-mono">SKU: {product.sku}</p>
           </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="flex justify-center py-2 bg-gradient-to-b from-muted/50 to-transparent">
+          <ChevronDown className="h-5 w-5 text-muted-foreground animate-bounce" />
         </div>
 
         {/* Scrollable Content */}
@@ -433,7 +438,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         </div>
 
         {/* Action Footer */}
-        <div className="sticky bottom-0 p-4 sm:p-6 bg-background/80 backdrop-blur-sm border-t mt-4 space-y-3">
+        <div className="sticky bottom-0 p-4 sm:p-6 bg-background/80 backdrop-blur-sm border-t mt-4">
           <Button 
             className="w-full h-11 text-base font-semibold"
             data-testid="button-request-quote"
@@ -441,14 +446,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           >
             <MessageSquare className="mr-2 h-5 w-5" />
             Request Quote
-          </Button>
-          <Button 
-            variant="outline" 
-            className="w-full h-10"
-            onClick={onClose}
-            data-testid="button-close"
-          >
-            Close
           </Button>
         </div>
       </SheetContent>
