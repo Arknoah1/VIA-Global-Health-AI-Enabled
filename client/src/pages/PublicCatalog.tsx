@@ -1,14 +1,14 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Product } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailSheet } from "@/components/ProductDetailSheet";
+import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 
 export default function PublicCatalog() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -24,7 +24,7 @@ export default function PublicCatalog() {
     },
   });
 
-  const categories = ["all", ...new Set(products.map(p => p.category))];
+  const categories = ["all", ...Array.from(new Set(products.map(p => p.category)))];
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -36,16 +36,38 @@ export default function PublicCatalog() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <ProductSEO products={products} selectedProduct={selectedProduct} />
+      <BreadcrumbSEO items={[
+        { name: "Home", url: "/" },
+        { name: "Catalog", url: "/catalog" },
+        ...(selectedProduct ? [{ name: selectedProduct.name }] : [])
+      ]} />
+      
       <Header />
 
-      <div className="flex-1">
+      <main className="flex-1" role="main">
         {/* Page Header */}
-        <div className="border-b bg-card">
+        <header className="border-b bg-card">
           <div className="container mx-auto px-4 py-6">
+            <nav aria-label="Breadcrumb" className="mb-4 text-sm text-muted-foreground">
+              <ol className="flex items-center gap-2" itemScope itemType="https://schema.org/BreadcrumbList">
+                <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
+                  <a href="/" itemProp="item" className="hover:text-primary transition-colors">
+                    <span itemProp="name">Home</span>
+                  </a>
+                  <meta itemProp="position" content="1" />
+                </li>
+                <li aria-hidden="true">/</li>
+                <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
+                  <span itemProp="name" className="text-foreground font-medium">Catalog</span>
+                  <meta itemProp="position" content="2" />
+                </li>
+              </ol>
+            </nav>
             <h1 className="text-3xl font-bold text-primary mb-2">Medical Products Catalog</h1>
             <p className="text-muted-foreground">Quality Medical Equipment & Supplies</p>
           </div>
-        </div>
+        </header>
 
         {/* Search & Filters */}
         <div className="container mx-auto px-4 py-8">
@@ -103,7 +125,7 @@ export default function PublicCatalog() {
           isOpen={!!selectedProduct}
           onClose={() => setSelectedProduct(null)}
         />
-      </div>
+      </main>
 
       <Footer />
     </div>
