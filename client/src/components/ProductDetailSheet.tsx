@@ -6,7 +6,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle, ChevronDown } from "lucide-react";
+import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -213,11 +213,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             </h2>
             <p className="text-xs text-muted-foreground font-mono">SKU: {product.sku}</p>
           </div>
-        </div>
-
-        {/* Scroll Indicator */}
-        <div className="flex justify-center py-2 bg-gradient-to-b from-muted/50 to-transparent">
-          <ChevronDown className="h-5 w-5 text-muted-foreground animate-bounce" />
         </div>
 
         {/* Scrollable Content */}
