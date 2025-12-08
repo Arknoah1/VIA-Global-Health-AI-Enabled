@@ -143,5 +143,268 @@ export async function registerRoutes(
     }
   });
 
+  // Start a new AI-powered quote request session
+  app.post("/api/quote-requests/start", async (req, res) => {
+    try {
+      const { productId, productName, productSku } = req.body;
+      
+      if (!productId || !productName) {
+        return res.status(400).json({ error: "productId and productName are required" });
+      }
+
+      // Create initial quote request
+      const quoteRequest = await storage.createQuoteRequest({
+        productId,
+        productName,
+        productSku,
+        conversation: [],
+        status: "active"
+      });
+
+      // Initial greeting message
+      const greeting = `Thank you for your interest in ${productName}! I'm here to help you get a custom quote. What brings you here today?`;
+      
+      // Save initial assistant message
+      await storage.createQuoteRequestMessage({
+        quoteRequestId: quoteRequest.id,
+        role: "assistant",
+        content: greeting,
+        messageType: "greeting"
+      });
+
+      res.json({
+        quoteRequestId: quoteRequest.id,
+        message: greeting
+      });
+    } catch (error) {
+      console.error("Error starting quote request:", error);
+      res.status(500).json({ error: "Failed to start quote request" });
+    }
+  });
+
+  // Handle AI-powered chat messages
+  app.post("/api/quote-requests/:id/messages", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { message, productDetails } = req.body;
+
+      if (!message) {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      // Get existing quote request
+      const quoteRequest = await storage.getQuoteRequestById(id);
+      if (!quoteRequest) {
+        return res.status(404).json({ error: "Quote request not found" });
+      }
+
+      // Save user message
+      await storage.createQuoteRequestMessage({
+        quoteRequestId: id,
+        role: "user",
+        content: message,
+        messageType: "user_input"
+      });
+
+      // Get conversation history
+      const messageHistory = await storage.getQuoteRequestMessages(id);
+
+      // Get similar products for recommendations
+      let similarProducts: { id: string; name: string; sku: string }[] = [];
+      if (productDetails?.category) {
+        const products = await storage.getProductsByCategory(
+          productDetails.category,
+          quoteRequest.productId || undefined
+        );
+        similarProducts = products.map(p => ({ id: p.id, name: p.name, sku: p.sku }));
+      }
+
+      // Build system prompt
+      const systemPrompt = buildSystemPrompt(productDetails, similarProducts);
+
+      // Build messages for OpenAI
+      const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
+        { role: "system", content: systemPrompt },
+        ...messageHistory.map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content
+        }))
+      ];
+
+      // Call OpenAI
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: openaiMessages,
+        temperature: 0.7,
+        max_tokens: 500
+      });
+
+      const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble responding. Please try again.";
+
+      // Parse AI response for special flags (consider existing quote request state)
+      const flags = parseAIResponseFlags(aiResponse, message, quoteRequest.specialPricingEligible || false);
+
+      // Save assistant message
+      await storage.createQuoteRequestMessage({
+        quoteRequestId: id,
+        role: "assistant",
+        content: aiResponse,
+        messageType: flags.referToAgent ? "referral" : "response",
+        metadata: flags
+      });
+
+      // Update quote request with extracted info - always persist the latest state
+      const updates: Record<string, unknown> = {
+        recommendedProducts: flags.showRecommendations ? similarProducts : quoteRequest.recommendedProducts
+      };
+      
+      if (flags.specialPricingEligible || quoteRequest.specialPricingEligible) {
+        updates.specialPricingEligible = true;
+      }
+      if (flags.organizationType) {
+        updates.organizationType = flags.organizationType;
+      }
+      if (flags.referToAgent) {
+        updates.referredToAgent = true;
+        updates.referralReason = flags.referralReason;
+        updates.status = "completed";
+      }
+
+      await storage.updateQuoteRequest(id, updates as any);
+
+      // Return the authoritative state from the updated quote request
+      const isSpecialPricingEligible = flags.specialPricingEligible || quoteRequest.specialPricingEligible || false;
+
+      res.json({
+        message: aiResponse,
+        specialPricingEligible: isSpecialPricingEligible,
+        organizationType: flags.organizationType || quoteRequest.organizationType,
+        referToAgent: flags.referToAgent,
+        referralReason: flags.referralReason,
+        recommendedProducts: flags.showRecommendations ? similarProducts : []
+      });
+    } catch (error) {
+      console.error("Error processing chat message:", error);
+      res.status(500).json({ error: "Failed to process message" });
+    }
+  });
+
   return httpServer;
+}
+
+function buildSystemPrompt(
+  productDetails: { name?: string; description?: string; specifications?: Record<string, string>; faqs?: { question: string; answer: string }[] } | undefined,
+  similarProducts: { id: string; name: string; sku: string }[]
+): string {
+  let prompt = `You are a helpful quote assistant for VIA Global Health, a medical equipment and pharmaceutical supplier serving healthcare providers across Africa. Your goal is to gather information needed to provide a custom quote while being friendly and conversational.
+
+IMPORTANT GUIDELINES:
+1. Keep responses concise (2-3 sentences max)
+2. Ask ONE question at a time
+3. Never provide clinical or medical advice - if asked, politely say you'll connect them with a specialist
+4. Be warm and professional
+
+INFORMATION TO GATHER (in this order):
+1. What brings them here today / their intent
+2. Their name (first and last)
+3. Organization name
+4. Order quantity needed
+5. Organization type (ask: "What type of organization is [org name]? For example: Distributor, Government agency, NGO, Faith-based organization, Public hospital/clinic, or Private practice")
+6. Shipping country
+7. Budget range (optional - only if conversation flows naturally)
+8. Decision timeline (optional)
+9. Import assistance needs
+
+SPECIAL PRICING NOTICE:
+When the user mentions they are from a Government agency, NGO, Faith-based organization, or Public hospital/clinic, acknowledge that they may qualify for special pricing and we will include this in their quote.
+
+PRODUCT CONTEXT:`;
+
+  if (productDetails) {
+    prompt += `\n\nProduct: ${productDetails.name || "Medical Equipment"}`;
+    if (productDetails.description) {
+      prompt += `\nDescription: ${productDetails.description}`;
+    }
+    if (productDetails.specifications && Object.keys(productDetails.specifications).length > 0) {
+      prompt += `\nKey Specifications: ${JSON.stringify(productDetails.specifications)}`;
+    }
+    if (productDetails.faqs && productDetails.faqs.length > 0) {
+      prompt += `\n\nFAQs you can reference:`;
+      productDetails.faqs.slice(0, 3).forEach(faq => {
+        prompt += `\n- Q: ${faq.question}\n  A: ${faq.answer}`;
+      });
+    }
+  }
+
+  if (similarProducts.length > 0) {
+    prompt += `\n\nSIMILAR PRODUCTS (mention if relevant):`;
+    similarProducts.forEach(p => {
+      prompt += `\n- ${p.name} (SKU: ${p.sku})`;
+    });
+  }
+
+  prompt += `\n\nREFERRAL RULES:
+- If the user asks clinical/medical questions you cannot answer from the product page, say: "That's a great question that our medical specialist can better address. I'll make sure they reach out to you."
+- If the user seems ready for a detailed quote after gathering their info, say: "Thank you! I have everything I need. Our team will prepare a custom quote and reach out within 24 hours."`;
+
+  return prompt;
+}
+
+function parseAIResponseFlags(aiResponse: string, userMessage: string, existingSpecialPricing: boolean): {
+  specialPricingEligible: boolean;
+  organizationType?: string;
+  referToAgent: boolean;
+  referralReason?: string;
+  showRecommendations: boolean;
+} {
+  const lowerMessage = userMessage.toLowerCase();
+  const lowerResponse = aiResponse.toLowerCase();
+  
+  // Detect organization types that qualify for special pricing
+  const specialOrgTypes = ["government", "ngo", "faith-based", "faith based", "public hospital", "public clinic"];
+  let specialPricingEligible = existingSpecialPricing;
+  let detectedOrgType: string | undefined;
+  
+  for (const orgType of specialOrgTypes) {
+    if (lowerMessage.includes(orgType) || lowerResponse.includes(orgType)) {
+      specialPricingEligible = true;
+      detectedOrgType = orgType;
+      break;
+    }
+  }
+
+  // Detect referral to agent
+  const referralPhrases = [
+    "specialist can better address",
+    "specialist will reach out",
+    "team will prepare a custom quote",
+    "reach out within 24 hours",
+    "connect you with",
+    "medical specialist"
+  ];
+  
+  let referToAgent = false;
+  let referralReason: string | undefined;
+  
+  for (const phrase of referralPhrases) {
+    if (lowerResponse.includes(phrase)) {
+      referToAgent = true;
+      referralReason = phrase.includes("specialist") ? "Clinical question" : "Quote ready";
+      break;
+    }
+  }
+
+  // Show recommendations when discussing product alternatives or comparisons
+  const showRecommendations = lowerMessage.includes("other") || 
+    lowerMessage.includes("alternative") || 
+    lowerMessage.includes("similar") ||
+    lowerMessage.includes("compare");
+
+  return {
+    specialPricingEligible,
+    organizationType: detectedOrgType,
+    referToAgent,
+    referralReason,
+    showRecommendations
+  };
 }

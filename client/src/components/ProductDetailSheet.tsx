@@ -6,11 +6,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2 } from "lucide-react";
+import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -45,44 +46,63 @@ interface ChatMessage {
   content: string;
 }
 
-interface QuoteAnswers {
-  initialIntent: string;
-  firstName: string;
-  lastName: string;
-  orgName: string;
-  orgType: string;
-  quantity: string;
-  country: string;
-  importHelp: string;
+interface RecommendedProduct {
+  id: string;
+  name: string;
+  sku: string;
 }
-
-type QuestionStep = 'intent' | 'name' | 'orgName' | 'quantity' | 'orgType' | 'country' | 'importHelp' | 'complete';
 
 export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSheetProps) {
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState<QuestionStep>('intent');
-  const [answers, setAnswers] = useState<QuoteAnswers>({
-    initialIntent: '',
-    firstName: '',
-    lastName: '',
-    orgName: '',
-    orgType: '',
-    quantity: '',
-    country: '',
-    importHelp: ''
-  });
+  const [quoteRequestId, setQuoteRequestId] = useState<string | null>(null);
+  const [specialPricingEligible, setSpecialPricingEligible] = useState(false);
+  const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([]);
+  const [isConversationComplete, setIsConversationComplete] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const startQuoteSession = async () => {
+    if (!product) return;
+    
+    setIsLoading(true);
+    setInitError(null);
+    
+    try {
+      const response = await fetch('/api/quote-requests/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          productName: product.name,
+          productSku: product.sku
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to start quote session');
+      }
+      
+      const data = await response.json();
+      setQuoteRequestId(data.quoteRequestId);
+      setMessages([{ role: 'assistant', content: data.message }]);
+    } catch (error) {
+      console.error('Error starting quote session:', error);
+      setInitError('Unable to start chat. Please try again.');
+      setMessages([{ 
+        role: 'assistant', 
+        content: `Thank you for your interest in ${product.name}! I'm here to help you get a custom quote. What brings you here today?`
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (showQuoteDialog && messages.length === 0 && product) {
-      setMessages([
-        { role: 'assistant', content: 'Thank you for requesting additional product information and pricing.' },
-        { role: 'assistant', content: 'What brings you here today?' }
-      ]);
-      setCurrentStep('intent');
+      startQuoteSession();
     }
   }, [showQuoteDialog, product]);
 
@@ -92,92 +112,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     }
   }, [messages]);
 
-  const saveQuoteRequest = async (finalAnswers: QuoteAnswers, allMessages: ChatMessage[]) => {
-    if (!product) return;
-    
-    try {
-      const response = await fetch('/api/quote-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: finalAnswers.firstName,
-          lastName: finalAnswers.lastName,
-          organizationName: finalAnswers.orgName,
-          organizationType: finalAnswers.orgType,
-          orderQuantity: finalAnswers.quantity,
-          shippingCountry: finalAnswers.country,
-          importAssistance: finalAnswers.importHelp,
-          initialIntent: finalAnswers.initialIntent,
-          conversation: allMessages.map(m => ({ role: m.role, content: m.content })),
-          productId: product.id,
-          productName: product.name,
-          productSku: product.sku
-        })
-      });
-      
-      if (response.ok) {
-        console.log('Quote request saved successfully');
-        console.log('Notification should be sent to noah@viaglobalhealth.com');
-      }
-    } catch (error) {
-      console.error('Failed to save quote request:', error);
-    }
-  };
-
-  const getNextResponse = (step: QuestionStep, userInput: string, currentAnswers: QuoteAnswers): { response: string; nextStep: QuestionStep } => {
-    switch (step) {
-      case 'intent':
-        return {
-          response: "Got it! May I have your name? (First and last name)",
-          nextStep: 'name'
-        };
-      
-      case 'name': {
-        const nameParts = userInput.trim().split(/\s+/);
-        const firstName = nameParts[0] || userInput;
-        return {
-          response: `Nice to meet you, ${firstName}! What company or organization are you with?`,
-          nextStep: 'orgName'
-        };
-      }
-      
-      case 'orgName':
-        return {
-          response: `Perfect, thanks! About how many units are you looking to order?`,
-          nextStep: 'quantity'
-        };
-      
-      case 'quantity':
-        return {
-          response: `That helps a lot. What type of organization is ${currentAnswers.orgName}? (Distributor, Government, NGO, University, Hospital/Clinic, or Private practice)`,
-          nextStep: 'orgType'
-        };
-      
-      case 'orgType':
-        return {
-          response: `Thanks, ${currentAnswers.firstName}! Where would you like the products shipped?`,
-          nextStep: 'country'
-        };
-      
-      case 'country':
-        return {
-          response: `Got it! One last question - are you able to handle importing yourself, or would you like assistance with that?`,
-          nextStep: 'importHelp'
-        };
-      
-      case 'importHelp':
-        return {
-          response: `Thank you, ${currentAnswers.firstName}! I'm connecting you with our specialist who will send a custom quote within 24 hours. We appreciate your interest in ${product?.name}!`,
-          nextStep: 'complete'
-        };
-      
-      default:
-        return { response: '', nextStep: 'complete' };
-    }
-  };
-
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading || !product || currentStep === 'complete') return;
+    if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
 
     const userInput = inputValue.trim();
     const userMessage: ChatMessage = { role: 'user', content: userInput };
@@ -185,68 +121,72 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setInputValue('');
     setIsLoading(true);
 
-    let updatedAnswers = { ...answers };
-    
-    switch (currentStep) {
-      case 'intent':
-        updatedAnswers.initialIntent = userInput;
-        break;
-      case 'name': {
-        const nameParts = userInput.split(/\s+/);
-        updatedAnswers.firstName = nameParts[0] || userInput;
-        updatedAnswers.lastName = nameParts.slice(1).join(' ') || '';
-        break;
+    try {
+      if (!quoteRequestId) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: "I apologize, but I'm having trouble with my connection. Please close this chat and try again."
+          }]);
+          setIsLoading(false);
+        }, 500);
+        return;
       }
-      case 'orgName':
-        updatedAnswers.orgName = userInput;
-        break;
-      case 'quantity':
-        updatedAnswers.quantity = userInput;
-        break;
-      case 'orgType':
-        updatedAnswers.orgType = userInput;
-        break;
-      case 'country':
-        updatedAnswers.country = userInput;
-        break;
-      case 'importHelp':
-        updatedAnswers.importHelp = userInput;
-        break;
-    }
-    
-    setAnswers(updatedAnswers);
 
-    setTimeout(async () => {
-      const { response, nextStep } = getNextResponse(currentStep, userInput, updatedAnswers);
+      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userInput,
+          productDetails: {
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            specifications: product.specifications,
+            faqs: product.faqs
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const data = await response.json();
       
-      const newAssistantMessage: ChatMessage = { role: 'assistant', content: response };
-      const updatedMessages = [...messages, userMessage, newAssistantMessage];
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
       
-      setMessages(prev => [...prev, newAssistantMessage]);
-      setCurrentStep(nextStep);
+      if (data.specialPricingEligible) {
+        setSpecialPricingEligible(true);
+      }
+      
+      if (data.recommendedProducts && data.recommendedProducts.length > 0) {
+        setRecommendedProducts(data.recommendedProducts);
+      }
+      
+      if (data.referToAgent) {
+        setIsConversationComplete(true);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "I apologize, but I'm having trouble responding. Please try again."
+      }]);
+    } finally {
       setIsLoading(false);
-
-      if (nextStep === 'complete') {
-        await saveQuoteRequest(updatedAnswers, updatedMessages);
-      }
-    }, 600);
+    }
   };
 
   const handleCloseQuoteDialog = () => {
     setShowQuoteDialog(false);
     setMessages([]);
     setInputValue('');
-    setCurrentStep('intent');
-    setAnswers({
-      initialIntent: '',
-      firstName: '',
-      lastName: '',
-      orgName: '',
-      orgType: '',
-      quantity: '',
-      country: '',
-      importHelp: ''
-    });
+    setQuoteRequestId(null);
+    setSpecialPricingEligible(false);
+    setRecommendedProducts([]);
+    setIsConversationComplete(false);
+    setInitError(null);
   };
 
   if (!product) return null;
@@ -514,13 +454,37 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
       {/* AI Quote Assistant Dialog */}
       <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialog()}>
-        <DialogContent className="sm:max-w-md h-[500px] flex flex-col p-0">
+        <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
           <DialogHeader className="p-4 border-b">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
               Request Quote - {product?.name}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Special Pricing Banner */}
+          {specialPricingEligible && (
+            <div className="px-4 pt-2">
+              <Alert className="bg-green-50 border-green-200">
+                <Star className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800 text-sm">
+                  You may qualify for special pricing! We'll include this in your quote.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          {/* Init Error Banner */}
+          {initError && (
+            <div className="px-4 pt-2">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {initError}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
           
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-4">
@@ -548,22 +512,51 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   </div>
                 </div>
               )}
+
+              {/* Product Recommendations */}
+              {recommendedProducts.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-xs text-muted-foreground mb-2">You might also be interested in:</p>
+                  <div className="space-y-2">
+                    {recommendedProducts.map((prod) => (
+                      <div 
+                        key={prod.id}
+                        className="p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                        data-testid={`recommended-product-${prod.id}`}
+                      >
+                        <p className="text-sm font-medium">{prod.name}</p>
+                        <p className="text-xs text-muted-foreground">SKU: {prod.sku}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Conversation Complete Message */}
+              {isConversationComplete && (
+                <div className="pt-4 text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm">
+                    <Check className="h-4 w-4" />
+                    Our team will reach out within 24 hours
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
 
           <div className="p-4 border-t flex gap-2">
             <Input
-              placeholder="Type your message..."
+              placeholder={isConversationComplete ? "Conversation complete" : "Type your message..."}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              disabled={isLoading}
+              disabled={isLoading || isConversationComplete}
               data-testid="input-chat-message"
             />
             <Button 
               size="icon" 
               onClick={handleSendMessage} 
-              disabled={isLoading || !inputValue.trim()}
+              disabled={isLoading || !inputValue.trim() || isConversationComplete}
               data-testid="button-send-message"
             >
               <Send className="h-4 w-4" />
