@@ -6,7 +6,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Play, Download, HelpCircle, Check, ShoppingCart } from "lucide-react";
+import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useRef, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -36,7 +40,72 @@ const formatBulletText = (text: string) => {
   );
 };
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSheetProps) {
+  const [showQuoteDialog, setShowQuoteDialog] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showQuoteDialog && messages.length === 0 && product) {
+      setMessages([{
+        role: 'assistant',
+        content: `Hi! I'm here to help you get a quote for the ${product.name}. How many units are you interested in, and where would you need them shipped?`
+      }]);
+    }
+  }, [showQuoteDialog, product]);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading || !product) return;
+
+    const userMessage: ChatMessage = { role: 'user', content: inputValue.trim() };
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/quote-assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
+          product: {
+            name: product.name,
+            sku: product.sku,
+            category: product.category,
+            description: product.description,
+            keyFeatures: product.keyFeatures
+          }
+        })
+      });
+
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+    } catch (error) {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCloseQuoteDialog = () => {
+    setShowQuoteDialog(false);
+    setMessages([]);
+    setInputValue('');
+  };
+
   if (!product) return null;
 
   return (
@@ -283,10 +352,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         <div className="sticky bottom-0 p-4 sm:p-6 bg-background/80 backdrop-blur-sm border-t mt-4 space-y-3">
           <Button 
             className="w-full h-11 text-base font-semibold"
-            data-testid="button-add-to-cart"
+            data-testid="button-request-quote"
+            onClick={() => setShowQuoteDialog(true)}
           >
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            Add to Cart
+            <MessageSquare className="mr-2 h-5 w-5" />
+            Request Quote
           </Button>
           <Button 
             variant="outline" 
@@ -298,6 +368,66 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           </Button>
         </div>
       </SheetContent>
+
+      {/* AI Quote Assistant Dialog */}
+      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialog()}>
+        <DialogContent className="sm:max-w-md h-[500px] flex flex-col p-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              Request Quote - {product?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+            <div className="space-y-4">
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-lg px-4 py-2 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
+                    data-testid={`chat-message-${msg.role}-${idx}`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-muted rounded-lg px-4 py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="p-4 border-t flex gap-2">
+            <Input
+              placeholder="Type your message..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              disabled={isLoading}
+              data-testid="input-chat-message"
+            />
+            <Button 
+              size="icon" 
+              onClick={handleSendMessage} 
+              disabled={isLoading || !inputValue.trim()}
+              data-testid="button-send-message"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

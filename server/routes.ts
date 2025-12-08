@@ -4,6 +4,13 @@ import { storage } from "./storage";
 import { scrapeViaGlobalHealth } from "./scraper";
 import { insertProductSchema } from "@shared/schema";
 import { z } from "zod";
+import OpenAI from "openai";
+
+// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+const openai = new OpenAI({
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -103,6 +110,46 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting all products:", error);
       res.status(500).json({ error: "Failed to delete products" });
+    }
+  });
+
+  // AI Quote Assistant endpoint
+  app.post("/api/quote-assistant", async (req, res) => {
+    try {
+      const { messages, product } = req.body;
+      
+      const systemMessage = `You are a helpful product quote assistant for a medical/healthcare equipment company. You help customers get quotes for products and answer questions about specifications, pricing, and ordering.
+
+Current product being discussed:
+- Name: ${product.name}
+- SKU: ${product.sku}
+- Category: ${product.category}
+- Description: ${product.description || 'N/A'}
+- Key Features: ${product.keyFeatures?.join(', ') || 'N/A'}
+
+Your role is to:
+1. Help customers understand product details and specifications
+2. Collect information needed for a quote (quantity, shipping location, timeline)
+3. Answer questions about the product
+4. Be friendly, professional, and helpful
+
+Keep responses concise but informative.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [
+          { role: "system", content: systemMessage },
+          ...messages
+        ],
+        max_completion_tokens: 1024,
+      });
+
+      res.json({ 
+        message: response.choices[0]?.message?.content || "I'm sorry, I couldn't process that request." 
+      });
+    } catch (error) {
+      console.error("Error with AI assistant:", error);
+      res.status(500).json({ error: "Failed to get AI response" });
     }
   });
 
