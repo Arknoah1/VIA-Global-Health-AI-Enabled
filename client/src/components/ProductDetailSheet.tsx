@@ -17,13 +17,6 @@ interface ProductDetailSheetProps {
 export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSheetProps) {
   if (!product) return null;
 
-  const formatPrice = (price: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    }).format(price / 100);
-  };
-
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0 flex flex-col">
@@ -36,25 +29,14 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           >
             ← Back
           </button>
-          <div className="space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <Badge variant="secondary" className="mb-2 bg-primary/10 text-primary border-0">
-                  {product.category}
-                </Badge>
-                <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground">
-                  {product.name}
-                </h2>
-              </div>
-            </div>
-            
-            {/* Price Highlight */}
-            <div className="flex items-baseline gap-3 bg-primary/5 rounded-lg p-3 border border-primary/20">
-              <span className="text-3xl sm:text-4xl font-bold text-primary">
-                {formatPrice(product.price, product.currency)}
-              </span>
-              <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
-            </div>
+          <div className="space-y-2">
+            <Badge variant="secondary" className="mb-2 bg-primary/10 text-primary border-0">
+              {product.category}
+            </Badge>
+            <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground">
+              {product.name}
+            </h2>
+            <p className="text-xs text-muted-foreground font-mono">SKU: {product.sku}</p>
           </div>
         </div>
 
@@ -170,7 +152,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 {product.keyFeatures && product.keyFeatures.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-3 text-base">Features</h3>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <ul className="space-y-3">
                       {product.keyFeatures.map((feature, idx) => (
                         <li key={idx} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                           <Check className="h-5 w-5 text-primary shrink-0 mt-0" />
