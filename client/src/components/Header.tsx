@@ -34,11 +34,13 @@ export function Header() {
                 Catalog
               </a>
             </Link>
+            <Link href="/about">
+              <a className={`transition-colors ${isActive("/about") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} data-testid="link-about-nav">
+                About
+              </a>
+            </Link>
             <a href="#contact" className="text-slate-600 hover:text-slate-900 transition-colors" data-testid="link-contact">
               Contact
-            </a>
-            <a href="#about" className="text-slate-600 hover:text-slate-900 transition-colors" data-testid="link-about">
-              About
             </a>
           </nav>
 
@@ -86,11 +88,17 @@ export function Header() {
                   Catalog
                 </a>
               </Link>
+              <Link href="/about">
+                <a
+                  className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="link-mobile-about"
+                >
+                  About
+                </a>
+              </Link>
               <a href="#contact" className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors" data-testid="link-mobile-contact">
                 Contact
-              </a>
-              <a href="#about" className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors" data-testid="link-mobile-about">
-                About
               </a>
               <Link href="/catalog">
                 <Button className="w-full" onClick={() => setMobileMenuOpen(false)} data-testid="button-mobile-catalog">
