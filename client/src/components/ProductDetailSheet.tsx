@@ -45,19 +45,30 @@ interface ChatMessage {
   content: string;
 }
 
+const QUESTIONS = [
+  'What is your name (First name/given name, Last name/Surname)',
+  'What is your company or organization name',
+  'What is your expected order quantity',
+  'Is your organization a Distributor/wholesaler, Government, NGO, University, Hospital/Clinic, Private practice?',
+  'Where do you want the products shipped (what country?)',
+  'Can you import products or do you need additional assistance?'
+];
+
 export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSheetProps) {
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (showQuoteDialog && messages.length === 0 && product) {
       setMessages([{
         role: 'assistant',
-        content: 'How can we help you?'
+        content: 'Thank you for requesting additional product information and pricing.'
       }]);
+      setCurrentQuestionIndex(0);
     }
   }, [showQuoteDialog, product]);
 
@@ -73,37 +84,26 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     const userMessage: ChatMessage = { role: 'user', content: inputValue.trim() };
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
-    setIsLoading(true);
 
-    try {
-      const response = await fetch('/api/quote-assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
-          product: {
-            name: product.name,
-            sku: product.sku,
-            category: product.category,
-            description: product.description,
-            keyFeatures: product.keyFeatures
-          }
-        })
-      });
-
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
-    } finally {
-      setIsLoading(false);
-    }
+    setTimeout(() => {
+      if (currentQuestionIndex < QUESTIONS.length) {
+        const nextQuestion = QUESTIONS[currentQuestionIndex];
+        setMessages(prev => [...prev, { role: 'assistant', content: nextQuestion }]);
+        setCurrentQuestionIndex(prev => prev + 1);
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Thank you for providing all this information. A member of our team will contact you shortly with a personalized quote. We appreciate your interest!'
+        }]);
+      }
+    }, 500);
   };
 
   const handleCloseQuoteDialog = () => {
     setShowQuoteDialog(false);
     setMessages([]);
     setInputValue('');
+    setCurrentQuestionIndex(0);
   };
 
   if (!product) return null;
