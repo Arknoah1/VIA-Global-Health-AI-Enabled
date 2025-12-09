@@ -19,14 +19,12 @@ export default function HomePage() {
       description: "Scale your distribution business with quality medical products",
       features: [
         "Competitive wholesale pricing and bulk discounts",
-        "Territory partnerships and exclusive distribution rights",
         "Marketing support and training programs",
         "Reliable supply chain and fast delivery",
-        "Order management platform and inventory tracking"
       ],
       products: [
-        "Pharmaceuticals & Vaccines",
         "Medical Devices & Equipment",
+        "Consumables & Disposables",
         "Infection Prevention Supplies",
         "Diagnostic Equipment"
       ],
@@ -39,10 +37,8 @@ export default function HomePage() {
       textColor: "text-green-700",
       description: "Equip your facility with trusted medical solutions",
       features: [
-        "Wide range of FDA-approved medical devices",
-        "Quality pharmaceuticals from verified manufacturers",
-        "Technical support and installation services",
-        "Training programs for staff",
+        "Wide range of regulatory approved medical devices",
+        "Technical support and warranty services",
         "Flexible payment terms and financing options"
       ],
       products: [
@@ -60,7 +56,7 @@ export default function HomePage() {
       textColor: "text-purple-700",
       description: "Access affordable healthcare solutions for underserved communities",
       features: [
-        "Special NGO pricing and donation programs",
+        "Special NGO pricing",
         "Humanitarian project support",
         "Free training and technical workshops",
         "Impact reporting and documentation support",
