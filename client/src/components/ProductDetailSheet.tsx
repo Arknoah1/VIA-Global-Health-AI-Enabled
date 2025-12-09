@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle,
-  Zap, Shield, Leaf, Settings, Package, Award, TrendingUp, Clock, Headphones, BookOpen, 
-  Video, FileDown, ChevronDown, ChevronUp, Search, Phone, Mail, Users, Eye, Sparkles
+  Zap, Shield, Leaf, Settings, Package, Award, TrendingUp, Headphones, 
+  ChevronDown, ChevronUp, Search, Phone, Mail, Eye, Sparkles
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -74,50 +74,6 @@ const categorizeFeature = (feature: string): keyof typeof featureCategories => {
   return 'value';
 };
 
-const whyChooseReasons = [
-  { icon: Award, title: "Industry-Leading Quality", description: "Rigorous testing and premium materials ensure exceptional performance" },
-  { icon: Clock, title: "Fast Turnaround", description: "Quick processing and reliable delivery timelines" },
-  { icon: Shield, title: "Comprehensive Warranty", description: "Peace of mind with our extensive protection coverage" },
-  { icon: Headphones, title: "Expert Support", description: "Dedicated team available to assist with any questions" },
-];
-
-const mockResources = [
-  { type: "case-study", title: "Success Story: Manufacturing Excellence", icon: BookOpen },
-  { type: "webinar", title: "Product Deep Dive Webinar", icon: Video },
-  { type: "whitepaper", title: "Technical Specifications Guide", icon: FileDown },
-];
-
-const categoryAddons: Record<string, Array<{ id: string; name: string; category: string }>> = {
-  "Electronics": [
-    { id: "addon-1", name: "Premium Cable Kit", category: "Accessories" },
-    { id: "addon-2", name: "Extended Warranty - 3 Years", category: "Services" },
-    { id: "addon-3", name: "Protective Case", category: "Protection" },
-  ],
-  "Industrial Equipment": [
-    { id: "addon-1", name: "Maintenance Tool Kit", category: "Tools" },
-    { id: "addon-2", name: "Installation Service", category: "Services" },
-    { id: "addon-3", name: "Spare Parts Bundle", category: "Parts" },
-  ],
-  "Medical Devices": [
-    { id: "addon-1", name: "Calibration Service", category: "Services" },
-    { id: "addon-2", name: "Replacement Sensors", category: "Consumables" },
-    { id: "addon-3", name: "Carrying Case", category: "Accessories" },
-  ],
-  "Office Supplies": [
-    { id: "addon-1", name: "Refill Pack", category: "Consumables" },
-    { id: "addon-2", name: "Organization Kit", category: "Accessories" },
-    { id: "addon-3", name: "Bulk Discount Package", category: "Deals" },
-  ],
-  "default": [
-    { id: "addon-1", name: "Premium Accessory Kit", category: "Accessories" },
-    { id: "addon-2", name: "Extended Warranty Package", category: "Services" },
-    { id: "addon-3", name: "Maintenance Supplies", category: "Consumables" },
-  ],
-};
-
-const getAddonsForCategory = (category: string) => {
-  return categoryAddons[category] || categoryAddons["default"];
-};
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -423,34 +379,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               )}
             </div>
 
-            {/* Why Choose This Product Section */}
-            <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-xl p-6 border border-primary/20">
-              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <Award className="h-5 w-5 text-primary" />
-                Why Choose This Product
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {whyChooseReasons.map((reason, idx) => (
-                  <motion.div 
-                    key={idx}
-                    className="flex items-start gap-3 p-3 bg-background/60 rounded-lg hover:bg-background transition-colors"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                      <reason.icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-sm">{reason.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">{reason.description}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
             {/* Tabs for Detailed Info */}
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto">
@@ -484,12 +412,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     <span className="text-sm">FAQs</span>
                   </TabsTrigger>
                 )}
-                <TabsTrigger 
-                  value="resources" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-                >
-                  <span className="text-sm">Resources</span>
-                </TabsTrigger>
               </TabsList>
               
               {/* Overview Tab */}
@@ -693,89 +615,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 </TabsContent>
               )}
 
-              {/* Resources Tab */}
-              <TabsContent value="resources" className="py-6 space-y-6">
-                <div>
-                  <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-primary" />
-                    Helpful Resources
-                  </h3>
-                  <div className="grid gap-3">
-                    {mockResources.map((resource, idx) => (
-                      <motion.div 
-                        key={idx}
-                        className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
-                        whileHover={{ x: 4 }}
-                        data-testid={`resource-item-${idx}`}
-                      >
-                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary">
-                          <resource.icon className="h-6 w-6" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-sm">{resource.title}</div>
-                          <div className="text-xs text-muted-foreground capitalize">{resource.type.replace('-', ' ')}</div>
-                        </div>
-                        <Button variant="ghost" size="sm" data-testid={`button-view-resource-${idx}`}>
-                          View
-                        </Button>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Recommended Add-ons */}
-                <div>
-                  <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    Recommended Add-ons for {product.category}
-                  </h3>
-                  <div className="grid gap-3">
-                    {getAddonsForCategory(product.category).map((addon, idx) => (
-                      <motion.div 
-                        key={addon.id}
-                        className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
-                        whileHover={{ scale: 1.01 }}
-                        data-testid={`recommended-addon-${idx}`}
-                      >
-                        <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
-                          <Package className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-sm">{addon.name}</div>
-                          <Badge variant="outline" className="text-[10px] mt-1">{addon.category}</Badge>
-                        </div>
-                        <Button variant="outline" size="sm" data-testid={`button-add-addon-${idx}`}>
-                          Add
-                        </Button>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Customers Also Viewed */}
-                <div>
-                  <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    Customers Also Viewed
-                  </h3>
-                  <div className="flex gap-3 overflow-x-auto pb-2">
-                    {[1, 2, 3].map((_, idx) => (
-                      <motion.div 
-                        key={idx}
-                        className="min-w-[140px] p-3 rounded-xl border bg-card hover:border-primary/30 transition-all duration-200 cursor-pointer"
-                        whileHover={{ y: -2 }}
-                        data-testid={`also-viewed-${idx}`}
-                      >
-                        <div className="h-20 w-full rounded-lg bg-muted mb-2 flex items-center justify-center">
-                          <Package className="h-8 w-8 text-muted-foreground/50" />
-                        </div>
-                        <div className="text-xs font-medium truncate">Related Product {idx + 1}</div>
-                        <div className="text-[10px] text-muted-foreground">{product.category}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
@@ -791,25 +630,15 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             Request a Quote
             <Sparkles className="ml-2 h-4 w-4 animate-pulse" />
           </Button>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1 text-sm"
-              onClick={() => setShowSupportChat(true)}
-              data-testid="button-contact-support"
-            >
-              <Headphones className="mr-2 h-4 w-4" />
-              Live Support
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex-1 text-sm"
-              data-testid="button-schedule-demo"
-            >
-              <Phone className="mr-2 h-4 w-4" />
-              Schedule Demo
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            className="w-full text-sm"
+            onClick={() => setShowSupportChat(true)}
+            data-testid="button-contact-support"
+          >
+            <Headphones className="mr-2 h-4 w-4" />
+            Live Support
+          </Button>
           <p className="text-xs text-center text-muted-foreground">
             Response within 24 hours • No obligation
           </p>
