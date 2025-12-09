@@ -86,7 +86,7 @@ export default function HomePage() {
             Quality Medical Solutions for Global Health
           </h2>
           <p className="text-xl text-slate-600 mb-8">
-            VIA Global Health provides trusted pharmaceuticals, medical devices, and equipment to distributors, healthcare providers, and humanitarian organizations across Africa.
+            VIA Global Health provides trusted medical devices and supplies to distributors, healthcare providers, and humanitarian organizations across the globe.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
@@ -186,10 +186,10 @@ export default function HomePage() {
 
         <div className="grid md:grid-cols-4 gap-6">
           {[
-            { icon: Award, label: "FDA Approved", desc: "All products meet international standards" },
+            { icon: Award, label: "Regulatory Approved", desc: "All products meet international standards" },
             { icon: Users, label: "Expert Support", desc: "24/7 technical and sales support" },
-            { icon: Globe, label: "Global Reach", desc: "Serving 40+ countries across Africa" },
-            { icon: Zap, label: "Fast Delivery", desc: "Quick shipping and reliable logistics" }
+            { icon: Globe, label: "Global Reach", desc: "Serving 90+ countries across the globe" },
+            { icon: Zap, label: "Reliable Delivery", desc: "Efficient shipping and logistics" }
           ].map((item, idx) => {
             const Icon = item.icon;
             return (
