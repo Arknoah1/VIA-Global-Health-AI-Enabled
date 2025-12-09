@@ -6,11 +6,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle } from "lucide-react";
+import { 
+  FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle,
+  Zap, Shield, Leaf, Settings, Package, Award, TrendingUp, Clock, Headphones, BookOpen, 
+  Video, FileDown, ChevronDown, ChevronUp, Search, Phone, Mail, Users, Eye, Sparkles
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -40,6 +45,80 @@ const formatBulletText = (text: string) => {
   );
 };
 
+const featureCategories = {
+  performance: { icon: Zap, color: "bg-amber-500/10 text-amber-600 border-amber-200", label: "Performance" },
+  durability: { icon: Shield, color: "bg-blue-500/10 text-blue-600 border-blue-200", label: "Durability" },
+  sustainability: { icon: Leaf, color: "bg-green-500/10 text-green-600 border-green-200", label: "Eco-Friendly" },
+  technology: { icon: Settings, color: "bg-purple-500/10 text-purple-600 border-purple-200", label: "Technology" },
+  quality: { icon: Award, color: "bg-rose-500/10 text-rose-600 border-rose-200", label: "Quality" },
+  value: { icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600 border-emerald-200", label: "Value" },
+};
+
+const categorizeFeature = (feature: string): keyof typeof featureCategories => {
+  const lowerFeature = feature.toLowerCase();
+  if (lowerFeature.includes('fast') || lowerFeature.includes('speed') || lowerFeature.includes('quick') || lowerFeature.includes('performance') || lowerFeature.includes('efficient')) {
+    return 'performance';
+  }
+  if (lowerFeature.includes('durable') || lowerFeature.includes('strong') || lowerFeature.includes('robust') || lowerFeature.includes('reliable') || lowerFeature.includes('sturdy')) {
+    return 'durability';
+  }
+  if (lowerFeature.includes('eco') || lowerFeature.includes('green') || lowerFeature.includes('sustainable') || lowerFeature.includes('recyclable') || lowerFeature.includes('environment')) {
+    return 'sustainability';
+  }
+  if (lowerFeature.includes('smart') || lowerFeature.includes('digital') || lowerFeature.includes('tech') || lowerFeature.includes('automated') || lowerFeature.includes('iot')) {
+    return 'technology';
+  }
+  if (lowerFeature.includes('premium') || lowerFeature.includes('quality') || lowerFeature.includes('certified') || lowerFeature.includes('tested') || lowerFeature.includes('approved')) {
+    return 'quality';
+  }
+  return 'value';
+};
+
+const whyChooseReasons = [
+  { icon: Award, title: "Industry-Leading Quality", description: "Rigorous testing and premium materials ensure exceptional performance" },
+  { icon: Clock, title: "Fast Turnaround", description: "Quick processing and reliable delivery timelines" },
+  { icon: Shield, title: "Comprehensive Warranty", description: "Peace of mind with our extensive protection coverage" },
+  { icon: Headphones, title: "Expert Support", description: "Dedicated team available to assist with any questions" },
+];
+
+const mockResources = [
+  { type: "case-study", title: "Success Story: Manufacturing Excellence", icon: BookOpen },
+  { type: "webinar", title: "Product Deep Dive Webinar", icon: Video },
+  { type: "whitepaper", title: "Technical Specifications Guide", icon: FileDown },
+];
+
+const categoryAddons: Record<string, Array<{ id: string; name: string; category: string }>> = {
+  "Electronics": [
+    { id: "addon-1", name: "Premium Cable Kit", category: "Accessories" },
+    { id: "addon-2", name: "Extended Warranty - 3 Years", category: "Services" },
+    { id: "addon-3", name: "Protective Case", category: "Protection" },
+  ],
+  "Industrial Equipment": [
+    { id: "addon-1", name: "Maintenance Tool Kit", category: "Tools" },
+    { id: "addon-2", name: "Installation Service", category: "Services" },
+    { id: "addon-3", name: "Spare Parts Bundle", category: "Parts" },
+  ],
+  "Medical Devices": [
+    { id: "addon-1", name: "Calibration Service", category: "Services" },
+    { id: "addon-2", name: "Replacement Sensors", category: "Consumables" },
+    { id: "addon-3", name: "Carrying Case", category: "Accessories" },
+  ],
+  "Office Supplies": [
+    { id: "addon-1", name: "Refill Pack", category: "Consumables" },
+    { id: "addon-2", name: "Organization Kit", category: "Accessories" },
+    { id: "addon-3", name: "Bulk Discount Package", category: "Deals" },
+  ],
+  "default": [
+    { id: "addon-1", name: "Premium Accessory Kit", category: "Accessories" },
+    { id: "addon-2", name: "Extended Warranty Package", category: "Services" },
+    { id: "addon-3", name: "Maintenance Supplies", category: "Consumables" },
+  ],
+};
+
+const getAddonsForCategory = (category: string) => {
+  return categoryAddons[category] || categoryAddons["default"];
+};
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -61,11 +140,24 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([]);
   const [isConversationComplete, setIsConversationComplete] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [faqSearchQuery, setFaqSearchQuery] = useState('');
+  const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
+  const [showSupportChat, setShowSupportChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const filteredFaqs = useMemo(() => {
+    if (!product?.faqs || !faqSearchQuery.trim()) return product?.faqs || [];
+    const query = faqSearchQuery.toLowerCase();
+    return (product.faqs as any[]).filter(
+      faq => faq.question.toLowerCase().includes(query) || faq.answer.toLowerCase().includes(query)
+    );
+  }, [product?.faqs, faqSearchQuery]);
 
   const startQuoteSession = async () => {
     if (!product) return;
@@ -190,24 +282,35 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setInitError(null);
   };
 
+  const currentImage = product?.images && product.images.length > 0 
+    ? (product.images as string[])[selectedImageIndex] || product?.imageUrl 
+    : product?.imageUrl;
+
   if (!product) return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0 flex flex-col">
         {/* Header with Close Button */}
-        <div className="sticky top-0 z-10 bg-gradient-to-b from-background to-background/80 backdrop-blur-sm border-b p-4 sm:p-6">
+        <div className="sticky top-0 z-10 bg-gradient-to-b from-background via-background to-background/95 backdrop-blur-sm border-b p-4 sm:p-6">
           <button
             onClick={onClose}
-            className="mb-4 text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-4 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 text-sm"
             aria-label="Close product details"
+            data-testid="button-close-sheet"
           >
-            ← Back
+            ← Back to catalog
           </button>
           <div className="space-y-2">
-            <Badge variant="secondary" className="mb-2 bg-primary/10 text-primary border-0">
-              {product.category}
-            </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
+                {product.category}
+              </Badge>
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 animate-pulse">
+                <Sparkles className="h-3 w-3 mr-1" />
+                In Stock
+              </Badge>
+            </div>
             <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground">
               {product.name}
             </h2>
@@ -217,23 +320,43 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 space-y-6">
-            {/* Image Gallery */}
+          <div className="p-4 sm:p-6 space-y-8">
+            {/* Image Gallery with Zoom */}
             <div className="space-y-3">
-              <div className="aspect-square w-full overflow-hidden rounded-xl border bg-muted/50 max-h-64">
-                <img 
-                  src={product.imageUrl} 
+              <div 
+                className="relative aspect-square w-full overflow-hidden rounded-xl border bg-muted/50 max-h-72 group cursor-zoom-in"
+                onMouseEnter={() => setIsImageZoomed(true)}
+                onMouseLeave={() => setIsImageZoomed(false)}
+                data-testid="product-image-container"
+              >
+                <motion.img 
+                  src={currentImage} 
                   alt={product.name} 
-                  className="h-full w-full object-contain bg-white"
+                  className="h-full w-full object-contain bg-white transition-transform duration-300"
+                  animate={{ scale: isImageZoomed ? 1.5 : 1 }}
                   data-testid="product-image-main"
                 />
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <Badge className="bg-black/70 text-white border-0 text-xs">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Hover to zoom
+                  </Badge>
+                </div>
               </div>
-              {product.images && product.images.length > 0 && (
+              {product.images && (product.images as string[]).length > 0 && (
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {product.images.map((img, idx) => (
+                  <button 
+                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-md ${selectedImageIndex === -1 ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'}`}
+                    onClick={() => setSelectedImageIndex(-1)}
+                    data-testid="product-thumbnail-main"
+                  >
+                    <img src={product.imageUrl} alt="Main view" className="h-full w-full object-cover" />
+                  </button>
+                  {(product.images as string[]).map((img, idx) => (
                     <button 
                       key={idx}
-                      className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 border-transparent hover:border-primary transition-all duration-200 hover:shadow-md"
+                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-md ${selectedImageIndex === idx ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'}`}
+                      onClick={() => setSelectedImageIndex(idx)}
                       data-testid={`product-thumbnail-${idx}`}
                     >
                       <img src={img} alt={`Product view ${idx + 1}`} className="h-full w-full object-cover" />
@@ -243,129 +366,216 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               )}
             </div>
 
-            {/* Quick Info Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {product.keyFeatures && product.keyFeatures.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3">
+            {/* Quick Info Section with Enhanced Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
+                <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-4 border">
+                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-4 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
                     Key Features
                   </h3>
-                  <ul className="space-y-2">
-                    {product.keyFeatures.slice(0, 4).map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                        <span className="text-foreground">{feature}</span>
-                      </li>
-                    ))}
+                  <ul className="space-y-3">
+                    {(product.keyFeatures as string[]).slice(0, 4).map((feature, idx) => {
+                      const category = categorizeFeature(feature);
+                      const CategoryIcon = featureCategories[category].icon;
+                      return (
+                        <motion.li 
+                          key={idx} 
+                          className="flex items-start gap-3 text-sm"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                        >
+                          <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${featureCategories[category].color}`}>
+                            <CategoryIcon className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-foreground">{feature}</span>
+                        </motion.li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
               
               {Object.keys(product.specifications).length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3">
+                <div className="bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20 rounded-xl p-4 border">
+                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-4 flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-blue-600" />
                     Quick Specs
                   </h3>
-                  <dl className="space-y-4 text-sm">
-                    {Object.entries(product.specifications).slice(0, 4).map(([key, value]) => (
-                      <div key={key} className="space-y-1">
-                        <dt className="text-muted-foreground font-medium">{key}</dt>
-                        <dd className="text-foreground pl-2">
-                          {formatBulletText(value as string)}
+                  <dl className="space-y-3 text-sm">
+                    {Object.entries(product.specifications).slice(0, 4).map(([key, value], idx) => (
+                      <motion.div 
+                        key={key} 
+                        className="flex flex-col gap-1 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                      >
+                        <dt className="text-muted-foreground font-medium text-xs uppercase tracking-wide">{key}</dt>
+                        <dd className="text-foreground font-medium">
+                          {typeof value === 'string' && !value.includes('•') ? value : formatBulletText(value as string)}
                         </dd>
-                      </div>
+                      </motion.div>
                     ))}
                   </dl>
                 </div>
               )}
             </div>
 
+            {/* Why Choose This Product Section */}
+            <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-xl p-6 border border-primary/20">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                Why Choose This Product
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {whyChooseReasons.map((reason, idx) => (
+                  <motion.div 
+                    key={idx}
+                    className="flex items-start gap-3 p-3 bg-background/60 rounded-lg hover:bg-background transition-colors"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                      <reason.icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-sm">{reason.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">{reason.description}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
             {/* Tabs for Detailed Info */}
-            <Tabs defaultValue="details" className="w-full -mx-4 sm:-mx-6">
-              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent px-4 sm:px-6">
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto">
                 <TabsTrigger 
                   value="details" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 mr-6"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
                 >
                   <span className="text-sm">Overview</span>
                 </TabsTrigger>
                 {Object.keys(product.specifications).length > 0 && (
                   <TabsTrigger 
                     value="specs" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 mr-6"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
                   >
                     <span className="text-sm">Specs</span>
                   </TabsTrigger>
                 )}
-                {(product.videoUrl || product.documents.length > 0) && (
+                {(product.videoUrl || (product.documents as any[]).length > 0) && (
                   <TabsTrigger 
                     value="media" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 mr-6"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
                   >
                     <span className="text-sm">Media</span>
                   </TabsTrigger>
                 )}
-                {product.faqs && product.faqs.length > 0 && (
+                {product.faqs && (product.faqs as any[]).length > 0 && (
                   <TabsTrigger 
                     value="faqs" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
                   >
                     <span className="text-sm">FAQs</span>
                   </TabsTrigger>
                 )}
+                <TabsTrigger 
+                  value="resources" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+                >
+                  <span className="text-sm">Resources</span>
+                </TabsTrigger>
               </TabsList>
               
               {/* Overview Tab */}
-              <TabsContent value="details" className="space-y-6 px-4 sm:px-6 py-6">
+              <TabsContent value="details" className="space-y-6 py-6">
                 {product.description && (
-                  <div>
-                    <h3 className="font-semibold mb-3 text-base">About This Product</h3>
+                  <div className="bg-muted/20 rounded-xl p-5 border">
+                    <h3 className="font-semibold mb-3 text-base flex items-center gap-2">
+                      <Package className="h-5 w-5 text-primary" />
+                      About This Product
+                    </h3>
                     <div className="text-muted-foreground leading-relaxed text-sm sm:text-base">
                       {formatBulletText(product.description)}
                     </div>
                   </div>
                 )}
                 
-                {product.keyFeatures && product.keyFeatures.length > 0 && (
+                {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
                   <div>
-                    <h3 className="font-semibold mb-3 text-base">Features</h3>
-                    <ul className="space-y-3">
-                      {product.keyFeatures.map((feature, idx) => (
-                        <li key={idx} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                          <Check className="h-5 w-5 text-primary shrink-0 mt-0" />
-                          <span className="text-sm text-foreground">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      All Features
+                    </h3>
+                    <div className="grid gap-3">
+                      {(product.keyFeatures as string[]).map((feature, idx) => {
+                        const category = categorizeFeature(feature);
+                        const CategoryIcon = featureCategories[category].icon;
+                        return (
+                          <motion.div 
+                            key={idx} 
+                            className="flex items-start gap-3 p-4 rounded-xl border bg-card hover:shadow-md hover:border-primary/30 transition-all duration-200 group"
+                            whileHover={{ x: 4 }}
+                          >
+                            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${featureCategories[category].color} group-hover:scale-110 transition-transform`}>
+                              <CategoryIcon className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-sm text-foreground font-medium">{feature}</span>
+                              <Badge variant="outline" className={`ml-2 text-[10px] ${featureCategories[category].color}`}>
+                                {featureCategories[category].label}
+                              </Badge>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </TabsContent>
 
               {/* Specifications Tab */}
               {Object.keys(product.specifications).length > 0 && (
-                <TabsContent value="specs" className="px-4 sm:px-6 py-6">
-                  <div className="space-y-4">
-                    {Object.entries(product.specifications).map(([key, value]) => (
-                      <div key={key} className="p-4 rounded-lg border bg-card/50 hover:bg-muted/30 transition-colors">
-                        <div className="font-semibold text-sm text-foreground mb-2">{key}</div>
-                        <div className="text-sm text-muted-foreground pl-2">
+                <TabsContent value="specs" className="py-6">
+                  <div className="grid gap-4">
+                    {Object.entries(product.specifications).map(([key, value], idx) => (
+                      <motion.div 
+                        key={key} 
+                        className="p-4 rounded-xl border bg-gradient-to-r from-card to-card/50 hover:shadow-md hover:border-primary/30 transition-all duration-200"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        whileHover={{ scale: 1.01 }}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center">
+                            <Settings className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <div className="font-semibold text-sm text-foreground">{key}</div>
+                        </div>
+                        <div className="text-sm text-muted-foreground pl-8">
                           {formatBulletText(value as string)}
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </TabsContent>
               )}
 
               {/* Media & Files Tab */}
-              {(product.videoUrl || product.documents.length > 0) && (
-                <TabsContent value="media" className="space-y-6 px-4 sm:px-6 py-6">
+              {(product.videoUrl || (product.documents as any[]).length > 0) && (
+                <TabsContent value="media" className="space-y-6 py-6">
                   {product.videoUrl && (
                     <div>
                       <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
-                        <Play className="h-5 w-5" /> Product Video
+                        <Play className="h-5 w-5 text-primary" /> Product Video
                       </h3>
-                      <div className="aspect-video rounded-lg overflow-hidden bg-black/5 border">
+                      <div className="aspect-video rounded-xl overflow-hidden bg-black/5 border shadow-lg">
                         <iframe 
                           width="100%" 
                           height="100%" 
@@ -380,27 +590,32 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     </div>
                   )}
 
-                  {product.documents && product.documents.length > 0 && (
+                  {product.documents && (product.documents as any[]).length > 0 && (
                     <div>
                       <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
-                        <FileText className="h-5 w-5" /> Documents
+                        <FileText className="h-5 w-5 text-primary" /> Documents
                       </h3>
                       <div className="grid gap-3">
-                        {product.documents.map((doc, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                        {(product.documents as any[]).map((doc, idx) => (
+                          <motion.div 
+                            key={idx} 
+                            className="flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200"
+                            whileHover={{ x: 4 }}
+                          >
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                <FileText className="h-5 w-5" />
+                              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary">
+                                <FileText className="h-6 w-6" />
                               </div>
                               <div>
-                                <div className="font-medium text-sm">{(doc as any).name}</div>
+                                <div className="font-medium text-sm">{doc.name}</div>
                                 <div className="text-xs text-muted-foreground">PDF Document</div>
                               </div>
                             </div>
-                            <Button variant="ghost" size="sm" data-testid={`download-document-${idx}`}>
+                            <Button variant="outline" size="sm" className="gap-2" data-testid={`download-document-${idx}`}>
                               <Download className="h-4 w-4" />
+                              Download
                             </Button>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
                     </div>
@@ -408,49 +623,207 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 </TabsContent>
               )}
 
-              {/* FAQs Tab */}
-              {product.faqs && product.faqs.length > 0 && (
-                <TabsContent value="faqs" className="px-4 sm:px-6 py-6">
+              {/* FAQs Tab with Search */}
+              {product.faqs && (product.faqs as any[]).length > 0 && (
+                <TabsContent value="faqs" className="py-6">
+                  <div className="mb-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Search FAQs..." 
+                        value={faqSearchQuery}
+                        onChange={(e) => setFaqSearchQuery(e.target.value)}
+                        className="pl-10"
+                        data-testid="input-faq-search"
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-3">
-                    {product.faqs.map((faq, idx) => (
-                      <div key={idx} className="rounded-lg border bg-card p-4 hover:border-primary/50 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5">
-                            <HelpCircle className="h-4 w-4" />
-                          </div>
-                          <div className="space-y-2 flex-1">
-                            <h4 className="font-semibold text-sm leading-snug">{(faq as any).question}</h4>
-                            <p className="text-sm text-muted-foreground leading-relaxed">{(faq as any).answer}</p>
-                          </div>
-                        </div>
+                    <AnimatePresence>
+                      {filteredFaqs.map((faq: any, idx: number) => (
+                        <motion.div 
+                          key={idx} 
+                          className="rounded-xl border bg-card overflow-hidden hover:border-primary/50 transition-colors"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          layout
+                        >
+                          <button 
+                            className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+                            onClick={() => setExpandedFaqIndex(expandedFaqIndex === idx ? null : idx)}
+                            data-testid={`faq-question-${idx}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                <HelpCircle className="h-4 w-4" />
+                              </div>
+                              <h4 className="font-semibold text-sm leading-snug">{faq.question}</h4>
+                            </div>
+                            {expandedFaqIndex === idx ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            )}
+                          </button>
+                          <AnimatePresence>
+                            {expandedFaqIndex === idx && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="px-4 pb-4"
+                              >
+                                <div className="pl-11 pt-1">
+                                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                    {filteredFaqs.length === 0 && faqSearchQuery && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        <p>No FAQs found matching "{faqSearchQuery}"</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </TabsContent>
               )}
+
+              {/* Resources Tab */}
+              <TabsContent value="resources" className="py-6 space-y-6">
+                <div>
+                  <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    Helpful Resources
+                  </h3>
+                  <div className="grid gap-3">
+                    {mockResources.map((resource, idx) => (
+                      <motion.div 
+                        key={idx}
+                        className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
+                        whileHover={{ x: 4 }}
+                        data-testid={`resource-item-${idx}`}
+                      >
+                        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary">
+                          <resource.icon className="h-6 w-6" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{resource.title}</div>
+                          <div className="text-xs text-muted-foreground capitalize">{resource.type.replace('-', ' ')}</div>
+                        </div>
+                        <Button variant="ghost" size="sm" data-testid={`button-view-resource-${idx}`}>
+                          View
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recommended Add-ons */}
+                <div>
+                  <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary" />
+                    Recommended Add-ons for {product.category}
+                  </h3>
+                  <div className="grid gap-3">
+                    {getAddonsForCategory(product.category).map((addon, idx) => (
+                      <motion.div 
+                        key={addon.id}
+                        className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 cursor-pointer"
+                        whileHover={{ scale: 1.01 }}
+                        data-testid={`recommended-addon-${idx}`}
+                      >
+                        <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+                          <Package className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{addon.name}</div>
+                          <Badge variant="outline" className="text-[10px] mt-1">{addon.category}</Badge>
+                        </div>
+                        <Button variant="outline" size="sm" data-testid={`button-add-addon-${idx}`}>
+                          Add
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Customers Also Viewed */}
+                <div>
+                  <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    Customers Also Viewed
+                  </h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {[1, 2, 3].map((_, idx) => (
+                      <motion.div 
+                        key={idx}
+                        className="min-w-[140px] p-3 rounded-xl border bg-card hover:border-primary/30 transition-all duration-200 cursor-pointer"
+                        whileHover={{ y: -2 }}
+                        data-testid={`also-viewed-${idx}`}
+                      >
+                        <div className="h-20 w-full rounded-lg bg-muted mb-2 flex items-center justify-center">
+                          <Package className="h-8 w-8 text-muted-foreground/50" />
+                        </div>
+                        <div className="text-xs font-medium truncate">Related Product {idx + 1}</div>
+                        <div className="text-[10px] text-muted-foreground">{product.category}</div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
             </Tabs>
           </div>
         </div>
 
-        {/* Action Footer */}
-        <div className="sticky bottom-0 p-4 sm:p-6 bg-background/80 backdrop-blur-sm border-t mt-4">
+        {/* Sticky Action Footer with Gradient CTA */}
+        <div className="sticky bottom-0 p-4 sm:p-6 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm border-t space-y-3">
           <Button 
-            className="w-full h-11 text-base font-semibold"
+            className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300"
             data-testid="button-request-quote"
             onClick={() => setShowQuoteDialog(true)}
           >
             <MessageSquare className="mr-2 h-5 w-5" />
-            Request Quote
+            Request a Quote
+            <Sparkles className="ml-2 h-4 w-4 animate-pulse" />
           </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="flex-1 text-sm"
+              onClick={() => setShowSupportChat(true)}
+              data-testid="button-contact-support"
+            >
+              <Headphones className="mr-2 h-4 w-4" />
+              Live Support
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex-1 text-sm"
+              data-testid="button-schedule-demo"
+            >
+              <Phone className="mr-2 h-4 w-4" />
+              Schedule Demo
+            </Button>
+          </div>
+          <p className="text-xs text-center text-muted-foreground">
+            Response within 24 hours • No obligation
+          </p>
         </div>
       </SheetContent>
 
       {/* AI Quote Assistant Dialog */}
       <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialog()}>
         <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
-          <DialogHeader className="p-4 border-b">
+          <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
             <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-primary" />
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-primary" />
+              </div>
               Request Quote - {product?.name}
             </DialogTitle>
           </DialogHeader>
@@ -482,12 +855,14 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-4">
               {messages.map((msg, idx) => (
-                <div
+                <motion.div
                   key={idx}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 text-sm ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
                       msg.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
@@ -496,11 +871,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   >
                     {msg.content}
                   </div>
-                </div>
+                </motion.div>
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-4 py-2">
+                  <div className="bg-muted rounded-2xl px-4 py-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                   </div>
                 </div>
@@ -514,7 +889,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     {recommendedProducts.map((prod) => (
                       <div 
                         key={prod.id}
-                        className="p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
                         data-testid={`recommended-product-${prod.id}`}
                       >
                         <p className="text-sm font-medium">{prod.name}</p>
@@ -527,34 +902,73 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
               {/* Conversation Complete Message */}
               {isConversationComplete && (
-                <div className="pt-4 text-center">
+                <motion.div 
+                  className="pt-4 text-center"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm">
                     <Check className="h-4 w-4" />
                     Our team will reach out within 24 hours
                   </div>
-                </div>
+                </motion.div>
               )}
               <div ref={messagesEndRef} />
             </div>
           </div>
 
-          <div className="p-4 border-t flex gap-2">
+          <div className="p-4 border-t flex gap-2 bg-muted/30">
             <Input
               placeholder={isConversationComplete ? "Conversation complete" : "Type your message..."}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               disabled={isLoading || isConversationComplete}
+              className="bg-background"
               data-testid="input-chat-message"
             />
             <Button 
               size="icon" 
               onClick={handleSendMessage} 
               disabled={isLoading || !inputValue.trim() || isConversationComplete}
+              className="bg-primary hover:bg-primary/90"
               data-testid="button-send-message"
             >
               <Send className="h-4 w-4" />
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Live Support Chat Dialog */}
+      <Dialog open={showSupportChat} onOpenChange={setShowSupportChat}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Headphones className="h-5 w-5 text-primary" />
+              Live Support
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="text-center py-6">
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Headphones className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-semibold mb-2">Need help with {product.name}?</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Our support team is available to assist you with any questions.
+              </p>
+              <div className="space-y-2">
+                <Button className="w-full gap-2" variant="outline">
+                  <Phone className="h-4 w-4" />
+                  Call Us: 1-800-EXAMPLE
+                </Button>
+                <Button className="w-full gap-2" variant="outline">
+                  <Mail className="h-4 w-4" />
+                  Email: support@example.com
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
