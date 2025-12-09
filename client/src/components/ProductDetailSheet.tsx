@@ -633,7 +633,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           <Button 
             variant="outline" 
             className="w-full text-sm"
-            onClick={() => setShowSupportChat(true)}
+            onClick={() => setShowQuoteDialog(true)}
             data-testid="button-contact-support"
           >
             <Headphones className="mr-2 h-4 w-4" />
