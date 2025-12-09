@@ -373,24 +373,28 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     }
   }
 
-  // Detect referral to agent
+  // Detect referral to agent - only when conversation is truly complete
   const referralPhrases = [
-    "specialist can better address",
-    "specialist will reach out",
     "team will prepare a custom quote",
     "reach out within 24 hours",
-    "connect you with",
-    "medical specialist"
+    "i have everything i need"
   ];
   
   let referToAgent = false;
   let referralReason: string | undefined;
   
-  for (const phrase of referralPhrases) {
-    if (lowerResponse.includes(phrase)) {
-      referToAgent = true;
-      referralReason = phrase.includes("specialist") ? "Clinical question" : "Quote ready";
-      break;
+  // Check if the AI is still asking questions - if so, don't end the conversation
+  const isAskingQuestion = aiResponse.trim().endsWith("?") || 
+    /\?[^?]*$/.test(aiResponse.slice(-100)); // Check if there's a question mark in the last 100 chars
+  
+  // Only trigger referral if the AI is NOT asking follow-up questions
+  if (!isAskingQuestion) {
+    for (const phrase of referralPhrases) {
+      if (lowerResponse.includes(phrase)) {
+        referToAgent = true;
+        referralReason = "Quote ready";
+        break;
+      }
     }
   }
 
