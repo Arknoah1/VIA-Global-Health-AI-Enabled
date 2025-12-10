@@ -17,7 +17,7 @@ export function Header() {
           <Link href="/">
             <a className="flex items-center hover:opacity-80 transition-opacity" data-testid="link-home">
               <img 
-                src="/attached_assets/VIA-headlogo-on-white_1765386621890.png" 
+                src="/via-logo.png" 
                 alt="VIA Global Health" 
                 className="h-10 sm:h-12 w-auto"
               />
