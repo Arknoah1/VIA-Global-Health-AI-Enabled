@@ -2,6 +2,7 @@ import { Product } from "@/lib/types";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, MoreHorizontal } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
 interface ProductCardProps {
   product: Product;
@@ -9,17 +10,46 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const imgRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px' }
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <Card 
       className="overflow-hidden transition-all hover:shadow-md cursor-pointer group"
       onClick={() => onSelectProduct?.(product)}
     >
-      <div className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
-        <img 
-          src={product.imageUrl} 
-          alt={product.name} 
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+      <div ref={imgRef} className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
+        {!imageLoaded && (
+          <div className="absolute inset-0 bg-muted animate-pulse" />
+        )}
+        {isInView && (
+          <img 
+            src={product.imageUrl} 
+            alt={product.name} 
+            loading="lazy"
+            onLoad={() => setImageLoaded(true)}
+            className={`h-full w-full object-cover transition-all duration-300 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        )}
       </div>
       <CardHeader className="p-4 pb-2">
         <div className="flex justify-between items-start">

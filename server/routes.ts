@@ -12,15 +12,57 @@ const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
 });
 
+// In-memory cache for products
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const cache: {
+  products?: CacheEntry<any[]>;
+  productsByCategory: Map<string, CacheEntry<any[]>>;
+} = {
+  products: undefined,
+  productsByCategory: new Map()
+};
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+function isCacheValid<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
+  if (!entry) return false;
+  return Date.now() - entry.timestamp < CACHE_TTL;
+}
+
+function invalidateCache() {
+  cache.products = undefined;
+  cache.productsByCategory.clear();
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Get all products (with optional search)
+  // Get all products (with optional search) - with caching
   app.get("/api/products", async (req, res) => {
     try {
       const search = req.query.search as string | undefined;
+      
+      // Set cache headers for browser caching
+      res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
+      res.set('ETag', `"products-${Date.now()}"`);
+      
+      // Use server-side cache for non-search requests
+      if (!search && isCacheValid(cache.products)) {
+        return res.json(cache.products.data);
+      }
+      
       const products = await storage.getAllProducts(search);
+      
+      // Cache non-search results
+      if (!search) {
+        cache.products = { data: products, timestamp: Date.now() };
+      }
+      
       res.json(products);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -28,13 +70,17 @@ export async function registerRoutes(
     }
   });
 
-  // Get single product by ID
+  // Get single product by ID - with cache headers
   app.get("/api/products/:id", async (req, res) => {
     try {
       const product = await storage.getProductById(req.params.id);
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
+      
+      // Set cache headers
+      res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
+      
       res.json(product);
     } catch (error) {
       console.error("Error fetching product:", error);
@@ -52,6 +98,9 @@ export async function registerRoutes(
       
       const saved = await storage.createProducts(scrapedProducts);
       console.log(`[API] Saved ${saved.length} products to database`);
+      
+      // Invalidate cache when new products are added
+      invalidateCache();
       
       res.json({ 
         success: true, 
@@ -76,10 +125,12 @@ export async function registerRoutes(
       if (Array.isArray(body)) {
         const validated = z.array(insertProductSchema).parse(body);
         const created = await storage.createProducts(validated);
+        invalidateCache();
         res.json(created);
       } else {
         const validated = insertProductSchema.parse(body);
         const created = await storage.createProduct(validated);
+        invalidateCache();
         res.json(created);
       }
     } catch (error) {
@@ -95,6 +146,7 @@ export async function registerRoutes(
   app.delete("/api/products/:id", async (req, res) => {
     try {
       await storage.deleteProduct(req.params.id);
+      invalidateCache();
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting product:", error);
@@ -106,6 +158,7 @@ export async function registerRoutes(
   app.delete("/api/products", async (req, res) => {
     try {
       await storage.deleteAllProducts();
+      invalidateCache();
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting all products:", error);
