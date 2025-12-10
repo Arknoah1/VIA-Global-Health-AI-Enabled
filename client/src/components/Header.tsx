@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Globe, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
@@ -15,10 +15,12 @@ export function Header() {
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <Link href="/">
-            <a className="flex items-center gap-2 hover:opacity-80 transition-opacity" data-testid="link-home">
-              <Globe className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-slate-900 hidden sm:inline">VIA Global Health</span>
-              <span className="text-lg font-bold text-slate-900 sm:hidden">VIA</span>
+            <a className="flex items-center hover:opacity-80 transition-opacity" data-testid="link-home">
+              <img 
+                src="/attached_assets/VIA-headlogo-on-white_1765386621890.png" 
+                alt="VIA Global Health" 
+                className="h-10 sm:h-12 w-auto"
+              />
             </a>
           </Link>
 
