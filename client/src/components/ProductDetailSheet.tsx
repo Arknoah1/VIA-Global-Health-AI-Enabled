@@ -439,9 +439,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                             </div>
                             <div className="flex-1">
                               <span className="text-sm text-foreground font-medium">{feature}</span>
-                              <span className={`ml-2 text-[10px] inline-block px-2 py-1 rounded border ${featureCategories[category].color}`}>
-                                {featureCategories[category].label}
-                              </span>
                             </div>
                           </motion.div>
                         );
