@@ -7,7 +7,6 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, MoreHorizontal, ExternalLink } from "lucide-react";
 import {
@@ -66,9 +65,9 @@ export function ProductTable({ products, isLoading, onSelectProduct }: ProductTa
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline" className="font-normal">
+                <span className="text-sm text-muted-foreground">
                   {product.category}
-                </Badge>
+                </span>
               </TableCell>
               <TableCell className="font-mono text-xs">{product.sku}</TableCell>
               <TableCell className="text-right">

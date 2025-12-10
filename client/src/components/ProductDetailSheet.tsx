@@ -3,7 +3,6 @@ import {
   Sheet,
   SheetContent,
 } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -258,15 +257,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             ← Back to catalog
           </button>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
-                {product.category}
-              </Badge>
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 animate-pulse">
-                <Sparkles className="h-3 w-3 mr-1" />
-                In Stock
-              </Badge>
-            </div>
             <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground">
               {product.name}
             </h2>
@@ -293,10 +283,10 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   data-testid="product-image-main"
                 />
                 <div className="absolute top-3 right-3 flex gap-2">
-                  <Badge className="bg-black/70 text-white border-0 text-xs">
-                    <Eye className="h-3 w-3 mr-1" />
+                  <div className="bg-black/70 text-white border-0 text-xs px-2 py-1 rounded flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
                     Hover to zoom
-                  </Badge>
+                  </div>
                 </div>
               </div>
               {product.images && (product.images as string[]).length > 0 && (
@@ -449,9 +439,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                             </div>
                             <div className="flex-1">
                               <span className="text-sm text-foreground font-medium">{feature}</span>
-                              <Badge variant="outline" className={`ml-2 text-[10px] ${featureCategories[category].color}`}>
+                              <span className={`ml-2 text-[10px] inline-block px-2 py-1 rounded border ${featureCategories[category].color}`}>
                                 {featureCategories[category].label}
-                              </Badge>
+                              </span>
                             </div>
                           </motion.div>
                         );
