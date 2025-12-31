@@ -14,36 +14,44 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <Link href="/">
-            <a className="flex items-center hover:opacity-80 transition-opacity" data-testid="link-home">
-              <img 
-                src="/via-logo.png" 
-                alt="VIA Global Health" 
-                className="h-10 sm:h-12 w-auto"
-              />
-            </a>
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity" data-testid="link-home">
+            <img 
+              src="/via-logo.png" 
+              alt="VIA Global Health" 
+              className="h-10 sm:h-12 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8" data-testid="nav-desktop">
-            <Link href="/">
-              <a className={`transition-colors ${isActive("/") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} data-testid="link-home-nav">
-                Home
-              </a>
+            <Link 
+              href="/" 
+              className={`transition-colors ${isActive("/") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
+              data-testid="link-home-nav"
+            >
+              Home
             </Link>
-            <Link href="/catalog">
-              <a className={`transition-colors ${isActive("/catalog") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} data-testid="link-catalog">
-                Catalog
-              </a>
+            <Link 
+              href="/catalog" 
+              className={`transition-colors ${isActive("/catalog") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
+              data-testid="link-catalog"
+            >
+              Catalog
             </Link>
-            <Link href="/about">
-              <a className={`transition-colors ${isActive("/about") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} data-testid="link-about-nav">
-                About
-              </a>
+            <Link 
+              href="/about" 
+              className={`transition-colors ${isActive("/about") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
+              data-testid="link-about-nav"
+            >
+              About
             </Link>
-            <a href="#contact" className="text-slate-600 hover:text-slate-900 transition-colors" data-testid="link-contact">
-              Contact
-            </a>
+            <Link 
+              href="/track-quote" 
+              className={`transition-colors ${isActive("/track-quote") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
+              data-testid="link-track-quote"
+            >
+              Track Quote
+            </Link>
           </nav>
 
           {/* Desktop CTA Button */}
@@ -72,36 +80,38 @@ export function Header() {
         {mobileMenuOpen && (
           <nav className="md:hidden pb-4 border-t" data-testid="nav-mobile">
             <div className="space-y-3 pt-4">
-              <Link href="/">
-                <a
-                  className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                  data-testid="link-mobile-home"
-                >
-                  Home
-                </a>
+              <Link 
+                href="/" 
+                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="link-mobile-home"
+              >
+                Home
               </Link>
-              <Link href="/catalog">
-                <a
-                  className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                  data-testid="link-mobile-catalog"
-                >
-                  Catalog
-                </a>
+              <Link 
+                href="/catalog" 
+                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="link-mobile-catalog"
+              >
+                Catalog
               </Link>
-              <Link href="/about">
-                <a
-                  className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                  data-testid="link-mobile-about"
-                >
-                  About
-                </a>
+              <Link 
+                href="/about" 
+                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="link-mobile-about"
+              >
+                About
               </Link>
-              <a href="#contact" className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors" data-testid="link-mobile-contact">
-                Contact
-              </a>
+              <Link 
+                href="/track-quote" 
+                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="link-mobile-track-quote"
+              >
+                Track Quote
+              </Link>
               <Link href="/catalog">
                 <Button className="w-full" onClick={() => setMobileMenuOpen(false)} data-testid="button-mobile-catalog">
                   Browse Catalog

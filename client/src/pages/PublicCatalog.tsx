@@ -4,16 +4,18 @@ import { Product } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { Search } from "lucide-react";
+import { Search, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailSheet } from "@/components/ProductDetailSheet";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
+import { SmartQuoteFlow } from "@/components/SmartQuoteFlow";
 
 export default function PublicCatalog() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [showQuoteFlow, setShowQuoteFlow] = useState(false);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products"],
@@ -64,8 +66,20 @@ export default function PublicCatalog() {
                 </li>
               </ol>
             </nav>
-            <h1 className="text-3xl font-bold text-primary mb-2">Medical Products Catalog</h1>
-            <p className="text-muted-foreground">Quality Medical Equipment & Supplies</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-primary mb-2">Medical Products Catalog</h1>
+                <p className="text-muted-foreground">Quality Medical Equipment & Supplies</p>
+              </div>
+              <Button 
+                size="lg" 
+                onClick={() => setShowQuoteFlow(true)}
+                data-testid="button-request-quote"
+              >
+                <MessageSquare className="h-5 w-5 mr-2" />
+                Request Quote
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -124,6 +138,12 @@ export default function PublicCatalog() {
           product={selectedProduct}
           isOpen={!!selectedProduct}
           onClose={() => setSelectedProduct(null)}
+        />
+
+        {/* Smart Quote Flow */}
+        <SmartQuoteFlow
+          isOpen={showQuoteFlow}
+          onClose={() => setShowQuoteFlow(false)}
         />
       </main>
 

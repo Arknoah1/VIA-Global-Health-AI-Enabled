@@ -2,33 +2,32 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ArrowRight, Building2, Heart, HandshakeIcon, Globe, Zap, Users, Award } from "lucide-react";
+import { 
+  ArrowRight, Building2, Heart, HandshakeIcon, Globe, Zap, Users, Award, 
+  ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package,
+  MessageSquare
+} from "lucide-react";
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"distributors" | "providers" | "ngos">("distributors");
 
   const audienceData = {
     distributors: {
-      title: "Local Distributors",
+      title: "Distributors",
       icon: Building2,
       color: "bg-blue-50 border-blue-200",
       textColor: "text-blue-700",
       description: "Scale your distribution business with quality medical products",
+      pricing: "Volume-based pricing with distributor margins",
       features: [
         "Competitive wholesale pricing and bulk discounts",
-        "Marketing support and training programs",
-        "Reliable supply chain and fast delivery",
+        "Fast quote turnaround - typically within 24 hours",
+        "Reliable supply chain and flexible shipping options",
+        "Dedicated account support"
       ],
-      products: [
-        "Medical Devices & Equipment",
-        "Consumables & Disposables",
-        "Infection Prevention Supplies",
-        "Diagnostic Equipment"
-      ],
-      cta: "View Wholesale Catalog"
+      cta: "Get Distributor Quote"
     },
     providers: {
       title: "Healthcare Providers",
@@ -36,18 +35,14 @@ export default function HomePage() {
       color: "bg-green-50 border-green-200",
       textColor: "text-green-700",
       description: "Equip your facility with trusted medical solutions",
+      pricing: "Competitive pricing for healthcare facilities",
       features: [
         "Wide range of regulatory approved medical devices",
-        "Technical support and warranty services",
-        "Flexible payment terms and financing options"
+        "Technical support and product training",
+        "Flexible payment terms available",
+        "Direct manufacturer relationships"
       ],
-      products: [
-        "Maternal & Child Health Equipment",
-        "Respiratory & Intensive Care",
-        "Diagnostic & Laboratory Equipment",
-        "Training & Education Resources"
-      ],
-      cta: "Explore Medical Catalog"
+      cta: "Request Facility Quote"
     },
     ngos: {
       title: "NGOs & Faith-based Organizations",
@@ -55,22 +50,65 @@ export default function HomePage() {
       color: "bg-purple-50 border-purple-200",
       textColor: "text-purple-700",
       description: "Access affordable healthcare solutions for underserved communities",
+      pricing: "Special NGO pricing - manufacturer direct equivalent",
       features: [
-        "Special NGO pricing",
+        "Special NGO pricing programs",
         "Humanitarian project support",
         "Free training and technical workshops",
-        "Impact reporting and documentation support",
-        "Dedicated account management"
+        "Impact documentation support"
       ],
-      products: [
-        "Community Health Supplies",
-        "Emergency Response Kits",
-        "Capacity Building Equipment",
-        "Basic Medical Supplies"
-      ],
-      cta: "NGO Partnership Program"
+      cta: "NGO Partnership Quote"
     }
   };
+
+  const heroProducts = [
+    {
+      name: "NASG (Non-pneumatic Anti-Shock Garment)",
+      description: "Life-saving device for treating obstetric hemorrhage and hypovolemic shock",
+      category: "Maternal Health",
+      image: "https://viaglobalhealth.com/wp-content/uploads/2021/06/NASG-scaled.jpg"
+    },
+    {
+      name: "Thermocoagulator",
+      description: "Portable device for cervical cancer treatment using thermal ablation",
+      category: "Oncology",
+      image: "https://viaglobalhealth.com/wp-content/uploads/2021/06/thermocoagulator.jpg"
+    },
+    {
+      name: "MTTS Beluga CPAP",
+      description: "Affordable CPAP system designed for low-resource settings",
+      category: "Neonatal Care",
+      image: "https://viaglobalhealth.com/wp-content/uploads/2023/03/Beluga-CPAP.jpg"
+    }
+  ];
+
+  const testimonials = [
+    {
+      quote: "VIA Global Health has been instrumental in helping us equip clinics across East Africa. Their understanding of our needs and fast response times make them a trusted partner.",
+      author: "Dr. Sarah Okonkwo",
+      role: "Regional Director",
+      org: "Healthcare NGO, Kenya"
+    },
+    {
+      quote: "The speed and professionalism of VIA's team is unmatched. They understand the urgency of medical supply needs in developing markets.",
+      author: "James Mwangi",
+      role: "Procurement Manager",
+      org: "Medical Distributor, Tanzania"
+    },
+    {
+      quote: "Working with VIA has simplified our procurement process. Their product expertise and competitive pricing have made a real difference.",
+      author: "Dr. Amara Diallo",
+      role: "Health Program Director",
+      org: "Faith-based Organization, Senegal"
+    }
+  ];
+
+  const stats = [
+    { value: "15+", label: "Years Experience", icon: Clock },
+    { value: "40+", label: "Countries Served", icon: Globe },
+    { value: "500+", label: "Healthcare Partners", icon: Users },
+    { value: "24hr", label: "Quote Response", icon: Zap }
+  ];
 
   const current = audienceData[activeTab];
   const CurrentIcon = current.icon;
@@ -79,159 +117,91 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
       <Header />
 
-      {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 md:py-24">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Quality Medical Solutions for Global Health
-          </h2>
-          <p className="text-xl text-slate-600 mb-8">
-            VIA Global Health provides trusted medical devices and supplies to distributors, healthcare providers, and humanitarian organizations across the globe.
+      {/* Hero Section - Mission Focused */}
+      <section className="container mx-auto px-4 py-16 md:py-20">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <ShieldCheck className="h-4 w-4" />
+            Trusted Medical Equipment Partner for Africa
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+            Quality Medical Equipment.<br />
+            <span className="text-primary">Delivered with Trust.</span>
+          </h1>
+          <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+            We partner with distributors, healthcare providers, and NGOs across Africa to deliver life-saving medical equipment with fast quotes and reliable service.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
-              <Button size="lg" className="w-full sm:w-auto">
-                View All Products
-                <ArrowRight className="ml-2 h-4 w-4" />
+              <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-view-products">
+                View Products
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              Contact Sales
-            </Button>
+            <Link href="/catalog">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-get-quote">
+                <MessageSquare className="mr-2 h-5 w-5" />
+                Get a Quote
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Audience Selection */}
-      <section className="container mx-auto px-4 pt-0 pb-12">
-        <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold text-slate-900 mb-2">How can we help you?</h3>
-          <p className="text-slate-600">Choose your role to see tailored solutions</p>
-        </div>
-
-        {/* Audience Tabs */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          {(Object.entries(audienceData) as Array<[keyof typeof audienceData, typeof audienceData.distributors]>).map(([key, data]) => {
-            const Icon = data.icon;
-            const isActive = activeTab === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`p-6 rounded-lg border-2 transition-all text-left ${
-                  isActive
-                    ? data.color + " border-current"
-                    : "border-slate-200 hover:border-slate-300 bg-white"
-                }`}
-              >
-                <Icon className={`h-8 w-8 mb-3 ${isActive ? data.textColor : "text-slate-400"}`} />
-                <h4 className="text-lg font-semibold text-slate-900">{data.title}</h4>
-                <p className="text-sm text-slate-600 mt-2">{data.description}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active Audience Details */}
-        <div className={`rounded-xl ${current.color} border-2 p-8 md:p-12`}>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <CurrentIcon className={`h-8 w-8 ${current.textColor}`} />
-                <h3 className="text-2xl font-bold text-slate-900">{current.title}</h3>
-              </div>
-              <p className="text-slate-700 mb-6">{current.description}</p>
-
-              <h4 className="text-lg font-semibold text-slate-900 mb-4">Why Choose VIA?</h4>
-              <ul className="space-y-3 mb-8">
-                {current.features.map((feature, idx) => (
-                  <li key={idx} className="flex gap-3 text-slate-700">
-                    <Zap className={`h-5 w-5 ${current.textColor} flex-shrink-0 mt-0.5`} />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Link href="/catalog">
-                <Button size="lg" className="w-full sm:w-auto">
-                  {current.cta}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-semibold text-slate-900 mb-4">Popular Categories</h4>
-              <div className="grid gap-3">
-                {current.products.map((product, idx) => (
-                  <Link href={`/catalog?category=${encodeURIComponent(product)}`} key={idx}>
-                    <button className="w-full text-left p-4 bg-white rounded-lg hover:bg-slate-100 transition-colors border border-slate-200">
-                      <div className="font-medium text-slate-900">{product}</div>
-                      <div className="text-sm text-slate-600">View products →</div>
-                    </button>
-                  </Link>
-                ))}
-              </div>
-            </div>
+      {/* Trust Stats Bar */}
+      <section className="bg-slate-900 text-white py-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {stats.map((stat, idx) => {
+              const Icon = stat.icon;
+              return (
+                <div key={idx} className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Icon className="h-5 w-5 text-primary" />
+                    <span className="text-3xl md:text-4xl font-bold">{stat.value}</span>
+                  </div>
+                  <p className="text-slate-400 text-sm">{stat.label}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Trust Indicators */}
+      {/* Hero Products Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold text-slate-900 mb-2">Why Trust VIA Global Health?</h3>
-          <p className="text-slate-600">Industry-leading standards and commitment to global health</p>
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">Featured Products</h2>
+          <p className="text-slate-600 max-w-2xl mx-auto">
+            Our most requested medical equipment, trusted by healthcare organizations across Africa
+          </p>
         </div>
-
-        <div className="grid md:grid-cols-4 gap-6">
-          {[
-            { icon: Award, label: "Regulatory Approved", desc: "All products meet international standards" },
-            { icon: Users, label: "Expert Support", desc: "24/7 technical and sales support" },
-            { icon: Globe, label: "Global Reach", desc: "Serving 90+ countries across the globe" },
-            { icon: Zap, label: "Reliable Delivery", desc: "Efficient shipping and logistics" }
-          ].map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <div key={idx} className="text-center p-6 rounded-lg bg-slate-50 border border-slate-200">
-                <Icon className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-                <h4 className="font-semibold text-slate-900 mb-2">{item.label}</h4>
-                <p className="text-sm text-slate-600">{item.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Featured Categories */}
-      <section className="container mx-auto px-4 py-16">
-        <h3 className="text-3xl font-bold text-slate-900 mb-8 text-center">Featured Categories</h3>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            {
-              name: "Pharmaceuticals",
-              description: "Quality medications and vaccines for all treatment needs",
-              count: "500+ products"
-            },
-            {
-              name: "Medical Equipment",
-              description: "Advanced diagnostic and monitoring devices",
-              count: "200+ products"
-            },
-            {
-              name: "Infection Prevention",
-              description: "PPE and safety supplies for health workers",
-              count: "150+ products"
-            }
-          ].map((cat, idx) => (
-            <Link key={idx} href={`/catalog?category=${encodeURIComponent(cat.name)}`}>
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+        <div className="grid md:grid-cols-3 gap-8">
+          {heroProducts.map((product, idx) => (
+            <Link key={idx} href="/catalog">
+              <Card className="h-full overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 hover:border-primary/30" data-testid={`card-hero-product-${idx}`}>
+                <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
                 <CardHeader>
-                  <CardTitle className="text-lg">{cat.name}</CardTitle>
-                  <CardDescription>{cat.description}</CardDescription>
+                  <div className="text-xs text-primary font-semibold uppercase tracking-wide mb-1">
+                    {product.category}
+                  </div>
+                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                    {product.name}
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    {product.description}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Badge variant="secondary">{cat.count}</Badge>
+                  <div className="flex items-center text-primary text-sm font-medium">
+                    Request Quote <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </CardContent>
               </Card>
             </Link>
@@ -239,23 +209,174 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Customer Segmentation */}
+      <section className="bg-slate-50 py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">How Can We Help You?</h2>
+            <p className="text-slate-600">Select your organization type to see tailored solutions</p>
+          </div>
+
+          {/* Audience Tabs */}
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            {(Object.entries(audienceData) as Array<[keyof typeof audienceData, typeof audienceData.distributors]>).map(([key, data]) => {
+              const Icon = data.icon;
+              const isActive = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`p-6 rounded-xl border-2 transition-all text-left ${
+                    isActive
+                      ? data.color + " border-current shadow-lg"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                  data-testid={`button-audience-${key}`}
+                >
+                  <Icon className={`h-8 w-8 mb-3 ${isActive ? data.textColor : "text-slate-400"}`} />
+                  <h4 className="text-lg font-semibold text-slate-900">{data.title}</h4>
+                  <p className="text-sm text-slate-600 mt-2">{data.description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Audience Details */}
+          <Card className={`${current.color} border-2`}>
+            <CardContent className="p-8 md:p-10">
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <CurrentIcon className={`h-8 w-8 ${current.textColor}`} />
+                    <h3 className="text-2xl font-bold text-slate-900">{current.title}</h3>
+                  </div>
+                  
+                  <div className="bg-white/70 rounded-lg p-4 mb-6 border">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      {current.pricing}
+                    </div>
+                  </div>
+
+                  <h4 className="text-lg font-semibold text-slate-900 mb-4">What We Offer</h4>
+                  <ul className="space-y-3 mb-8">
+                    {current.features.map((feature, idx) => (
+                      <li key={idx} className="flex gap-3 text-slate-700">
+                        <CheckCircle2 className={`h-5 w-5 ${current.textColor} flex-shrink-0 mt-0.5`} />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link href="/catalog">
+                    <Button size="lg" className="w-full sm:w-auto" data-testid={`button-cta-${activeTab}`}>
+                      {current.cta}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="bg-white/50 rounded-xl p-6 border">
+                  <h4 className="text-lg font-semibold text-slate-900 mb-4">Quick Quote Process</h4>
+                  <div className="space-y-4">
+                    {[
+                      { step: "1", title: "Select Products", desc: "Browse our catalog and choose what you need" },
+                      { step: "2", title: "Share Requirements", desc: "Tell us quantity, destination, and timeline" },
+                      { step: "3", title: "Get Custom Quote", desc: "Receive personalized pricing within 24 hours" },
+                      { step: "4", title: "Confirm & Ship", desc: "Finalize order and choose shipping method" }
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex gap-4">
+                        <div className={`h-8 w-8 rounded-full ${current.color} ${current.textColor} flex items-center justify-center font-bold text-sm flex-shrink-0`}>
+                          {item.step}
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-slate-900">{item.title}</h5>
+                          <p className="text-sm text-slate-600">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">Trusted by Healthcare Leaders</h2>
+          <p className="text-slate-600">See what our partners say about working with VIA Global Health</p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-8">
+          {testimonials.map((testimonial, idx) => (
+            <Card key={idx} className="h-full" data-testid={`card-testimonial-${idx}`}>
+              <CardContent className="p-6">
+                <Quote className="h-8 w-8 text-primary/30 mb-4" />
+                <p className="text-slate-700 mb-6 italic">"{testimonial.quote}"</p>
+                <div className="border-t pt-4">
+                  <p className="font-semibold text-slate-900">{testimonial.author}</p>
+                  <p className="text-sm text-slate-600">{testimonial.role}</p>
+                  <p className="text-sm text-primary">{testimonial.org}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Why Trust VIA */}
+      <section className="bg-slate-50 py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">Why Choose VIA Global Health?</h2>
+            <p className="text-slate-600">Built on relationships, delivered with trust</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: ShieldCheck, title: "Trusted Relationships", desc: "15+ years building partnerships across Africa" },
+              { icon: Zap, title: "Fast Quotes", desc: "Personalized quotes within 24 hours" },
+              { icon: Award, title: "Quality Assured", desc: "All products meet international standards" },
+              { icon: MapPin, title: "Africa Expertise", desc: "Deep understanding of regional needs" }
+            ].map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <Card key={idx} className="text-center">
+                  <CardContent className="p-6">
+                    <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <Icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <h4 className="font-semibold text-slate-900 mb-2">{item.title}</h4>
+                    <p className="text-sm text-slate-600">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="bg-blue-600 text-white py-16">
+      <section className="bg-primary text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h3 className="text-3xl font-bold mb-4">Ready to Get Started?</h3>
-          <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of healthcare professionals and organizations trusting VIA Global Health for their medical supply needs.
+          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+          <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+            Join hundreds of healthcare organizations across Africa who trust VIA Global Health for their medical equipment needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
-              <Button size="lg" variant="secondary">
+              <Button size="lg" variant="secondary" className="text-lg px-8" data-testid="button-browse-catalog">
                 Browse Catalog
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="bg-blue-700 text-white border-blue-500 hover:bg-blue-800">
-              Request Quote
-            </Button>
+            <Link href="/about">
+              <Button size="lg" variant="outline" className="bg-transparent text-white border-white hover:bg-white/10 text-lg px-8" data-testid="button-learn-more">
+                Learn About Us
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

@@ -37,6 +37,7 @@ export const quoteRequests = pgTable("quote_requests", {
   productSku: text("product_sku"),
   firstName: text("first_name"),
   lastName: text("last_name"),
+  email: text("email"),
   organizationName: text("organization_name"),
   organizationType: text("organization_type"),
   orderQuantity: text("order_quantity"),

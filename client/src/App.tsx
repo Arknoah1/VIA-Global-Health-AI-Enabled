@@ -12,6 +12,7 @@ const PublicCatalog = lazy(() => import("@/pages/PublicCatalog"));
 const AboutPage = lazy(() => import("@/pages/AboutPage"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const QuoteRequestsPage = lazy(() => import("@/pages/QuoteRequestsPage"));
+const QuoteTrackingPage = lazy(() => import("@/pages/QuoteTrackingPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 // Loading fallback component
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/" component={HomePage} />
         <Route path="/catalog" component={PublicCatalog} />
         <Route path="/about" component={AboutPage} />
+        <Route path="/track-quote" component={QuoteTrackingPage} />
         <Route path="/admin" component={Dashboard} />
         <Route path="/admin/quote-requests" component={QuoteRequestsPage} />
         {/* Fallback to 404 */}

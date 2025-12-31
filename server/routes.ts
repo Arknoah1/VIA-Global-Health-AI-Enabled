@@ -196,6 +196,20 @@ export async function registerRoutes(
     }
   });
 
+  // Get single quote request by ID (for tracking)
+  app.get("/api/quote-requests/:id", async (req, res) => {
+    try {
+      const quoteRequest = await storage.getQuoteRequestById(req.params.id);
+      if (!quoteRequest) {
+        return res.status(404).json({ error: "Quote request not found" });
+      }
+      res.json(quoteRequest);
+    } catch (error) {
+      console.error("Error fetching quote request:", error);
+      res.status(500).json({ error: "Failed to fetch quote request" });
+    }
+  });
+
   // Start a new AI-powered quote request session
   app.post("/api/quote-requests/start", async (req, res) => {
     try {
