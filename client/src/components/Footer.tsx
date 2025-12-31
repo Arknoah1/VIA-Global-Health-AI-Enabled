@@ -36,9 +36,7 @@ export function Footer() {
             <h4 className="font-semibold text-white mb-4">For Distributors</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/catalog">
-                  <a className="hover:text-white transition" data-testid="link-footer-wholesale">Wholesale Pricing</a>
-                </Link>
+                <Link href="/catalog" className="hover:text-white transition" data-testid="link-footer-wholesale">Wholesale Pricing</Link>
               </li>
               <li>
                 <a href="#" className="hover:text-white transition" data-testid="link-footer-territory">Territory Partners</a>
@@ -57,9 +55,7 @@ export function Footer() {
             <h4 className="font-semibold text-white mb-4">For Healthcare</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/catalog">
-                  <a className="hover:text-white transition" data-testid="link-footer-medical">Medical Products</a>
-                </Link>
+                <Link href="/catalog" className="hover:text-white transition" data-testid="link-footer-medical">Medical Products</Link>
               </li>
               <li>
                 <a href="#" className="hover:text-white transition" data-testid="link-footer-technical">Technical Support</a>
