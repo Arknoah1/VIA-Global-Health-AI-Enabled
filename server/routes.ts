@@ -331,6 +331,18 @@ export async function registerRoutes(
       if (flags.organizationType) {
         updates.organizationType = flags.organizationType;
       }
+      if (flags.email) {
+        updates.email = flags.email;
+      }
+      if (flags.shippingCountry) {
+        updates.shippingCountry = flags.shippingCountry;
+      }
+      if (flags.orderQuantity) {
+        updates.orderQuantity = flags.orderQuantity;
+      }
+      if (flags.decisionTimeline) {
+        updates.decisionTimeline = flags.decisionTimeline;
+      }
       if (flags.referToAgent) {
         updates.referredToAgent = true;
         updates.referralReason = flags.referralReason;
@@ -420,6 +432,12 @@ PRODUCT CONTEXT:`;
 function parseAIResponseFlags(aiResponse: string, userMessage: string, existingSpecialPricing: boolean): {
   specialPricingEligible: boolean;
   organizationType?: string;
+  email?: string;
+  shippingCountry?: string;
+  orderQuantity?: string;
+  decisionTimeline?: string;
+  organizationName?: string;
+  contactName?: string;
   referToAgent: boolean;
   referralReason?: string;
   showRecommendations: boolean;
@@ -432,12 +450,48 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   let specialPricingEligible = existingSpecialPricing;
   let detectedOrgType: string | undefined;
   
-  for (const orgType of specialOrgTypes) {
+  // Also detect regular org types
+  const allOrgTypes = ["distributor", "hospital", "clinic", "healthcare provider", "academic", "research", "university", ...specialOrgTypes];
+  
+  for (const orgType of allOrgTypes) {
     if (lowerMessage.includes(orgType) || lowerResponse.includes(orgType)) {
-      specialPricingEligible = true;
       detectedOrgType = orgType;
+      if (specialOrgTypes.includes(orgType)) {
+        specialPricingEligible = true;
+      }
       break;
     }
+  }
+
+  // Extract email from user message
+  const emailMatch = userMessage.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const email = emailMatch ? emailMatch[0] : undefined;
+
+  // Extract quantity from user message (look for numbers with units)
+  let orderQuantity: string | undefined;
+  const quantityMatch = userMessage.match(/(\d+[\s-]*(units?|pieces?|pcs?|sets?)?|\d+[\s-]*to[\s-]*\d+)/i);
+  if (quantityMatch) {
+    orderQuantity = quantityMatch[0];
+  }
+
+  // Extract country names (common African countries served)
+  const countries = ["kenya", "nigeria", "tanzania", "uganda", "ethiopia", "ghana", "south africa", "rwanda", "zambia", "malawi", "mozambique", "zimbabwe", "botswana", "namibia", "senegal", "cameroon", "ivory coast", "cote d'ivoire", "drc", "congo"];
+  let shippingCountry: string | undefined;
+  for (const country of countries) {
+    if (lowerMessage.includes(country)) {
+      shippingCountry = country.charAt(0).toUpperCase() + country.slice(1);
+      break;
+    }
+  }
+
+  // Extract timeline indicators
+  let decisionTimeline: string | undefined;
+  if (lowerMessage.includes("urgent") || lowerMessage.includes("asap") || lowerMessage.includes("immediately") || lowerMessage.includes("1-2 week")) {
+    decisionTimeline = "urgent";
+  } else if (lowerMessage.includes("month") || lowerMessage.includes("4-6 week") || lowerMessage.includes("standard")) {
+    decisionTimeline = "standard";
+  } else if (lowerMessage.includes("flexible") || lowerMessage.includes("no rush") || lowerMessage.includes("6+ week")) {
+    decisionTimeline = "flexible";
   }
 
   // Detect referral to agent - only when conversation is truly complete
@@ -474,6 +528,10 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   return {
     specialPricingEligible,
     organizationType: detectedOrgType,
+    email,
+    shippingCountry,
+    orderQuantity,
+    decisionTimeline,
     referToAgent,
     referralReason,
     showRecommendations
