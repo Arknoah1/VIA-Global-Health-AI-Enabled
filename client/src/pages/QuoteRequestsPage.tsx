@@ -27,15 +27,18 @@ interface QuoteRequest {
   id: string;
   firstName: string;
   lastName: string;
+  email: string;
   organizationName: string;
   organizationType: string;
   orderQuantity: string;
   shippingCountry: string;
   importAssistance: string;
   initialIntent: string;
+  decisionTimeline: string;
   productName: string;
   productSku: string;
   conversation: ChatMessage[];
+  status: string;
   createdAt: string;
 }
 
@@ -153,22 +156,30 @@ export default function QuoteRequestsPage() {
                   {expandedId === request.id && (
                     <div className="border-t px-4 py-4 space-y-4 bg-muted/30">
                       {/* Summary Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Email</div>
+                          <a href={`mailto:${request.email}`} className="text-sm text-primary hover:underline">{request.email || 'N/A'}</a>
+                        </div>
                         <div>
                           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Organization Type</div>
-                          <Badge variant="secondary">{request.organizationType}</Badge>
+                          <Badge variant="secondary">{request.organizationType || 'N/A'}</Badge>
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Status</div>
+                          <Badge variant={request.status === 'active' ? 'default' : 'outline'}>{request.status || 'active'}</Badge>
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Shipping Country</div>
-                          <p className="text-sm font-medium">{request.shippingCountry}</p>
+                          <p className="text-sm font-medium">{request.shippingCountry || 'N/A'}</p>
                         </div>
                         <div>
-                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Import Assistance</div>
-                          <p className="text-sm">{request.importAssistance}</p>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Timeline</div>
+                          <p className="text-sm">{request.decisionTimeline || 'N/A'}</p>
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Product SKU</div>
-                          <p className="text-sm font-mono text-muted-foreground">{request.productSku}</p>
+                          <p className="text-sm font-mono text-muted-foreground">{request.productSku || 'N/A'}</p>
                         </div>
                       </div>
 
