@@ -143,7 +143,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       setInitError('Unable to start chat. Please try again.');
       setMessages([{ 
         role: 'assistant', 
-        content: `Thank you for your interest in ${product.name}! I'm here to help you get a custom quote. What brings you here today?`
+        content: `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${product.name}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`
       }]);
     } finally {
       setIsLoading(false);
@@ -632,15 +632,18 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         </div>
       </SheetContent>
 
-      {/* AI Quote Assistant Dialog */}
+      {/* AI Quote Assistant Dialog - Chat with Amara */}
       <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialog()}>
         <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
           <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
             <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <MessageSquare className="h-4 w-4 text-primary" />
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                A
               </div>
-              Request Quote - {product?.name}
+              <div className="flex flex-col">
+                <span>Chat with Amara</span>
+                <span className="text-xs font-normal text-muted-foreground">VIA Global Health</span>
+              </div>
             </DialogTitle>
           </DialogHeader>
 
@@ -725,7 +728,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 >
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm">
                     <Check className="h-4 w-4" />
-                    Our team will reach out within 24 hours
+                    Amara has your details - expect a quote within 24 hours
                   </div>
                 </motion.div>
               )}

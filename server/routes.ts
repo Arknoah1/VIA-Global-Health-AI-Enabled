@@ -239,8 +239,8 @@ export async function registerRoutes(
         status: "active"
       });
 
-      // Initial greeting message
-      const greeting = `Thank you for your interest in ${productName}! I'm here to help you get a custom quote. What brings you here today?`;
+      // Initial greeting message from Amara
+      const greeting = `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${productName}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`;
       
       // Save initial assistant message
       await storage.createQuoteRequestMessage({
@@ -342,6 +342,15 @@ export async function registerRoutes(
       if (flags.organizationType) {
         updates.organizationType = flags.organizationType;
       }
+      if (flags.organizationName) {
+        updates.organizationName = flags.organizationName;
+      }
+      if (flags.firstName) {
+        updates.firstName = flags.firstName;
+      }
+      if (flags.lastName) {
+        updates.lastName = flags.lastName;
+      }
       if (flags.email) {
         updates.email = flags.email;
       }
@@ -353,6 +362,12 @@ export async function registerRoutes(
       }
       if (flags.decisionTimeline) {
         updates.decisionTimeline = flags.decisionTimeline;
+      }
+      if (flags.shippingPreference) {
+        updates.shippingPreference = flags.shippingPreference;
+      }
+      if (flags.importAssistance) {
+        updates.importAssistance = flags.importAssistance;
       }
       if (flags.referToAgent) {
         updates.referredToAgent = true;
@@ -386,27 +401,64 @@ function buildSystemPrompt(
   productDetails: { name?: string; description?: string; specifications?: Record<string, string>; faqs?: { question: string; answer: string }[] } | undefined,
   similarProducts: { id: string; name: string; sku: string }[]
 ): string {
-  let prompt = `You are a helpful quote assistant for VIA Global Health, a medical equipment and pharmaceutical supplier serving healthcare providers across Africa. Your goal is to gather information needed to provide a custom quote while being friendly and conversational.
+  let prompt = `You are Amara Njeri, a Sales Representative at VIA Global Health based in Nairobi, Kenya. You are the first point of contact for customers and represent VIA as a trusted partner in global health solutions.
+
+YOUR IDENTITY:
+- Name: Amara Njeri
+- Role: Sales Representative, VIA Global Health
+- Location: Nairobi, Kenya
+- Communication style: Professional, warm, relationship-focused, and hospitable
+- Language: Use British English spelling (e.g., organisation, colour, programme, centre)
+
+YOUR PERSONALITY:
+- Welcoming and patient - take time to understand the customer's needs
+- Knowledgeable about global health contexts and import/logistics challenges
+- Transparent and honest - never play games with pricing or hide costs
+- Responsive - one of VIA's key differentiators is that we actually respond to enquiries
+- Build rapport before diving into transactions
+
+ABOUT VIA GLOBAL HEALTH:
+- Operating since 2015 (over 10 years of experience)
+- Trusted partners include Gates Foundation, USAID, and major global health organisations
+- Thousands of products delivered to customers worldwide
+- Presence in multiple countries across Africa and beyond
+
+VIA'S VALUE PROPOSITION:
+1. Competitive Pricing: For NGOs and public sector buyers, pricing is the same as manufacturer direct. For private sector buyers, our margins are still lower than competitors.
+2. Reliability & Responsiveness: Unlike many suppliers, VIA responds promptly and reliably. We understand how frustrating it is when suppliers don't respond.
+3. Transparency & Trust: We clearly communicate all costs upfront - no hidden fees or games. We deliver products reliably and securely.
+
+TWO CUSTOMER TYPES TO RECOGNISE:
+1. BUYERS (distributors, private practice clinicians, NGOs): They want feature information and pricing to make purchase decisions. They found us through search and are interested in a specific device.
+2. WINDOW SHOPPERS (procurement agents, clinicians, academics): They're researching and comparing options. Help them with detailed information and comparisons, even if they may not buy immediately.
+
+Tailor your approach based on which type they are.
+
+COMMON OBJECTIONS TO ADDRESS PROACTIVELY:
+1. Pricing concerns (product and shipping costs) - Emphasise our competitive pricing and transparency
+2. Product fit ("Is this right for my context?") - Ask questions to understand their needs and provide guidance
+3. Timing/budget constraints ("Can I wait for better options?") - Acknowledge their timeline and emphasise VIA's flexibility
+
+INFORMATION TO GATHER:
+1. What brings them here today (buying or researching?)
+2. What type of buyer they are (Distributor, NGO, Private practice clinician, Government/public sector, Academic/researcher)
+3. Their name and contact information (email)
+4. Organisation name
+5. Order quantity needed
+6. Shipping destination (country and city if possible)
+7. Can they handle importing, or do they need import assistance?
+8. Timeline - when do they need the product?
+9. Shipping preference (air freight or sea freight)
 
 IMPORTANT GUIDELINES:
 1. Keep responses concise (2-3 sentences max)
 2. Ask ONE question at a time
-3. Never provide clinical or medical advice - if asked, politely say you'll connect them with a specialist
-4. Be warm and professional
-
-INFORMATION TO GATHER (in this order):
-1. What brings them here today / their intent
-2. Their name (first and last)
-3. Organization name
-4. Order quantity needed
-5. Organization type (ask: "What type of organization is [org name]? For example: Distributor, Government agency, NGO, Faith-based organization, Public hospital/clinic, or Private practice")
-6. Shipping country
-7. Budget range (optional - only if conversation flows naturally)
-8. Decision timeline (optional)
-9. Import assistance needs
+3. Never provide clinical or medical advice - if asked, say you'll connect them with a specialist
+4. Weave in trust signals naturally (years in business, partnerships, global reach)
+5. Be warm and personable - customers should feel they're talking to a real person who cares
 
 SPECIAL PRICING NOTICE:
-When the user mentions they are from a Government agency, NGO, Faith-based organization, or Public hospital/clinic, acknowledge that they may qualify for special pricing and we will include this in their quote.
+When the user mentions they are from an NGO, Faith-based organisation, Government agency, or Public hospital/clinic, warmly acknowledge that they may qualify for special pricing and assure them you'll include this in their quote.
 
 PRODUCT CONTEXT:`;
 
@@ -434,8 +486,9 @@ PRODUCT CONTEXT:`;
   }
 
   prompt += `\n\nREFERRAL RULES:
-- If the user asks clinical/medical questions you cannot answer from the product page, say: "That's a great question that our medical specialist can better address. I'll make sure they reach out to you."
-- If the user seems ready for a detailed quote after gathering their info, say: "Thank you! I have everything I need. Our team will prepare a custom quote and reach out within 24 hours."`;
+- If the user asks clinical/medical questions you cannot answer from the product page, say: "That's a great question that our medical specialists can better address. I'll make sure one of our clinical team members reaches out to you directly."
+- If the user seems ready for a detailed quote after gathering their info, say: "Wonderful, thank you for sharing those details! I have everything I need to prepare your quote. Our team will have a custom quote ready for you within 24 hours. Is there anything else I can help you with in the meantime?"
+- For window shoppers who aren't ready to buy, say: "No problem at all - take your time to evaluate your options. I'd be happy to send you some additional information to help with your research. May I have your email address so I can share some resources?"`;
 
   return prompt;
 }
@@ -443,12 +496,15 @@ PRODUCT CONTEXT:`;
 function parseAIResponseFlags(aiResponse: string, userMessage: string, existingSpecialPricing: boolean): {
   specialPricingEligible: boolean;
   organizationType?: string;
+  organizationName?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
   shippingCountry?: string;
   orderQuantity?: string;
   decisionTimeline?: string;
-  organizationName?: string;
-  contactName?: string;
+  shippingPreference?: string;
+  importAssistance?: string;
   referToAgent: boolean;
   referralReason?: string;
   showRecommendations: boolean;
@@ -457,12 +513,12 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   const lowerResponse = aiResponse.toLowerCase();
   
   // Detect organization types that qualify for special pricing
-  const specialOrgTypes = ["government", "ngo", "faith-based", "faith based", "public hospital", "public clinic"];
+  const specialOrgTypes = ["government", "ngo", "faith-based", "faith based", "public hospital", "public clinic", "ministry", "public sector"];
   let specialPricingEligible = existingSpecialPricing;
   let detectedOrgType: string | undefined;
   
-  // Also detect regular org types
-  const allOrgTypes = ["distributor", "hospital", "clinic", "healthcare provider", "academic", "research", "university", ...specialOrgTypes];
+  // Detect all buyer types
+  const allOrgTypes = ["distributor", "private practice", "clinician", "hospital", "clinic", "healthcare provider", "academic", "research", "university", "procurement", ...specialOrgTypes];
   
   for (const orgType of allOrgTypes) {
     if (lowerMessage.includes(orgType) || lowerResponse.includes(orgType)) {
@@ -478,6 +534,49 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   const emailMatch = userMessage.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   const email = emailMatch ? emailMatch[0] : undefined;
 
+  // Extract contact name from user message
+  // Look for patterns like "I'm John Smith", "my name is John Smith", "this is John Smith"
+  // Case-insensitive and handles lowercase input
+  let firstName: string | undefined;
+  let lastName: string | undefined;
+  const namePatterns = [
+    /(?:i'm|i am|my name is|this is|it's|its|call me)\s+([a-zA-Z'-]+)(?:\s+([a-zA-Z'-]+))?/i,
+    /(?:name:?\s*)([a-zA-Z'-]+)(?:\s+([a-zA-Z'-]+))?/i,
+    /^([a-zA-Z'-]+)\s+([a-zA-Z'-]+)$/  // Just a two-word name as full message
+  ];
+  
+  for (const pattern of namePatterns) {
+    const match = userMessage.match(pattern);
+    if (match && match[1] && match[1].length >= 2) {
+      // Capitalise first letter of each name
+      firstName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+      if (match[2] && match[2].length >= 2) {
+        lastName = match[2].charAt(0).toUpperCase() + match[2].slice(1).toLowerCase();
+      }
+      break;
+    }
+  }
+
+  // Extract organisation name from user message
+  // Look for patterns like "I work for ABC Health", "from XYZ Hospital", "organisation is..."
+  // Case-insensitive and handles lowercase input
+  let organizationName: string | undefined;
+  const orgPatterns = [
+    /(?:work(?:ing)?\s+(?:for|at|with)|from|organisation(?:\s+is)?:?|organization(?:\s+is)?:?|company(?:\s+is)?:?)\s+([a-zA-Z0-9\s&.'-]+?)(?:\.|,|$)/i,
+    /(?:we are|i represent|i'm from|i am from)\s+([a-zA-Z0-9\s&.'-]+?)(?:\.|,|$)/i
+  ];
+  
+  for (const pattern of orgPatterns) {
+    const match = userMessage.match(pattern);
+    if (match && match[1] && match[1].trim().length > 2) {
+      // Title case the organisation name
+      organizationName = match[1].trim().split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      break;
+    }
+  }
+
   // Extract quantity from user message (look for numbers with units)
   let orderQuantity: string | undefined;
   const quantityMatch = userMessage.match(/(\d+[\s-]*(units?|pieces?|pcs?|sets?)?|\d+[\s-]*to[\s-]*\d+)/i);
@@ -485,31 +584,63 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     orderQuantity = quantityMatch[0];
   }
 
-  // Extract country names (common African countries served)
-  const countries = ["kenya", "nigeria", "tanzania", "uganda", "ethiopia", "ghana", "south africa", "rwanda", "zambia", "malawi", "mozambique", "zimbabwe", "botswana", "namibia", "senegal", "cameroon", "ivory coast", "cote d'ivoire", "drc", "congo"];
+  // Extract country names (expanded global list)
+  const countries = [
+    // Africa
+    "kenya", "nigeria", "tanzania", "uganda", "ethiopia", "ghana", "south africa", "rwanda", "zambia", 
+    "malawi", "mozambique", "zimbabwe", "botswana", "namibia", "senegal", "cameroon", "ivory coast", 
+    "cote d'ivoire", "drc", "congo", "egypt", "morocco", "algeria", "tunisia", "sudan", "angola",
+    "madagascar", "burkina faso", "mali", "niger", "chad", "sierra leone", "liberia", "togo", "benin",
+    // Asia
+    "india", "pakistan", "bangladesh", "nepal", "sri lanka", "myanmar", "thailand", "vietnam", 
+    "philippines", "indonesia", "malaysia", "cambodia", "laos",
+    // Middle East
+    "jordan", "lebanon", "iraq", "yemen", "afghanistan",
+    // Latin America
+    "haiti", "guatemala", "honduras", "nicaragua", "el salvador", "peru", "bolivia", "ecuador", "colombia"
+  ];
   let shippingCountry: string | undefined;
   for (const country of countries) {
     if (lowerMessage.includes(country)) {
-      shippingCountry = country.charAt(0).toUpperCase() + country.slice(1);
+      // Capitalise properly
+      shippingCountry = country.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
       break;
     }
   }
 
   // Extract timeline indicators
   let decisionTimeline: string | undefined;
-  if (lowerMessage.includes("urgent") || lowerMessage.includes("asap") || lowerMessage.includes("immediately") || lowerMessage.includes("1-2 week")) {
+  if (lowerMessage.includes("urgent") || lowerMessage.includes("asap") || lowerMessage.includes("immediately") || lowerMessage.includes("1-2 week") || lowerMessage.includes("right away")) {
     decisionTimeline = "urgent";
-  } else if (lowerMessage.includes("month") || lowerMessage.includes("4-6 week") || lowerMessage.includes("standard")) {
+  } else if (lowerMessage.includes("month") || lowerMessage.includes("4-6 week") || lowerMessage.includes("standard") || lowerMessage.includes("few weeks")) {
     decisionTimeline = "standard";
-  } else if (lowerMessage.includes("flexible") || lowerMessage.includes("no rush") || lowerMessage.includes("6+ week")) {
+  } else if (lowerMessage.includes("flexible") || lowerMessage.includes("no rush") || lowerMessage.includes("6+ week") || lowerMessage.includes("no hurry") || lowerMessage.includes("whenever")) {
     decisionTimeline = "flexible";
+  }
+
+  // Detect shipping preference (air vs sea)
+  let shippingPreference: string | undefined;
+  if (lowerMessage.includes("air freight") || lowerMessage.includes("air ship") || lowerMessage.includes("by air") || lowerMessage.includes("airfreight")) {
+    shippingPreference = "air";
+  } else if (lowerMessage.includes("sea freight") || lowerMessage.includes("sea ship") || lowerMessage.includes("by sea") || lowerMessage.includes("ocean") || lowerMessage.includes("seafreight")) {
+    shippingPreference = "sea";
+  }
+
+  // Detect import assistance needs
+  let importAssistance: string | undefined;
+  if (lowerMessage.includes("help with import") || lowerMessage.includes("need import") || lowerMessage.includes("import assistance") || lowerMessage.includes("can't import") || lowerMessage.includes("cannot import")) {
+    importAssistance = "needed";
+  } else if (lowerMessage.includes("handle import") || lowerMessage.includes("can import") || lowerMessage.includes("own import") || lowerMessage.includes("we import")) {
+    importAssistance = "not_needed";
   }
 
   // Detect referral to agent - only when conversation is truly complete
   const referralPhrases = [
-    "team will prepare a custom quote",
-    "reach out within 24 hours",
-    "i have everything i need"
+    "have everything i need",
+    "prepare your quote",
+    "custom quote ready",
+    "within 24 hours",
+    "team will prepare"
   ];
   
   let referToAgent = false;
@@ -517,7 +648,7 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   
   // Check if the AI is still asking questions - if so, don't end the conversation
   const isAskingQuestion = aiResponse.trim().endsWith("?") || 
-    /\?[^?]*$/.test(aiResponse.slice(-100)); // Check if there's a question mark in the last 100 chars
+    /\?[^?]*$/.test(aiResponse.slice(-100));
   
   // Only trigger referral if the AI is NOT asking follow-up questions
   if (!isAskingQuestion) {
@@ -534,15 +665,22 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   const showRecommendations = lowerMessage.includes("other") || 
     lowerMessage.includes("alternative") || 
     lowerMessage.includes("similar") ||
-    lowerMessage.includes("compare");
+    lowerMessage.includes("compare") ||
+    lowerMessage.includes("options") ||
+    lowerMessage.includes("different");
 
   return {
     specialPricingEligible,
     organizationType: detectedOrgType,
+    organizationName,
+    firstName,
+    lastName,
     email,
     shippingCountry,
     orderQuantity,
     decisionTimeline,
+    shippingPreference,
+    importAssistance,
     referToAgent,
     referralReason,
     showRecommendations

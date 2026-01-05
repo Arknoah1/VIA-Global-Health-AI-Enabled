@@ -42,6 +42,8 @@ export const quoteRequests = pgTable("quote_requests", {
   organizationType: text("organization_type"),
   orderQuantity: text("order_quantity"),
   shippingCountry: text("shipping_country"),
+  shippingCity: text("shipping_city"),
+  shippingPreference: text("shipping_preference"),
   importAssistance: text("import_assistance"),
   initialIntent: text("initial_intent"),
   budgetRange: text("budget_range"),
