@@ -334,9 +334,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
                         >
-                          <div className={`h-5 w-5 rounded-md flex items-center justify-center shrink-0 ${featureCategories[category].color}`}>
-                            <CategoryIcon className="h-3 w-3" />
-                          </div>
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                           <span className="text-foreground line-clamp-2">{feature}</span>
                         </motion.li>
                       );
@@ -436,9 +434,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                             className="flex items-start gap-3 p-4 rounded-xl border bg-card hover:shadow-md hover:border-primary/30 transition-all duration-200 group"
                             whileHover={{ x: 4 }}
                           >
-                            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${featureCategories[category].color} group-hover:scale-110 transition-transform`}>
-                              <CategoryIcon className="h-4 w-4" />
-                            </div>
+                            <div className="h-2 w-2 rounded-full bg-primary mt-2 shrink-0 group-hover:scale-125 transition-transform" />
                             <div className="flex-1">
                               <span className="text-sm text-foreground font-medium">{feature}</span>
                             </div>
