@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Product } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
@@ -12,8 +13,13 @@ import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 import { SmartQuoteFlow } from "@/components/SmartQuoteFlow";
 
 export default function PublicCatalog() {
+  const [location] = useLocation();
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialSearch = searchParams.get("search") || "";
+  const autoOpen = searchParams.get("autoOpen") === "true";
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showQuoteFlow, setShowQuoteFlow] = useState(false);
 
@@ -25,6 +31,17 @@ export default function PublicCatalog() {
       return response.json();
     },
   });
+
+  useEffect(() => {
+    if (autoOpen && !isLoading && products.length > 0 && initialSearch) {
+      const filtered = products.filter(p => 
+        p.name.toLowerCase().includes(initialSearch.toLowerCase())
+      );
+      if (filtered.length > 0) {
+        setSelectedProduct(filtered[0]);
+      }
+    }
+  }, [isLoading, products, initialSearch, autoOpen]);
 
   const categories = ["all", ...Array.from(new Set(products.map(p => p.category)))];
 

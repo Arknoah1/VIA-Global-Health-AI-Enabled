@@ -181,7 +181,7 @@ export default function HomePage() {
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {heroProducts.map((product, idx) => (
-            <Link key={idx} href={`/catalog?search=${encodeURIComponent(product.searchQuery)}`}>
+            <Link key={idx} href={`/catalog?search=${encodeURIComponent(product.searchQuery)}&autoOpen=true`}>
               <Card className="h-full overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 hover:border-primary/30" data-testid={`card-hero-product-${idx}`}>
                 <div className="aspect-[4/3] overflow-hidden bg-slate-100">
                   <img 
