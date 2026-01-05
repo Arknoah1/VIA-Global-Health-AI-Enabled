@@ -66,19 +66,22 @@ export default function HomePage() {
       name: "NASG (Non-pneumatic Anti-Shock Garment)",
       description: "Life-saving device for treating obstetric hemorrhage and hypovolemic shock",
       category: "Maternal Health",
-      image: "https://viaglobalhealth.com/wp-content/uploads/2020/02/DSC_0369-600x518.jpg"
+      image: "https://viaglobalhealth.com/wp-content/uploads/2020/02/DSC_0369-600x518.jpg",
+      searchQuery: "NASG"
     },
     {
       name: "Thermocoagulator",
       description: "Portable device for cervical cancer treatment using thermal ablation",
       category: "Oncology",
-      image: "https://viaglobalhealth.com/wp-content/uploads/2022/06/MicrosoftTeams-image-1-600x600.png"
+      image: "https://viaglobalhealth.com/wp-content/uploads/2022/06/MicrosoftTeams-image-1-600x600.png",
+      searchQuery: "Thermocoagulator"
     },
     {
       name: "MTTS Beluga CPAP",
       description: "Affordable CPAP system designed for low-resource settings",
       category: "Neonatal Care",
-      image: "https://viaglobalhealth.com/wp-content/uploads/2023/03/Beluga-CPAP.jpg"
+      image: "https://viaglobalhealth.com/wp-content/uploads/2020/02/beluga-01-580x470-1.jpg",
+      searchQuery: "MTTS Beluga"
     }
   ];
 
@@ -178,7 +181,7 @@ export default function HomePage() {
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {heroProducts.map((product, idx) => (
-            <Link key={idx} href="/catalog">
+            <Link key={idx} href={`/catalog?search=${encodeURIComponent(product.searchQuery)}`}>
               <Card className="h-full overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 hover:border-primary/30" data-testid={`card-hero-product-${idx}`}>
                 <div className="aspect-[4/3] overflow-hidden bg-slate-100">
                   <img 
