@@ -236,7 +236,7 @@ export default function QuoteRequestsPage() {
             </DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 max-h-[60vh] p-4">
             {isLoadingMessages ? (
               <div className="flex items-center justify-center py-8">
                 <p className="text-muted-foreground">Loading messages...</p>
