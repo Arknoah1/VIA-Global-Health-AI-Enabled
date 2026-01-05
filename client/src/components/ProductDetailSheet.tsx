@@ -46,6 +46,20 @@ const formatBulletText = (text: string) => {
   );
 };
 
+const extractFirstSpecValue = (text: string): string => {
+  if (!text) return "";
+  
+  if (text.includes('•')) {
+    const parts = text.split('•').map(part => part.trim()).filter(part => part.length > 0);
+    if (parts.length > 0) {
+      const firstPart = parts[0].split('\n')[0].trim();
+      return firstPart;
+    }
+  }
+  
+  return text.split('\n')[0].trim();
+};
+
 const featureCategories = {
   performance: { icon: Activity, color: "bg-blue-500/10 text-blue-600 border-blue-200", label: "Clinical Efficiency" },
   durability: { icon: Shield, color: "bg-slate-500/10 text-slate-600 border-slate-200", label: "Reliability" },
@@ -349,20 +363,23 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     Quick Specs
                   </h3>
                   <dl className="space-y-2 text-xs">
-                    {Object.entries(product.specifications).slice(0, 4).map(([key, value], idx) => (
-                      <motion.div 
-                        key={key} 
-                        className="flex flex-col gap-0.5 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                      >
-                        <dt className="text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{key}</dt>
-                        <dd className="text-foreground font-medium line-clamp-1">
-                          {typeof value === 'string' && !value.includes('•') ? value : (value as string).split('•')[0]}
-                        </dd>
-                      </motion.div>
-                    ))}
+                    {Object.entries(product.specifications).slice(0, 4).map(([key, value], idx) => {
+                      const extractedValue = extractFirstSpecValue(value as string);
+                      return (
+                        <motion.div 
+                          key={key} 
+                          className="flex flex-col gap-0.5 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                        >
+                          <dt className="text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{key}</dt>
+                          <dd className="text-foreground font-medium line-clamp-2">
+                            {extractedValue || "See full specs"}
+                          </dd>
+                        </motion.div>
+                      );
+                    })}
                   </dl>
                 </div>
               )}
