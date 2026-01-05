@@ -492,19 +492,22 @@ PRODUCT CONTEXT:`;
   }
 
   prompt += `\n\nCONFIRMATION STEP (CRITICAL):
-Before completing the conversation, you MUST summarise the details you've collected and ask the customer to confirm everything is correct. Use this format:
+Before completing the conversation, you MUST summarise the details you've collected and ask the customer to confirm everything is correct. Format each detail on a NEW LINE using this exact format with line breaks:
 
-"Before I send this to our team, let me confirm the details:
-- Name: [their name]
-- Email: [their email]
-- Organisation: [their organisation]
-- Product: [product name]
-- Quantity: [quantity]
-- Destination: [country/city]
-- Timeline: [their timeline]
-- Shipping: [air/sea preference]
+"Before I send this to our team, let me confirm your details:
+
+Name: [their name]
+Email: [their email]
+Organisation: [their organisation]
+Product: [product name]
+Quantity: [quantity]
+Destination: [country/city]
+Timeline: [their timeline]
+Shipping: [air/sea preference]
 
 Is everything correct, or would you like to make any changes?"
+
+IMPORTANT: Each field MUST be on its own line with a blank line before and after the list for readability. Do NOT put everything on one line.
 
 Only after they confirm should you complete the conversation.
 
