@@ -210,6 +210,17 @@ export async function registerRoutes(
     }
   });
 
+  // Get messages for a quote request
+  app.get("/api/quote-requests/:id/messages", async (req, res) => {
+    try {
+      const messages = await storage.getQuoteRequestMessages(req.params.id);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching quote request messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
   // Start a new AI-powered quote request session
   app.post("/api/quote-requests/start", async (req, res) => {
     try {
