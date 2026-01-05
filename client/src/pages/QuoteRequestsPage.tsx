@@ -229,14 +229,14 @@ export default function QuoteRequestsPage() {
 
       {/* Conversation Dialog */}
       <Dialog open={showConversationDialog} onOpenChange={setShowConversationDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col p-0">
-          <DialogHeader className="p-4 border-b">
+        <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col p-0">
+          <DialogHeader className="p-4 border-b shrink-0">
             <DialogTitle>
               Conversation - {selectedRequest?.firstName} {selectedRequest?.lastName}
             </DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 max-h-[60vh] p-4">
+          <div className="flex-1 overflow-y-auto p-4">
             {isLoadingMessages ? (
               <div className="flex items-center justify-center py-8">
                 <p className="text-muted-foreground">Loading messages...</p>
@@ -266,7 +266,7 @@ export default function QuoteRequestsPage() {
                 ))}
               </div>
             )}
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
