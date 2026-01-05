@@ -43,7 +43,7 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
         )}
         {isInView && (
           <img 
-            src={product.imageUrl} 
+            src={(product as any).imageUrl || (product as any).image_url} 
             alt={product.name} 
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
