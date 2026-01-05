@@ -268,9 +268,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 sm:p-6 space-y-8">
             {/* Image Gallery with Zoom */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div 
-                className="relative aspect-square w-full overflow-hidden rounded-xl border bg-muted/50 max-h-72 group cursor-zoom-in"
+                className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted/50 max-h-56 group cursor-zoom-in"
                 onMouseEnter={() => setIsImageZoomed(true)}
                 onMouseLeave={() => setIsImageZoomed(false)}
                 data-testid="product-image-container"
@@ -282,17 +282,17 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   animate={{ scale: isImageZoomed ? 1.5 : 1 }}
                   data-testid="product-image-main"
                 />
-                <div className="absolute top-3 right-3 flex gap-2">
-                  <div className="bg-black/70 text-white border-0 text-xs px-2 py-1 rounded flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <div className="bg-black/70 text-white border-0 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <Eye className="h-2.5 w-2.5" />
                     Hover to zoom
                   </div>
                 </div>
               </div>
               {product.images && (product.images as string[]).length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
                   <button 
-                    className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-md ${selectedImageIndex === -1 ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'}`}
+                    className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-sm ${selectedImageIndex === -1 ? 'border-primary ring-1 ring-primary/20' : 'border-transparent'}`}
                     onClick={() => setSelectedImageIndex(-1)}
                     data-testid="product-thumbnail-main"
                   >
@@ -301,7 +301,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   {(product.images as string[]).map((img, idx) => (
                     <button 
                       key={idx}
-                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-md ${selectedImageIndex === idx ? 'border-primary ring-2 ring-primary/20' : 'border-transparent'}`}
+                      className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-sm ${selectedImageIndex === idx ? 'border-primary ring-1 ring-primary/20' : 'border-transparent'}`}
                       onClick={() => setSelectedImageIndex(idx)}
                       data-testid={`product-thumbnail-${idx}`}
                     >
@@ -313,29 +313,29 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             </div>
 
             {/* Quick Info Section with Enhanced Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
-                <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-4 border">
-                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-4 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
+                <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-3 border">
+                  <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-primary" />
                     Key Features
                   </h3>
-                  <ul className="space-y-3">
+                  <ul className="space-y-2">
                     {(product.keyFeatures as string[]).slice(0, 4).map((feature, idx) => {
                       const category = categorizeFeature(feature);
                       const CategoryIcon = featureCategories[category].icon;
                       return (
                         <motion.li 
                           key={idx} 
-                          className="flex items-start gap-3 text-sm"
+                          className="flex items-start gap-2.5 text-xs"
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
                         >
-                          <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${featureCategories[category].color}`}>
-                            <CategoryIcon className="h-3.5 w-3.5" />
+                          <div className={`h-5 w-5 rounded-md flex items-center justify-center shrink-0 ${featureCategories[category].color}`}>
+                            <CategoryIcon className="h-3 w-3" />
                           </div>
-                          <span className="text-foreground">{feature}</span>
+                          <span className="text-foreground line-clamp-2">{feature}</span>
                         </motion.li>
                       );
                     })}
@@ -344,23 +344,23 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               )}
               
               {Object.keys(product.specifications).length > 0 && (
-                <div className="bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20 rounded-xl p-4 border">
-                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-4 flex items-center gap-2">
-                    <Settings className="h-4 w-4 text-blue-600" />
+                <div className="bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20 rounded-xl p-3 border">
+                  <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                    <Settings className="h-3 w-3 text-blue-600" />
                     Quick Specs
                   </h3>
-                  <dl className="space-y-3 text-sm">
+                  <dl className="space-y-2 text-xs">
                     {Object.entries(product.specifications).slice(0, 4).map(([key, value], idx) => (
                       <motion.div 
                         key={key} 
-                        className="flex flex-col gap-1 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex flex-col gap-0.5 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.1 }}
                       >
-                        <dt className="text-muted-foreground font-medium text-xs uppercase tracking-wide">{key}</dt>
-                        <dd className="text-foreground font-medium">
-                          {typeof value === 'string' && !value.includes('•') ? value : formatBulletText(value as string)}
+                        <dt className="text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{key}</dt>
+                        <dd className="text-foreground font-medium line-clamp-1">
+                          {typeof value === 'string' && !value.includes('•') ? value : (value as string).split('•')[0]}
                         </dd>
                       </motion.div>
                     ))}
@@ -606,28 +606,21 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           </div>
         </div>
 
-        {/* Sticky Action Footer with Gradient CTA */}
-        <div className="sticky bottom-0 p-4 sm:p-6 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm border-t space-y-3">
+        {/* Sticky Action Footer with Unified CTA */}
+        <div className="sticky bottom-0 p-4 sm:p-6 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm border-t space-y-2">
           <Button 
             className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300"
-            data-testid="button-request-quote"
+            data-testid="button-request-quote-unified"
             onClick={() => setShowQuoteDialog(true)}
           >
             <MessageSquare className="mr-2 h-5 w-5" />
-            Request a Quote
+            Request a Quote & Live Support
             <Sparkles className="ml-2 h-4 w-4 animate-pulse" />
           </Button>
-          <Button 
-            variant="outline" 
-            className="w-full text-sm"
-            onClick={() => setShowQuoteDialog(true)}
-            data-testid="button-contact-support"
-          >
-            <Headphones className="mr-2 h-4 w-4" />
-            Live Support
-          </Button>
-          <p className="text-xs text-center text-muted-foreground">
-            Response within 24 hours • No obligation
+          <p className="text-[10px] sm:text-xs text-center text-muted-foreground flex items-center justify-center gap-2 sm:gap-3">
+            <span>Response within 24 hours</span>
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30"></span>
+            <span>No obligation</span>
           </p>
         </div>
       </SheetContent>
