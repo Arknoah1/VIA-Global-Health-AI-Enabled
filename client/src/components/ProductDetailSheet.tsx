@@ -8,7 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileText, Play, Download, HelpCircle, Check, MessageSquare, Send, Loader2, Star, AlertCircle,
   Zap, Shield, Leaf, Settings, Package, Award, TrendingUp, Headphones, 
-  ChevronDown, ChevronUp, Search, Phone, Mail, Eye, Sparkles
+  ChevronDown, ChevronUp, Search, Phone, Mail, Eye, Sparkles,
+  Stethoscope, Activity, Heart, Thermometer, FlaskConical, ClipboardCheck,
+  Microscope, Syringe, Briefcase, Pill, Building2
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -45,12 +47,12 @@ const formatBulletText = (text: string) => {
 };
 
 const featureCategories = {
-  performance: { icon: Zap, color: "bg-amber-500/10 text-amber-600 border-amber-200", label: "Performance" },
-  durability: { icon: Shield, color: "bg-blue-500/10 text-blue-600 border-blue-200", label: "Durability" },
-  sustainability: { icon: Leaf, color: "bg-green-500/10 text-green-600 border-green-200", label: "Eco-Friendly" },
-  technology: { icon: Settings, color: "bg-purple-500/10 text-purple-600 border-purple-200", label: "Technology" },
-  quality: { icon: Award, color: "bg-rose-500/10 text-rose-600 border-rose-200", label: "Quality" },
-  value: { icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600 border-emerald-200", label: "Value" },
+  performance: { icon: Activity, color: "bg-blue-500/10 text-blue-600 border-blue-200", label: "Clinical Efficiency" },
+  durability: { icon: Shield, color: "bg-slate-500/10 text-slate-600 border-slate-200", label: "Reliability" },
+  sustainability: { icon: Heart, color: "bg-emerald-500/10 text-emerald-600 border-emerald-200", label: "Patient Care" },
+  technology: { icon: Microscope, color: "bg-indigo-500/10 text-indigo-600 border-indigo-200", label: "Advanced Technology" },
+  quality: { icon: ClipboardCheck, color: "bg-rose-500/10 text-rose-600 border-rose-200", label: "Certified Quality" },
+  value: { icon: Stethoscope, color: "bg-cyan-500/10 text-cyan-600 border-cyan-200", label: "Clinical Value" },
 };
 
 const categorizeFeature = (feature: string): keyof typeof featureCategories => {
@@ -317,7 +319,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
                 <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-3 border">
                   <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                    <Sparkles className="h-3 w-3 text-primary" />
+                    <Stethoscope className="h-3 w-3 text-primary" />
                     Key Features
                   </h3>
                   <ul className="space-y-2">
@@ -409,8 +411,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 {product.description && (
                   <div className="bg-muted/20 rounded-xl p-5 border">
                     <h3 className="font-semibold mb-3 text-base flex items-center gap-2">
-                      <Package className="h-5 w-5 text-primary" />
-                      About This Product
+                      <ClipboardCheck className="h-5 w-5 text-primary" />
+                      Clinical Overview
                     </h3>
                     <div className="text-muted-foreground leading-relaxed text-sm sm:text-base">
                       {formatBulletText(product.description)}
@@ -421,8 +423,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                      All Features
+                      <Activity className="h-5 w-5 text-primary" />
+                      Key Specifications
                     </h3>
                     <div className="grid gap-3">
                       {(product.keyFeatures as string[]).map((feature, idx) => {
@@ -613,9 +615,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             data-testid="button-request-quote-unified"
             onClick={() => setShowQuoteDialog(true)}
           >
-            <MessageSquare className="mr-2 h-5 w-5" />
+            <Stethoscope className="mr-2 h-5 w-5" />
             Request a Quote & Live Support
-            <Sparkles className="ml-2 h-4 w-4 animate-pulse" />
+            <Shield className="ml-2 h-4 w-4 opacity-80" />
           </Button>
           <p className="text-[10px] sm:text-xs text-center text-muted-foreground flex items-center justify-center gap-2 sm:gap-3">
             <span>Response within 24 hours</span>
@@ -631,11 +633,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
             <DialogTitle className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                A
+                <Stethoscope className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
                 <span>Chat with Amara</span>
-                <span className="text-xs font-normal text-muted-foreground">VIA Global Health</span>
+                <span className="text-xs font-normal text-muted-foreground">Clinical Procurement Specialist</span>
               </div>
             </DialogTitle>
           </DialogHeader>
