@@ -66,13 +66,13 @@ export default function HomePage() {
       name: "NASG (Non-pneumatic Anti-Shock Garment)",
       description: "Life-saving device for treating obstetric hemorrhage and hypovolemic shock",
       category: "Maternal Health",
-      image: "https://viaglobalhealth.com/wp-content/uploads/2021/06/NASG-scaled.jpg"
+      image: "https://viaglobalhealth.com/wp-content/uploads/2020/02/DSC_0369-600x518.jpg"
     },
     {
       name: "Thermocoagulator",
       description: "Portable device for cervical cancer treatment using thermal ablation",
       category: "Oncology",
-      image: "https://viaglobalhealth.com/wp-content/uploads/2021/06/thermocoagulator.jpg"
+      image: "https://viaglobalhealth.com/wp-content/uploads/2022/06/MicrosoftTeams-image-1-600x600.png"
     },
     {
       name: "MTTS Beluga CPAP",
