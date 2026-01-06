@@ -19,13 +19,13 @@ export default function HomePage() {
       icon: Building2,
       color: "bg-blue-50 border-blue-200",
       textColor: "text-blue-700",
-      description: "Scale your distribution business with quality medical products",
+      description: "Your client needs a specific product. We'll actually respond.",
       pricing: "Volume-based pricing with distributor margins",
       features: [
-        "Competitive wholesale pricing and bulk discounts",
-        "Fast quote turnaround - typically within 24 hours",
-        "Reliable supply chain and flexible shipping options",
-        "Dedicated account support"
+        "Quote response within 24 hours—not weeks of silence",
+        "Access products manufacturers won't sell you directly",
+        "Reliable supply chain with flexible shipping options",
+        "One point of contact instead of chasing multiple suppliers"
       ],
       cta: "Get Distributor Quote"
     },
@@ -34,13 +34,13 @@ export default function HomePage() {
       icon: Heart,
       color: "bg-green-50 border-green-200",
       textColor: "text-green-700",
-      description: "Equip your facility with trusted medical solutions",
+      description: "Get the equipment your facility needs without the runaround",
       pricing: "Competitive pricing for healthcare facilities",
       features: [
-        "Wide range of regulatory approved medical devices",
-        "Technical support and product training",
-        "Flexible payment terms available",
-        "Direct manufacturer relationships"
+        "CE, FDA, and ISO certified medical devices",
+        "Technical support and product training included",
+        "Responsive team that answers your questions",
+        "Skip the manufacturer gatekeeping"
       ],
       cta: "Request Facility Quote"
     },
@@ -49,13 +49,13 @@ export default function HomePage() {
       icon: HandshakeIcon,
       color: "bg-purple-50 border-purple-200",
       textColor: "text-purple-700",
-      description: "Access affordable healthcare solutions for underserved communities",
-      pricing: "Special NGO pricing - manufacturer direct equivalent",
+      description: "Your grant is approved. Now get the equipment before it expires.",
+      pricing: "NGO pricing at manufacturer-direct rates",
       features: [
-        "Special NGO pricing programs",
-        "Humanitarian project support",
-        "Free training and technical workshops",
-        "Impact documentation support"
+        "Fast quotes so you can finalize procurement on deadline",
+        "Products designed for low-resource settings",
+        "Documentation support for grant reporting",
+        "We understand your funding timelines"
       ],
       cta: "NGO Partnership Quote"
     }
@@ -87,19 +87,19 @@ export default function HomePage() {
 
   const testimonials = [
     {
-      quote: "VIA Global Health has been instrumental in helping us equip clinics across East Africa. Their understanding of our needs and fast response times make them a trusted partner.",
+      quote: "We had grant funding expiring in 60 days and couldn't get a single manufacturer to respond. VIA quoted us within 24 hours and delivered before our deadline.",
       author: "Dr. Sarah Okonkwo",
       role: "Regional Director",
       org: "Healthcare NGO, Kenya"
     },
     {
-      quote: "The speed and professionalism of VIA's team is unmatched. They understand the urgency of medical supply needs in developing markets.",
+      quote: "Our clients kept requesting specific equipment that manufacturers wouldn't sell to us directly. VIA became our solution—they actually respond and follow through.",
       author: "James Mwangi",
       role: "Procurement Manager",
       org: "Medical Distributor, Tanzania"
     },
     {
-      quote: "Working with VIA has simplified our procurement process. Their product expertise and competitive pricing have made a real difference.",
+      quote: "After weeks of silence from the manufacturer, I contacted VIA. They responded the same day and helped us source the exact equipment we needed.",
       author: "Dr. Amara Diallo",
       role: "Health Program Director",
       org: "Faith-based Organization, Senegal"
@@ -120,19 +120,19 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
       <Header />
 
-      {/* Hero Section - Mission Focused */}
+      {/* Hero Section - Responsiveness Focused */}
       <section className="container mx-auto px-4 py-16 md:py-20">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
             <ShieldCheck className="h-4 w-4" />
-            Trusted Medical Equipment Partner for Africa
+            The Medical Equipment Partner That Actually Responds
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-            Quality Medical Equipment.<br />
-            <span className="text-primary">Delivered with Trust.</span>
+            You Need Specific Equipment.<br />
+            <span className="text-primary">We Actually Respond.</span>
           </h1>
           <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-            We partner with distributors, healthcare providers, and NGOs across Africa to deliver life-saving medical equipment with fast quotes and reliable service.
+            Whether you have grant funding or a client request, manufacturers often ignore small orders. We don't. Get a quote response within 24 hours—no runaround, no silence.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
@@ -174,9 +174,9 @@ export default function HomePage() {
       {/* Hero Products Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 mb-3">Featured Products</h2>
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">Hard-to-Find Equipment, Easy to Quote</h2>
           <p className="text-slate-600 max-w-2xl mx-auto">
-            Our most requested medical equipment, trusted by healthcare organizations across Africa
+            Specialized medical equipment that manufacturers won't quote you directly—but we will
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
@@ -216,8 +216,8 @@ export default function HomePage() {
       <section className="bg-slate-50 py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">How Can We Help You?</h2>
-            <p className="text-slate-600">Select your organization type to see tailored solutions</p>
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">Skip the Manufacturer Runaround</h2>
+            <p className="text-slate-600">Whether you're a distributor, healthcare provider, or NGO—we respond to every inquiry</p>
           </div>
 
           {/* Audience Tabs */}

@@ -15,13 +15,13 @@ export default function AboutPage() {
       <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">Partner with VIA Global Health to Source and Sell Medical Supplies</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">The Medical Equipment Partner That Actually Responds</h1>
             <p className="text-xl text-blue-100 mb-8">
-              VIA makes sourcing critical medical products fast, easy and affordable. We partner with a global network of medical suppliers to deliver vital medical technologies to underserved communities.
+              Manufacturers often ignore small orders from NGOs and distributors. VIA bridges that gap—aggregating demand so you get the quotes and equipment you need, when you need it.
             </p>
             <Link href="/catalog">
               <Button size="lg" variant="secondary">
-                Browse Products
+                Get a Quote Today
               </Button>
             </Link>
           </div>
@@ -63,17 +63,17 @@ export default function AboutPage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-slate-900 mb-6">For Buyers</h2>
+              <h2 className="text-3xl font-bold text-slate-900 mb-6">Why Buyers Choose VIA</h2>
               <p className="text-lg text-slate-700 mb-6">
-                VIA's Verified Buyers are local market partners who buy medical products through our online marketplace and distribute them to those who use them locally in clinical environments. Buyers can import medical supplies and devices into their country, gain the expertise to train end users on the equipment purchased, and access resources to service and maintain medical devices.
+                Manufacturers often don't respond to small or new buyers—the time investment doesn't match their return. VIA solves this by aggregating demand from distributors, NGOs, and healthcare providers, making it worthwhile for manufacturers to work with us. That means you get quotes and equipment you couldn't access directly.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
-                  "Import medical supplies and devices locally",
-                  "Expert training for end users",
-                  "Product maintenance and support",
-                  "Access to verified sellers",
-                  "Competitive pricing guaranteed"
+                  "24-hour quote response—not weeks of silence",
+                  "Access products manufacturers won't sell you directly",
+                  "Products designed for low-resource settings",
+                  "Training and technical support included",
+                  "One reliable partner instead of chasing suppliers"
                 ].map((item, idx) => (
                   <li key={idx} className="flex gap-3 items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -82,14 +82,14 @@ export default function AboutPage() {
                 ))}
               </ul>
               <Link href="/catalog">
-                <Button>View Services</Button>
+                <Button>Browse Products</Button>
               </Link>
             </div>
             <div className="bg-blue-50 rounded-lg p-8 border border-blue-200">
               <Users className="h-16 w-16 text-blue-600 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Become a Verified Buyer</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">We Respond to Every Inquiry</h3>
               <p className="text-slate-700">
-                Join our network of trusted buyers who access the lowest prices available, priority support, and exclusive product information.
+                Whether you're a first-time buyer or a long-term partner, you'll get a quote response within 24 hours. No minimum order gatekeeping.
               </p>
             </div>
           </div>
@@ -137,25 +137,25 @@ export default function AboutPage() {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 text-center">How VIA Works</h2>
           <p className="text-lg text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-            Lifesaving medical supplies, global shipping solutions and a dedicated team to support medical product buyers and sellers.
+            We aggregate demand from buyers across Africa, making it worthwhile for manufacturers to respond to orders they'd otherwise ignore.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
                 icon: Globe,
-                title: "Quality Network of Medical Suppliers",
-                description: "We partner with medical suppliers from around the world, vetting Sellers to ensure they meet our standards for quality, pricing, and responsiveness."
+                title: "We Aggregate Buyer Demand",
+                description: "By combining orders from NGOs, distributors, and providers across 40+ countries, we give manufacturers a reason to respond—and you get access."
               },
               {
                 icon: Package,
-                title: "Source & Ship Medical Equipment Worldwide",
-                description: "Medical distributors anywhere can source medical supplies with transparent pricing, warranty information, and training materials. We offer global shipping solutions."
+                title: "You Get Equipment, Not Silence",
+                description: "Submit a quote request and get a response within 24 hours. We handle manufacturer relationships so you don't have to chase multiple contacts."
               },
               {
                 icon: Zap,
-                title: "Secure Transactions From Quote to Delivery",
-                description: "We take the risk out of long-distance procurement. Guaranteed payment and product delivery with our dedicated global and local sales team."
+                title: "Deliver Before Your Deadline",
+                description: "Grant funding doesn't wait. We understand your timelines and work to get equipment delivered before your procurement window closes."
               }
             ].map((item, idx) => {
               const Icon = item.icon;
