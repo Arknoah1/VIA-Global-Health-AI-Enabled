@@ -65,12 +65,12 @@ export default function AboutPage() {
             <div>
               <h2 className="text-3xl font-bold text-slate-900 mb-6">Why Buyers Choose VIA</h2>
               <p className="text-lg text-slate-700 mb-6">
-                Manufacturers often don't respond to small or new buyers—the time investment doesn't match their return. VIA solves this by aggregating demand from distributors, NGOs, and healthcare providers, making it worthwhile for manufacturers to work with us. That means you get quotes and equipment you couldn't access directly.
+                Whether you need a single unit or you're fulfilling a national tender, every inquiry gets the same attention. We treat all orders equally because we know your timeline matters regardless of size.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
-                  "24-hour quote response—not weeks of silence",
-                  "Access products manufacturers won't sell you directly",
+                  "24-hour quote response—from single units to large tenders",
+                  "Same attention for every order, every time",
                   "Products designed for low-resource settings",
                   "Training and technical support included",
                   "One reliable partner instead of chasing suppliers"
@@ -87,9 +87,9 @@ export default function AboutPage() {
             </div>
             <div className="bg-blue-50 rounded-lg p-8 border border-blue-200">
               <Users className="h-16 w-16 text-blue-600 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">We Respond to Every Inquiry</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Every Order Gets Equal Attention</h3>
               <p className="text-slate-700">
-                Whether you're a first-time buyer or a long-term partner, you'll get a quote response within 24 hours. No minimum order gatekeeping.
+                From a single unit to a national tender, you'll get a quote response within 24 hours. No order is too small. No order is too large.
               </p>
             </div>
           </div>
@@ -137,15 +137,15 @@ export default function AboutPage() {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 text-center">How VIA Works</h2>
           <p className="text-lg text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-            We aggregate demand from buyers across Africa, making it worthwhile for manufacturers to respond to orders they'd otherwise ignore.
+            Every order—from a single unit to a national tender—gets the same dedicated attention and 24-hour response time.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
                 icon: Globe,
-                title: "We Aggregate Buyer Demand",
-                description: "By combining orders from NGOs, distributors, and providers across 40+ countries, we give manufacturers a reason to respond—and you get access."
+                title: "Equal Treatment, Every Order",
+                description: "Whether you're ordering one unit or fulfilling a national tender, your inquiry gets the same priority and attention from our team."
               },
               {
                 icon: Package,

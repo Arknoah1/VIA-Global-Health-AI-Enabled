@@ -132,7 +132,7 @@ export default function HomePage() {
             <span className="text-primary">We Actually Respond.</span>
           </h1>
           <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-            Whether you have grant funding or a client request, manufacturers often ignore small orders. We don't. Get a quote response within 24 hours—no runaround, no silence.
+            From a single unit to a national tender, every inquiry gets the same attention. Quote response within 24 hours—no runaround, no silence.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
