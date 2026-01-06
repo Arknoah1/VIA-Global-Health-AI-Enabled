@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { products } from "@shared/schema";
-import seedData from "./seed-data.json";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 function log(message: string, source = "seeder") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -12,6 +13,24 @@ function log(message: string, source = "seeder") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+function loadSeedData(): any[] | null {
+  const seedPath = join(process.cwd(), "server", "seed-data.json");
+  
+  if (existsSync(seedPath)) {
+    try {
+      const data = readFileSync(seedPath, "utf-8");
+      log(`Loaded seed data from ${seedPath}`, "seeder");
+      return JSON.parse(data);
+    } catch (e) {
+      log(`Failed to parse seed data: ${e}`, "seeder");
+    }
+  } else {
+    log(`Seed file not found at ${seedPath}`, "seeder");
+  }
+  
+  return null;
+}
+
 export async function seedDatabase() {
   try {
     const existingProducts = await db.select().from(products).limit(1);
@@ -20,6 +39,8 @@ export async function seedDatabase() {
       log("Database already has products, skipping seed", "seeder");
       return;
     }
+    
+    const seedData = loadSeedData();
     
     if (!seedData || !Array.isArray(seedData) || seedData.length === 0) {
       log("No seed data found", "seeder");
