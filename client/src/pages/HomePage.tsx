@@ -123,9 +123,14 @@ export default function HomePage() {
       {/* Hero Section - Responsiveness Focused */}
       <section className="container mx-auto px-4 py-16 md:py-20">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
-            <ShieldCheck className="h-4 w-4" />
-            The Medical Equipment Partner That Actually Responds
+          <div className="flex flex-wrap items-center justify-center gap-4 mb-6">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
+              <ShieldCheck className="h-4 w-4" />
+              The Medical Equipment Partner That Actually Responds
+            </div>
+            <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+              8+ Million Patient Lives Touched
+            </div>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
             You Need Specific Equipment.<br />
