@@ -144,8 +144,8 @@ export default function AboutPage() {
             {[
               {
                 icon: Globe,
-                title: "Equal Treatment, Every Order",
-                description: "Whether you're ordering one unit or fulfilling a national tender, your inquiry gets the same priority and attention from our team."
+                title: "90+ Countries Served",
+                description: "We have successfully delivered medical equipment and pharmaceuticals to over 90 countries across Africa and beyond."
               },
               {
                 icon: Package,

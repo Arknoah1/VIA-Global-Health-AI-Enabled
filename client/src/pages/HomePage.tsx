@@ -108,8 +108,8 @@ export default function HomePage() {
 
   const stats = [
     { value: "15+", label: "Years Experience", icon: Clock },
-    { value: "40+", label: "Countries Served", icon: Globe },
-    { value: "500+", label: "Healthcare Partners", icon: Users },
+    { value: "90+", label: "Countries Served", icon: Globe },
+    { value: "8M+", label: "Patient Lives Touched", icon: Heart },
     { value: "24hr", label: "Quote Response", icon: Zap }
   ];
 
@@ -127,9 +127,6 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
               <ShieldCheck className="h-4 w-4" />
               The Medical Equipment Partner That Actually Responds
-            </div>
-            <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
-              8+ Million Patient Lives Touched
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
