@@ -36,10 +36,10 @@ export default function AboutPage() {
             
             <div className="space-y-6 text-slate-700 mb-8">
               <p className="text-lg">
-                VIA was founded in 2015 as a sustainable business serving global communities through better information, access, and delivery of life-saving medical equipment and supplies. Our growing global network of customers represent or serve public, private, non-government, and faith-based organizations, and we've distributed vital medical technologies to underserved communities in 80 countries.
+                VIA was founded in 2015 as a sustainable business serving global communities through better information, access, and delivery of life-saving medical equipment and supplies. Our growing global network of customers represent or serve public, private, non-government, and faith-based organizations, and we've distributed vital medical technologies to underserved communities in 90 countries.
               </p>
               <p className="text-lg font-semibold text-blue-600">
-                To date, VIA has positively impacted the lives of nearly six million people by creating and scaling universal access to globally dispersed suppliers of essential medical devices and equipment.
+                To date, VIA has positively impacted the lives of nearly eight million people by creating and scaling universal access to globally dispersed suppliers of essential medical devices and equipment.
               </p>
             </div>
           </div>
