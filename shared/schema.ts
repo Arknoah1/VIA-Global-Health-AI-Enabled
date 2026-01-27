@@ -85,3 +85,39 @@ export const insertQuoteRequestMessageSchema = createInsertSchema(quoteRequestMe
 
 export type InsertQuoteRequestMessage = z.infer<typeof insertQuoteRequestMessageSchema>;
 export type QuoteRequestMessage = typeof quoteRequestMessages.$inferSelect;
+
+export const productPricingTiers = pgTable("product_pricing_tiers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  minQuantity: integer("min_quantity").notNull(),
+  maxQuantity: integer("max_quantity"),
+  unitPriceCents: integer("unit_price_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+  tierName: text("tier_name"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertProductPricingTierSchema = createInsertSchema(productPricingTiers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductPricingTier = z.infer<typeof insertProductPricingTierSchema>;
+export type ProductPricingTier = typeof productPricingTiers.$inferSelect;
+
+export const productRestrictedCountries = pgTable("product_restricted_countries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").references(() => products.id).notNull(),
+  countryCode: varchar("country_code", { length: 2 }).notNull(),
+  countryName: text("country_name").notNull(),
+  restrictionReason: text("restriction_reason").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertProductRestrictedCountrySchema = createInsertSchema(productRestrictedCountries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductRestrictedCountry = z.infer<typeof insertProductRestrictedCountrySchema>;
+export type ProductRestrictedCountry = typeof productRestrictedCountries.$inferSelect;

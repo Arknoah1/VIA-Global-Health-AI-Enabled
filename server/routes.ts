@@ -297,8 +297,30 @@ export async function registerRoutes(
         similarProducts = products.map(p => ({ id: p.id, name: p.name, sku: p.sku }));
       }
 
+      // Get pricing tiers and restricted countries for this product
+      let pricingTiers: { minQuantity: number; maxQuantity: number | null; unitPriceCents: number; currency: string; tierName: string | null }[] = [];
+      let restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [];
+      
+      if (quoteRequest.productId) {
+        const tiers = await storage.getProductPricingTiers(quoteRequest.productId);
+        pricingTiers = tiers.map(t => ({
+          minQuantity: t.minQuantity,
+          maxQuantity: t.maxQuantity,
+          unitPriceCents: t.unitPriceCents,
+          currency: t.currency,
+          tierName: t.tierName
+        }));
+        
+        const restrictions = await storage.getProductRestrictedCountries(quoteRequest.productId);
+        restrictedCountries = restrictions.map(r => ({
+          countryName: r.countryName,
+          countryCode: r.countryCode,
+          restrictionReason: r.restrictionReason
+        }));
+      }
+
       // Build system prompt
-      const systemPrompt = buildSystemPrompt(productDetails, similarProducts);
+      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries);
 
       // Build messages for OpenAI
       const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -399,7 +421,9 @@ export async function registerRoutes(
 
 function buildSystemPrompt(
   productDetails: { name?: string; description?: string; specifications?: Record<string, string>; faqs?: { question: string; answer: string }[] } | undefined,
-  similarProducts: { id: string; name: string; sku: string }[]
+  similarProducts: { id: string; name: string; sku: string }[],
+  pricingTiers: { minQuantity: number; maxQuantity: number | null; unitPriceCents: number; currency: string; tierName: string | null }[] = [],
+  restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = []
 ): string {
   let prompt = `You are Amara Njeri, a Sales Representative at VIA Global Health based in Nairobi, Kenya. You are the first point of contact for customers and represent VIA as a trusted partner in global health solutions.
 
@@ -517,6 +541,29 @@ PRODUCT CONTEXT:`;
         prompt += `\n- Q: ${faq.question}\n  A: ${faq.answer}`;
       });
     }
+  }
+
+  if (pricingTiers.length > 0) {
+    prompt += `\n\nPRODUCT PRICING (use these to provide quotes):`;
+    pricingTiers.forEach(tier => {
+      const unitPrice = (tier.unitPriceCents / 100).toFixed(2);
+      const maxQty = tier.maxQuantity ? tier.maxQuantity.toString() : "+";
+      const tierLabel = tier.tierName ? ` (${tier.tierName})` : "";
+      const currencySymbol = tier.currency === 'USD' ? '$' : tier.currency === 'EUR' ? '€' : tier.currency === 'GBP' ? '£' : '';
+      const priceDisplay = currencySymbol ? `${currencySymbol}${unitPrice}` : `${unitPrice} ${tier.currency}`;
+      prompt += `\n- ${tier.minQuantity}-${maxQty} units: ${priceDisplay} per unit${tierLabel}`;
+    });
+    prompt += `\n\nWhen the customer provides a quantity, calculate and share the estimated unit price based on these tiers. Always mention that this is an estimate and the final quote will be confirmed by the team. Example: "Based on your quantity of 50 units, the estimated price would be $X per unit, totalling approximately $Y. Our team will confirm the final pricing in your quote."`;
+  } else {
+    prompt += `\n\nPRICING NOTE: No specific pricing tiers are available for this product. Collect the customer's requirements and let them know our team will provide a custom quote based on their volume and needs.`;
+  }
+
+  if (restrictedCountries.length > 0) {
+    prompt += `\n\nRESTRICTED DESTINATIONS (CANNOT ship to these countries for this product):`;
+    restrictedCountries.forEach(r => {
+      prompt += `\n- ${r.countryName} (${r.countryCode}): ${r.restrictionReason}`;
+    });
+    prompt += `\n\nIMPORTANT: If the customer mentions shipping to any of these countries, politely explain that unfortunately VIA is unable to ship this particular product to that destination due to the stated reason. Offer to check if alternative products might be available, or ask if they have an alternative destination.`;
   }
 
   if (similarProducts.length > 0) {

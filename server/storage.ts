@@ -1,10 +1,12 @@
 import { 
   type Product, type InsertProduct, products, 
   type QuoteRequest, type InsertQuoteRequest, quoteRequests,
-  type QuoteRequestMessage, type InsertQuoteRequestMessage, quoteRequestMessages
+  type QuoteRequestMessage, type InsertQuoteRequestMessage, quoteRequestMessages,
+  type ProductPricingTier, type InsertProductPricingTier, productPricingTiers,
+  type ProductRestrictedCountry, type InsertProductRestrictedCountry, productRestrictedCountries
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, ilike, or, desc, ne } from "drizzle-orm";
+import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
 
 export interface IStorage {
   getAllProducts(search?: string): Promise<Product[]>;
@@ -20,6 +22,12 @@ export interface IStorage {
   getAllQuoteRequests(): Promise<QuoteRequest[]>;
   createQuoteRequestMessage(message: InsertQuoteRequestMessage): Promise<QuoteRequestMessage>;
   getQuoteRequestMessages(quoteRequestId: string): Promise<QuoteRequestMessage[]>;
+  getProductPricingTiers(productId: string): Promise<ProductPricingTier[]>;
+  createProductPricingTier(tier: InsertProductPricingTier): Promise<ProductPricingTier>;
+  deleteProductPricingTiers(productId: string): Promise<void>;
+  getProductRestrictedCountries(productId: string): Promise<ProductRestrictedCountry[]>;
+  createProductRestrictedCountry(restriction: InsertProductRestrictedCountry): Promise<ProductRestrictedCountry>;
+  deleteProductRestrictedCountries(productId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -116,6 +124,40 @@ export class DatabaseStorage implements IStorage {
       .from(quoteRequestMessages)
       .where(eq(quoteRequestMessages.quoteRequestId, quoteRequestId))
       .orderBy(quoteRequestMessages.createdAt);
+  }
+
+  async getProductPricingTiers(productId: string): Promise<ProductPricingTier[]> {
+    return await db
+      .select()
+      .from(productPricingTiers)
+      .where(eq(productPricingTiers.productId, productId))
+      .orderBy(asc(productPricingTiers.minQuantity));
+  }
+
+  async createProductPricingTier(tier: InsertProductPricingTier): Promise<ProductPricingTier> {
+    const result = await db.insert(productPricingTiers).values(tier).returning();
+    return result[0];
+  }
+
+  async deleteProductPricingTiers(productId: string): Promise<void> {
+    await db.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
+  }
+
+  async getProductRestrictedCountries(productId: string): Promise<ProductRestrictedCountry[]> {
+    return await db
+      .select()
+      .from(productRestrictedCountries)
+      .where(eq(productRestrictedCountries.productId, productId))
+      .orderBy(asc(productRestrictedCountries.countryName));
+  }
+
+  async createProductRestrictedCountry(restriction: InsertProductRestrictedCountry): Promise<ProductRestrictedCountry> {
+    const result = await db.insert(productRestrictedCountries).values(restriction).returning();
+    return result[0];
+  }
+
+  async deleteProductRestrictedCountries(productId: string): Promise<void> {
+    await db.delete(productRestrictedCountries).where(eq(productRestrictedCountries.productId, productId));
   }
 }
 
