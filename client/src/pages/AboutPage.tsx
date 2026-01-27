@@ -42,18 +42,6 @@ export default function AboutPage() {
                 To date, VIA has positively impacted the lives of nearly six million people by creating and scaling universal access to globally dispersed suppliers of essential medical devices and equipment.
               </p>
             </div>
-
-            {/* Partner Logos */}
-            <div>
-              <h3 className="font-semibold text-slate-900 mb-6">We are trusted and supported by:</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {["DRK", "USAID", "Bill & Melinda Gates Foundation", "Sorenson"].map((org, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-lg border border-slate-200 flex items-center justify-center h-20">
-                    <span className="text-sm font-semibold text-slate-600 text-center">{org}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </section>
