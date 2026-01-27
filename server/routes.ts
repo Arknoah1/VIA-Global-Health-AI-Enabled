@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { scrapeViaGlobalHealth } from "./scraper";
-import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema } from "@shared/schema";
+import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
 
@@ -305,6 +305,61 @@ export async function registerRoutes(
     }
   });
 
+  // ===== CUSTOMER SEGMENTS =====
+
+  // Get all customer segments
+  app.get("/api/customer-segments", async (req, res) => {
+    try {
+      const segments = await storage.getAllCustomerSegments();
+      res.json(segments);
+    } catch (error) {
+      console.error("Error fetching customer segments:", error);
+      res.status(500).json({ error: "Failed to fetch customer segments" });
+    }
+  });
+
+  // Create a customer segment
+  app.post("/api/customer-segments", async (req, res) => {
+    try {
+      const validated = insertCustomerSegmentSchema.parse(req.body);
+      const segment = await storage.createCustomerSegment(validated);
+      res.status(201).json(segment);
+    } catch (error) {
+      console.error("Error creating customer segment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid segment data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create customer segment" });
+    }
+  });
+
+  // Update a customer segment
+  app.patch("/api/customer-segments/:id", async (req, res) => {
+    try {
+      const updateSchema = insertCustomerSegmentSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const segment = await storage.updateCustomerSegment(req.params.id, validatedData);
+      res.json(segment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error updating customer segment:", error);
+      res.status(500).json({ error: "Failed to update customer segment" });
+    }
+  });
+
+  // Delete a customer segment
+  app.delete("/api/customer-segments/:id", async (req, res) => {
+    try {
+      await storage.deleteCustomerSegment(req.params.id);
+      res.json({ message: "Customer segment deleted" });
+    } catch (error) {
+      console.error("Error deleting customer segment:", error);
+      res.status(500).json({ error: "Failed to delete customer segment" });
+    }
+  });
+
   // Start a new AI-powered quote request session
   app.post("/api/quote-requests/start", async (req, res) => {
     try {
@@ -403,8 +458,18 @@ export async function registerRoutes(
         }));
       }
 
+      // Get customer segments for eligibility and pricing rules
+      const customerSegments = await storage.getAllCustomerSegments();
+      const segmentData = customerSegments.map(s => ({
+        name: s.name,
+        displayName: s.displayName,
+        pricingMultiplier: s.pricingMultiplier,
+        isEligibleForQuotes: s.isEligibleForQuotes,
+        ineligibilityReason: s.ineligibilityReason
+      }));
+
       // Build system prompt
-      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries);
+      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData);
 
       // Build messages for OpenAI
       const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -507,7 +572,8 @@ function buildSystemPrompt(
   productDetails: { name?: string; description?: string; specifications?: Record<string, string>; faqs?: { question: string; answer: string }[] } | undefined,
   similarProducts: { id: string; name: string; sku: string }[],
   pricingTiers: { minQuantity: number; maxQuantity: number | null; unitPriceCents: number; currency: string; tierName: string | null }[] = [],
-  restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = []
+  restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [],
+  customerSegments: { name: string; displayName: string; pricingMultiplier: number; isEligibleForQuotes: boolean; ineligibilityReason: string | null }[] = []
 ): string {
   let prompt = `You are Amara Njeri, a Sales Representative at VIA Global Health based in Nairobi, Kenya. You are the first point of contact for customers and represent VIA as a trusted partner in global health solutions.
 
@@ -568,11 +634,55 @@ HOW TO RECOMMEND:
 Example dialogue:
 "Based on the quantity you've mentioned, sea freight would typically be the most cost-effective option. However, if you need it sooner, we can arrange air freight - it's faster but the shipping cost will be higher. What works better for your situation?"
 
-TWO CUSTOMER TYPES TO RECOGNISE:
-1. BUYERS (distributors, private practice clinicians, NGOs): They want feature information and pricing to make purchase decisions. They found us through search and are interested in a specific device.
-2. WINDOW SHOPPERS (procurement agents, clinicians, academics): They're researching and comparing options. Help them with detailed information and comparisons, even if they may not buy immediately.
+QUOTE ELIGIBILITY REQUIREMENTS (CRITICAL - MUST CHECK ALL BEFORE QUOTING):
+Before providing a quote, you MUST verify ALL of the following criteria. If ANY criterion is not met, you cannot provide a quote.
 
-Tailor your approach based on which type they are.
+1. ELIGIBLE BUYER TYPE: The customer must be a legitimate buyer, not a researcher or advisor.
+   - ELIGIBLE: Distributors, Healthcare Providers, NGOs, Government agencies, Hospitals, Clinics
+   - NOT ELIGIBLE: Funders, Consultants, Market Research Firms, Manufacturers, Suppliers, Academic researchers (unless purchasing)
+   
+   If someone from an ineligible organisation asks for pricing, politely explain:
+   "I'd be happy to share general product information with you. However, our pricing and quotes are reserved for organisations that are directly purchasing for their own use or distribution. If you're researching on behalf of a buyer, I'd be glad to connect with them directly."
+
+2. IMPORT CAPABILITY: The customer MUST be able to clear customs and handle import logistics.
+   - VIA ships port-to-port only
+   - Customer is responsible for customs clearance and final delivery
+   - If they cannot handle imports, we cannot fulfil the order
+   
+   Always ask: "Since we ship to your destination port, your organisation would handle customs clearance and final delivery. Is that something you can manage?"
+
+3. DESTINATION NOT RESTRICTED: The shipping destination must not be on the restricted list for this product.
+   - Check the restricted countries list below
+   - If their country is restricted, politely explain we cannot ship there and offer alternatives
+
+4. SEGMENT-BASED PRICING: Apply the correct pricing multiplier based on customer type.
+
+CUSTOMER SEGMENTS AND PRICING:`;
+
+  // Add customer segments dynamically
+  if (customerSegments.length > 0) {
+    const eligibleSegments = customerSegments.filter(s => s.isEligibleForQuotes);
+    const ineligibleSegments = customerSegments.filter(s => !s.isEligibleForQuotes);
+    
+    if (eligibleSegments.length > 0) {
+      prompt += `\n\nELIGIBLE FOR QUOTES:`;
+      eligibleSegments.forEach(seg => {
+        const multiplierText = seg.pricingMultiplier === 1.0 ? 'Base price' : 
+          seg.pricingMultiplier > 1.0 ? `Base price + ${Math.round((seg.pricingMultiplier - 1) * 100)}%` : 
+          `${Math.round((1 - seg.pricingMultiplier) * 100)}% discount`;
+        prompt += `\n- ${seg.displayName}: ${multiplierText}`;
+      });
+    }
+    
+    if (ineligibleSegments.length > 0) {
+      prompt += `\n\nNOT ELIGIBLE FOR QUOTES (provide information only):`;
+      ineligibleSegments.forEach(seg => {
+        prompt += `\n- ${seg.displayName}${seg.ineligibilityReason ? `: ${seg.ineligibilityReason}` : ''}`;
+      });
+    }
+  }
+
+  prompt += `
 
 COMMON OBJECTIONS TO ADDRESS PROACTIVELY:
 1. Pricing concerns (product and shipping costs) - Emphasise our competitive pricing and transparency

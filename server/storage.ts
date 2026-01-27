@@ -3,7 +3,8 @@ import {
   type QuoteRequest, type InsertQuoteRequest, quoteRequests,
   type QuoteRequestMessage, type InsertQuoteRequestMessage, quoteRequestMessages,
   type ProductPricingTier, type InsertProductPricingTier, productPricingTiers,
-  type ProductRestrictedCountry, type InsertProductRestrictedCountry, productRestrictedCountries
+  type ProductRestrictedCountry, type InsertProductRestrictedCountry, productRestrictedCountries,
+  type CustomerSegment, type InsertCustomerSegment, customerSegments
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
@@ -28,6 +29,11 @@ export interface IStorage {
   getProductRestrictedCountries(productId: string): Promise<ProductRestrictedCountry[]>;
   createProductRestrictedCountry(restriction: InsertProductRestrictedCountry): Promise<ProductRestrictedCountry>;
   deleteProductRestrictedCountries(productId: string): Promise<void>;
+  getAllCustomerSegments(): Promise<CustomerSegment[]>;
+  getCustomerSegmentByName(name: string): Promise<CustomerSegment | undefined>;
+  createCustomerSegment(segment: InsertCustomerSegment): Promise<CustomerSegment>;
+  updateCustomerSegment(id: string, data: Partial<InsertCustomerSegment>): Promise<CustomerSegment>;
+  deleteCustomerSegment(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -158,6 +164,40 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProductRestrictedCountries(productId: string): Promise<void> {
     await db.delete(productRestrictedCountries).where(eq(productRestrictedCountries.productId, productId));
+  }
+
+  async getAllCustomerSegments(): Promise<CustomerSegment[]> {
+    return await db
+      .select()
+      .from(customerSegments)
+      .orderBy(asc(customerSegments.sortOrder));
+  }
+
+  async getCustomerSegmentByName(name: string): Promise<CustomerSegment | undefined> {
+    const result = await db
+      .select()
+      .from(customerSegments)
+      .where(eq(customerSegments.name, name))
+      .limit(1);
+    return result[0];
+  }
+
+  async createCustomerSegment(segment: InsertCustomerSegment): Promise<CustomerSegment> {
+    const result = await db.insert(customerSegments).values(segment).returning();
+    return result[0];
+  }
+
+  async updateCustomerSegment(id: string, data: Partial<InsertCustomerSegment>): Promise<CustomerSegment> {
+    const result = await db
+      .update(customerSegments)
+      .set(data)
+      .where(eq(customerSegments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCustomerSegment(id: string): Promise<void> {
+    await db.delete(customerSegments).where(eq(customerSegments.id, id));
   }
 }
 

@@ -34,13 +34,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, DollarSign, Globe, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, DollarSign, Globe, AlertTriangle, Users, Check, X, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Product {
   id: string;
   name: string;
   sku: string;
+}
+
+interface CustomerSegment {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string | null;
+  pricingMultiplier: number;
+  isEligibleForQuotes: boolean;
+  ineligibilityReason: string | null;
+  sortOrder: number;
 }
 
 interface PricingTier {
@@ -65,7 +78,9 @@ export default function ProductPricingPage() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isPricingDialogOpen, setIsPricingDialogOpen] = useState(false);
   const [isCountryDialogOpen, setIsCountryDialogOpen] = useState(false);
+  const [isSegmentDialogOpen, setIsSegmentDialogOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const [editingSegment, setEditingSegment] = useState<CustomerSegment | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -75,6 +90,61 @@ export default function ProductPricingPage() {
       const response = await fetch("/api/products");
       if (!response.ok) throw new Error("Failed to fetch products");
       return response.json();
+    },
+  });
+
+  const { data: customerSegments = [] } = useQuery<CustomerSegment[]>({
+    queryKey: ["customer-segments"],
+    queryFn: async () => {
+      const response = await fetch("/api/customer-segments");
+      if (!response.ok) throw new Error("Failed to fetch customer segments");
+      return response.json();
+    },
+  });
+
+  const createSegmentMutation = useMutation({
+    mutationFn: async (data: Partial<CustomerSegment>) => {
+      const response = await fetch("/api/customer-segments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to create segment");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-segments"] });
+      setIsSegmentDialogOpen(false);
+      toast({ title: "Segment created", description: "Customer segment has been added." });
+    },
+  });
+
+  const updateSegmentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CustomerSegment> }) => {
+      const response = await fetch(`/api/customer-segments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to update segment");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-segments"] });
+      setEditingSegment(null);
+      toast({ title: "Segment updated", description: "Customer segment has been updated." });
+    },
+  });
+
+  const deleteSegmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/customer-segments/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete segment");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-segments"] });
+      toast({ title: "Segment deleted", description: "Customer segment has been removed." });
     },
   });
 
@@ -198,20 +268,176 @@ export default function ProductPricingPage() {
     });
   };
 
+  const handleAddSegment = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createSegmentMutation.mutate({
+      name: (formData.get("segmentName") as string).toLowerCase().replace(/\s+/g, '_'),
+      displayName: formData.get("displayName") as string,
+      description: formData.get("description") as string || null,
+      pricingMultiplier: parseFloat(formData.get("pricingMultiplier") as string) || 1.0,
+      isEligibleForQuotes: formData.get("isEligible") === "on",
+      ineligibilityReason: formData.get("ineligibilityReason") as string || null,
+      sortOrder: parseInt(formData.get("sortOrder") as string) || 0,
+    });
+  };
+
+  const toggleSegmentEligibility = (segment: CustomerSegment) => {
+    updateSegmentMutation.mutate({
+      id: segment.id,
+      data: { isEligibleForQuotes: !segment.isEligibleForQuotes }
+    });
+  };
+
   return (
     <div className="flex h-screen bg-background w-full">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b bg-card flex items-center justify-between px-6 shrink-0">
-          <h1 className="text-xl font-semibold">Product Pricing & Restrictions</h1>
+          <h1 className="text-xl font-semibold">Pricing & Eligibility</h1>
         </header>
 
-        <div className="flex-1 overflow-auto p-6 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Product</CardTitle>
-              <CardDescription>Choose a product to manage its pricing tiers and shipping restrictions</CardDescription>
-            </CardHeader>
+        <div className="flex-1 overflow-auto p-6">
+          <Tabs defaultValue="segments" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="segments" data-testid="tab-segments">
+                <Users className="h-4 w-4 mr-2" />
+                Customer Segments
+              </TabsTrigger>
+              <TabsTrigger value="products" data-testid="tab-products">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Product Pricing
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="segments" className="space-y-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Customer Segments
+                    </CardTitle>
+                    <CardDescription>Define buyer types, their eligibility for quotes, and pricing multipliers</CardDescription>
+                  </div>
+                  <Dialog open={isSegmentDialogOpen} onOpenChange={setIsSegmentDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-add-segment">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Segment
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Customer Segment</DialogTitle>
+                        <DialogDescription>Create a new customer segment with pricing and eligibility rules</DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleAddSegment} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="segmentName">Segment ID (lowercase)</Label>
+                            <Input id="segmentName" name="segmentName" placeholder="e.g., distributor" required data-testid="input-segment-name" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="displayName">Display Name</Label>
+                            <Input id="displayName" name="displayName" placeholder="e.g., Distributor" required data-testid="input-display-name" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="description">Description</Label>
+                          <Input id="description" name="description" placeholder="Brief description of this segment" data-testid="input-segment-description" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="pricingMultiplier">Pricing Multiplier</Label>
+                            <Input id="pricingMultiplier" name="pricingMultiplier" type="number" step="0.01" min="0" defaultValue="1.0" required data-testid="input-pricing-multiplier" />
+                            <p className="text-xs text-muted-foreground">1.0 = base price, 1.1 = 10% markup</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="sortOrder">Sort Order</Label>
+                            <Input id="sortOrder" name="sortOrder" type="number" defaultValue="0" data-testid="input-sort-order" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" id="isEligible" name="isEligible" defaultChecked className="rounded" data-testid="checkbox-eligible" />
+                          <Label htmlFor="isEligible">Eligible for quotes</Label>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="ineligibilityReason">Ineligibility Reason (if not eligible)</Label>
+                          <Input id="ineligibilityReason" name="ineligibilityReason" placeholder="Why this segment cannot receive quotes" data-testid="input-ineligibility-reason" />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={createSegmentMutation.isPending} data-testid="button-submit-segment">
+                          {createSegmentMutation.isPending ? "Adding..." : "Add Segment"}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent>
+                  {customerSegments.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No customer segments configured. Add segments to control eligibility and pricing by buyer type.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Segment</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Pricing</TableHead>
+                          <TableHead>Eligible</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {customerSegments.sort((a, b) => a.sortOrder - b.sortOrder).map((segment) => (
+                          <TableRow key={segment.id} data-testid={`row-segment-${segment.id}`}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{segment.displayName}</p>
+                                <p className="text-xs text-muted-foreground">{segment.name}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate">{segment.description || "-"}</TableCell>
+                            <TableCell>
+                              {segment.pricingMultiplier === 1 ? (
+                                <span className="text-muted-foreground">Base price</span>
+                              ) : (
+                                <span className={segment.pricingMultiplier > 1 ? "text-amber-600" : "text-green-600"}>
+                                  {segment.pricingMultiplier > 1 ? "+" : ""}{((segment.pricingMultiplier - 1) * 100).toFixed(0)}%
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <button onClick={() => toggleSegmentEligibility(segment)} className="flex items-center gap-1" data-testid={`toggle-eligible-${segment.id}`}>
+                                {segment.isEligibleForQuotes ? (
+                                  <span className="flex items-center gap-1 text-green-600"><Check className="h-4 w-4" /> Yes</span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-red-600"><X className="h-4 w-4" /> No</span>
+                                )}
+                              </button>
+                              {!segment.isEligibleForQuotes && segment.ineligibilityReason && (
+                                <p className="text-xs text-muted-foreground">{segment.ineligibilityReason}</p>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => deleteSegmentMutation.mutate(segment.id)} data-testid={`button-delete-segment-${segment.id}`}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="products" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Select Product</CardTitle>
+                  <CardDescription>Choose a product to manage its pricing tiers and shipping restrictions</CardDescription>
+                </CardHeader>
             <CardContent>
               <Select value={selectedProductId || ""} onValueChange={setSelectedProductId}>
                 <SelectTrigger className="w-full max-w-md" data-testid="select-product">
@@ -410,6 +636,8 @@ export default function ProductPricingPage() {
               </Card>
             </>
           )}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

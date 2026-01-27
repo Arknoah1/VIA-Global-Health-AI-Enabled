@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, timestamp, boolean, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -121,3 +121,23 @@ export const insertProductRestrictedCountrySchema = createInsertSchema(productRe
 
 export type InsertProductRestrictedCountry = z.infer<typeof insertProductRestrictedCountrySchema>;
 export type ProductRestrictedCountry = typeof productRestrictedCountries.$inferSelect;
+
+export const customerSegments = pgTable("customer_segments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  pricingMultiplier: real("pricing_multiplier").notNull().default(1.0),
+  isEligibleForQuotes: boolean("is_eligible_for_quotes").notNull().default(true),
+  ineligibilityReason: text("ineligibility_reason"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCustomerSegmentSchema = createInsertSchema(customerSegments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCustomerSegment = z.infer<typeof insertCustomerSegmentSchema>;
+export type CustomerSegment = typeof customerSegments.$inferSelect;
