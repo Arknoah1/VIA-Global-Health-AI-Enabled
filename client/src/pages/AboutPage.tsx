@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Globe, Package, Zap, Users, Award, Heart, TrendingUp } from "lucide-react";
 
-import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
 import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
 
 export default function AboutPage() {
@@ -26,25 +25,16 @@ export default function AboutPage() {
           </svg>
         </div>
         <div className="container mx-auto px-4 relative">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">Building Stronger Health Systems Together</h1>
-              <p className="text-xl text-blue-100 mb-8">
-                VIA Global Health partners with distributors, healthcare providers, and NGOs across Africa. We respond to every inquiry—because every order matters.
-              </p>
-              <Link href="/catalog">
-                <Button size="lg" variant="secondary">
-                  Get a Quote Today
-                </Button>
-              </Link>
-            </div>
-            <div>
-              <img 
-                src={africanDoctorPatient} 
-                alt="African healthcare professional with patient" 
-                className="rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
-              />
-            </div>
+          <div className="max-w-3xl">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">Building Stronger Health Systems Together</h1>
+            <p className="text-xl text-blue-100 mb-8">
+              VIA Global Health partners with distributors, healthcare providers, and NGOs across Africa. We respond to every inquiry—because every order matters.
+            </p>
+            <Link href="/catalog">
+              <Button size="lg" variant="secondary">
+                Get a Quote Today
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
