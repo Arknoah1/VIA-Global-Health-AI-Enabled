@@ -8,7 +8,8 @@ import {
   Menu,
   Globe,
   Package,
-  MessageSquare
+  MessageSquare,
+  DollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -18,7 +19,7 @@ export function Sidebar() {
   const links = [
     { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/quote-requests", icon: MessageSquare, label: "Quote Requests" },
-    { href: "/admin/products", icon: Package, label: "Products" },
+    { href: "/admin/pricing", icon: DollarSign, label: "Pricing & Restrictions" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 

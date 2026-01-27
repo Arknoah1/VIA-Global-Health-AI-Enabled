@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { scrapeViaGlobalHealth } from "./scraper";
-import { insertProductSchema, insertQuoteRequestSchema } from "@shared/schema";
+import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
 
@@ -218,6 +218,90 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching quote request messages:", error);
       res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // ===== PRODUCT PRICING TIERS =====
+  
+  // Get pricing tiers for a product
+  app.get("/api/products/:productId/pricing-tiers", async (req, res) => {
+    try {
+      const tiers = await storage.getProductPricingTiers(req.params.productId);
+      res.json(tiers);
+    } catch (error) {
+      console.error("Error fetching pricing tiers:", error);
+      res.status(500).json({ error: "Failed to fetch pricing tiers" });
+    }
+  });
+
+  // Create a pricing tier for a product
+  app.post("/api/products/:productId/pricing-tiers", async (req, res) => {
+    try {
+      const validated = insertProductPricingTierSchema.parse({
+        ...req.body,
+        productId: req.params.productId
+      });
+      const tier = await storage.createProductPricingTier(validated);
+      res.status(201).json(tier);
+    } catch (error) {
+      console.error("Error creating pricing tier:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid pricing tier data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create pricing tier" });
+    }
+  });
+
+  // Delete all pricing tiers for a product
+  app.delete("/api/products/:productId/pricing-tiers", async (req, res) => {
+    try {
+      await storage.deleteProductPricingTiers(req.params.productId);
+      res.json({ message: "Pricing tiers deleted" });
+    } catch (error) {
+      console.error("Error deleting pricing tiers:", error);
+      res.status(500).json({ error: "Failed to delete pricing tiers" });
+    }
+  });
+
+  // ===== PRODUCT RESTRICTED COUNTRIES =====
+
+  // Get restricted countries for a product
+  app.get("/api/products/:productId/restricted-countries", async (req, res) => {
+    try {
+      const restrictions = await storage.getProductRestrictedCountries(req.params.productId);
+      res.json(restrictions);
+    } catch (error) {
+      console.error("Error fetching restricted countries:", error);
+      res.status(500).json({ error: "Failed to fetch restricted countries" });
+    }
+  });
+
+  // Create a restricted country for a product
+  app.post("/api/products/:productId/restricted-countries", async (req, res) => {
+    try {
+      const validated = insertProductRestrictedCountrySchema.parse({
+        ...req.body,
+        productId: req.params.productId
+      });
+      const restriction = await storage.createProductRestrictedCountry(validated);
+      res.status(201).json(restriction);
+    } catch (error) {
+      console.error("Error creating restricted country:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid restriction data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create restricted country" });
+    }
+  });
+
+  // Delete all restricted countries for a product
+  app.delete("/api/products/:productId/restricted-countries", async (req, res) => {
+    try {
+      await storage.deleteProductRestrictedCountries(req.params.productId);
+      res.json({ message: "Restricted countries deleted" });
+    } catch (error) {
+      console.error("Error deleting restricted countries:", error);
+      res.status(500).json({ error: "Failed to delete restricted countries" });
     }
   });
 
