@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Globe, Package, Zap, Users, Award, Heart, TrendingUp } from "lucide-react";
 
 import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
-import africanMedicalTeam from "@/assets/images/african-medical-team.png";
+import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
 
 export default function AboutPage() {
   return (

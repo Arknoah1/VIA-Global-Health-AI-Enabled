@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import africanHealthcareHero from "@/assets/images/african-healthcare-hero.png";
-import africanMedicalTeam from "@/assets/images/african-medical-team.png";
+import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
 import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
 
 export default function HomePage() {
