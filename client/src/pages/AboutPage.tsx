@@ -38,7 +38,7 @@ export default function AboutPage() {
                 </Button>
               </Link>
             </div>
-            <div className="hidden lg:block">
+            <div>
               <img 
                 src={africanDoctorPatient} 
                 alt="African healthcare professional with patient" 
@@ -226,7 +226,7 @@ export default function AboutPage() {
         </div>
         <div className="container mx-auto px-4 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="hidden lg:block">
+            <div>
               <img 
                 src={africanMedicalTeam} 
                 alt="African medical professionals collaborating" 
