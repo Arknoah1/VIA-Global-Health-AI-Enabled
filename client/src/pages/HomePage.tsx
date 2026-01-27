@@ -10,6 +10,10 @@ import {
   MessageSquare
 } from "lucide-react";
 
+import africanHealthcareHero from "@/assets/images/african-healthcare-hero.png";
+import africanMedicalTeam from "@/assets/images/african-medical-team.png";
+import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
+
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"distributors" | "providers" | "ngos">("distributors");
 
@@ -87,22 +91,22 @@ export default function HomePage() {
 
   const testimonials = [
     {
-      quote: "We had grant funding expiring in 60 days and couldn't get a single manufacturer to respond. VIA quoted us within 24 hours and delivered before our deadline.",
-      author: "Dr. Sarah Okonkwo",
-      role: "Regional Director",
-      org: "Healthcare NGO, Kenya"
+      quote: "VIA helped us equip three new maternal health clinics across rural Kenya. Their 24-hour response meant we could finalize procurement before our grant deadline—and now those clinics are saving lives every day.",
+      author: "Dr. Grace Wanjiku",
+      role: "Regional Health Director",
+      org: "Kenya Ministry of Health Partner"
     },
     {
-      quote: "Our clients kept requesting specific equipment that manufacturers wouldn't sell to us directly. VIA became our solution—they actually respond and follow through.",
+      quote: "As a Tanzanian distributor, I needed a partner who understood our market. VIA's team works alongside us—not above us. Together we've brought essential equipment to hospitals that were struggling to get manufacturer attention.",
       author: "James Mwangi",
-      role: "Procurement Manager",
-      org: "Medical Distributor, Tanzania"
+      role: "Managing Director",
+      org: "MedEquip Tanzania Ltd"
     },
     {
-      quote: "After weeks of silence from the manufacturer, I contacted VIA. They responded the same day and helped us source the exact equipment we needed.",
-      author: "Dr. Amara Diallo",
-      role: "Health Program Director",
-      org: "Faith-based Organization, Senegal"
+      quote: "Our community health workers now have the diagnostic tools they need. VIA understood our timeline, our budget, and our mission. This is how partnerships should work—Africans helping Africans build stronger health systems.",
+      author: "Sister Amara Diallo",
+      role: "Health Program Coordinator",
+      org: "Catholic Relief Services, Senegal"
     }
   ];
 
@@ -122,27 +126,41 @@ export default function HomePage() {
 
       {/* Hero Section - Responsiveness Focused */}
       <section className="container mx-auto px-4 py-16 md:py-20">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-            You Need Specific Equipment.<br />
-            <span className="text-primary">We Actually Respond.</span>
-          </h1>
-          <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-            From a single unit to a national tender, every inquiry gets the same attention. Quote response within 24 hours—no runaround, no silence.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/catalog">
-              <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-view-products">
-                View Products
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/catalog">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-get-quote">
-                <MessageSquare className="mr-2 h-5 w-5" />
-                Get a Quote
-              </Button>
-            </Link>
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="text-center lg:text-left">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+              You Need Specific Equipment.<br />
+              <span className="text-primary">We Actually Respond.</span>
+            </h1>
+            <p className="text-xl text-slate-600 mb-8 max-w-2xl">
+              From a single unit to a national tender, every inquiry gets the same attention. Quote response within 24 hours—no runaround, no silence.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <Link href="/catalog">
+                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-view-products">
+                  View Products
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/catalog">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-get-quote">
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Get a Quote
+                </Button>
+              </Link>
+            </div>
+          </div>
+          <div className="relative">
+            <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 to-blue-200/30 rounded-3xl transform rotate-3"></div>
+            <img 
+              src={africanHealthcareHero} 
+              alt="African healthcare professional" 
+              className="relative rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
+            />
+            <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-lg p-4 border">
+              <p className="text-sm font-semibold text-slate-900">Africans Helping Africans</p>
+              <p className="text-xs text-slate-600">Building stronger health systems together</p>
+            </div>
           </div>
         </div>
       </section>
@@ -303,66 +321,92 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 mb-3">Trusted by Healthcare Leaders</h2>
-          <p className="text-slate-600">See what our partners say about working with VIA Global Health</p>
+      <section className="relative py-16 overflow-hidden">
+        <div className="absolute inset-0 opacity-5">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <pattern id="africanPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M0 10 L10 0 L20 10 L10 20 Z" fill="currentColor" className="text-primary"/>
+              <circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-primary"/>
+            </pattern>
+            <rect x="0" y="0" width="100" height="100" fill="url(#africanPattern)"/>
+          </svg>
         </div>
-        <div className="grid md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, idx) => (
-            <Card key={idx} className="h-full" data-testid={`card-testimonial-${idx}`}>
-              <CardContent className="p-6">
-                <Quote className="h-8 w-8 text-primary/30 mb-4" />
-                <p className="text-slate-700 mb-6 italic">"{testimonial.quote}"</p>
-                <div className="border-t pt-4">
-                  <p className="font-semibold text-slate-900">{testimonial.author}</p>
-                  <p className="text-sm text-slate-600">{testimonial.role}</p>
-                  <p className="text-sm text-primary">{testimonial.org}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="container mx-auto px-4 relative">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">Voices from Our Partners</h2>
+            <p className="text-slate-600">Healthcare leaders across Africa share their experience with VIA</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, idx) => (
+              <Card key={idx} className="h-full bg-white/80 backdrop-blur-sm" data-testid={`card-testimonial-${idx}`}>
+                <CardContent className="p-6">
+                  <Quote className="h-8 w-8 text-primary/30 mb-4" />
+                  <p className="text-slate-700 mb-6 italic">"{testimonial.quote}"</p>
+                  <div className="border-t pt-4">
+                    <p className="font-semibold text-slate-900">{testimonial.author}</p>
+                    <p className="text-sm text-slate-600">{testimonial.role}</p>
+                    <p className="text-sm text-primary">{testimonial.org}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Why Trust VIA */}
+      {/* Why Trust VIA - with team image */}
       <section className="bg-slate-50 py-16">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">Why Choose VIA Global Health?</h2>
-            <p className="text-slate-600">Built on relationships, delivered with trust</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: ShieldCheck, title: "Trusted Relationships", desc: "15+ years building partnerships across Africa" },
-              { icon: Zap, title: "Fast Quotes", desc: "Personalized quotes within 24 hours" },
-              { icon: Award, title: "Quality Assured", desc: "All products meet international standards" },
-              { icon: MapPin, title: "Africa Expertise", desc: "Deep understanding of regional needs" }
-            ].map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <Card key={idx} className="text-center">
-                  <CardContent className="p-6">
-                    <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <Icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <h4 className="font-semibold text-slate-900 mb-2">{item.title}</h4>
-                    <p className="text-sm text-slate-600">{item.desc}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 mb-3">Why Choose VIA Global Health?</h2>
+              <p className="text-slate-600 mb-6">Built on relationships, delivered with trust. Our team of African healthcare professionals understands your challenges because we've lived them.</p>
+              <img 
+                src={africanMedicalTeam} 
+                alt="African medical professionals collaborating" 
+                className="rounded-xl shadow-lg w-full object-cover aspect-video"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              {[
+                { icon: ShieldCheck, title: "Trusted Relationships", desc: "15+ years building partnerships across Africa" },
+                { icon: Zap, title: "Fast Quotes", desc: "Personalized quotes within 24 hours" },
+                { icon: Award, title: "Quality Assured", desc: "All products meet international standards" },
+                { icon: MapPin, title: "Africa Expertise", desc: "Deep understanding of regional needs" }
+              ].map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <Card key={idx} className="text-center">
+                    <CardContent className="p-6">
+                      <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <Icon className="h-6 w-6 text-primary" />
+                      </div>
+                      <h4 className="font-semibold text-slate-900 mb-2">{item.title}</h4>
+                      <p className="text-sm text-slate-600">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary text-white py-16">
-        <div className="container mx-auto px-4 text-center">
+      <section className="relative bg-primary text-white py-16 overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <pattern id="ctaPattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+              <circle cx="5" cy="5" r="1" fill="white"/>
+              <path d="M0 5 L5 0 L10 5 L5 10 Z" fill="none" stroke="white" strokeWidth="0.3"/>
+            </pattern>
+            <rect x="0" y="0" width="100" height="100" fill="url(#ctaPattern)"/>
+          </svg>
+        </div>
+        <div className="container mx-auto px-4 text-center relative">
           <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
           <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-            Join hundreds of healthcare organizations across Africa who trust VIA Global Health for their medical equipment needs.
+            Join hundreds of healthcare organizations across Africa who trust VIA Global Health. Together, we're building stronger health systems—one partnership at a time.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">

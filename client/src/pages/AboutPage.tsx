@@ -6,24 +6,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Globe, Package, Zap, Users, Award, Heart, TrendingUp } from "lucide-react";
 
+import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
+import africanMedicalTeam from "@/assets/images/african-medical-team.png";
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">The Medical Equipment Partner That Actually Responds</h1>
-            <p className="text-xl text-blue-100 mb-8">
-              Manufacturers often ignore small orders from NGOs and distributors. VIA bridges that gap—aggregating demand so you get the quotes and equipment you need, when you need it.
-            </p>
-            <Link href="/catalog">
-              <Button size="lg" variant="secondary">
-                Get a Quote Today
-              </Button>
-            </Link>
+      <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 md:py-24 overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <pattern id="aboutPattern" x="0" y="0" width="15" height="15" patternUnits="userSpaceOnUse">
+              <path d="M0 7.5 L7.5 0 L15 7.5 L7.5 15 Z" fill="none" stroke="white" strokeWidth="0.5"/>
+              <circle cx="7.5" cy="7.5" r="2" fill="white" fillOpacity="0.3"/>
+            </pattern>
+            <rect x="0" y="0" width="100" height="100" fill="url(#aboutPattern)"/>
+          </svg>
+        </div>
+        <div className="container mx-auto px-4 relative">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-6">Africans Helping Africans Build Stronger Health Systems</h1>
+              <p className="text-xl text-blue-100 mb-8">
+                VIA Global Health partners with distributors, healthcare providers, and NGOs across Africa. We respond to every inquiry—because every order matters.
+              </p>
+              <Link href="/catalog">
+                <Button size="lg" variant="secondary">
+                  Get a Quote Today
+                </Button>
+              </Link>
+            </div>
+            <div className="hidden lg:block">
+              <img 
+                src={africanDoctorPatient} 
+                alt="African healthcare professional with patient" 
+                className="rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -194,33 +215,60 @@ export default function AboutPage() {
       </section>
 
       {/* Testimonial Section */}
-      <section className="py-16 md:py-24 bg-blue-50" data-testid="section-testimonial">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="mb-6">
-              {[...Array(5)].map((_, i) => (
-                <span key={i} className="text-yellow-400 text-2xl">★</span>
-              ))}
+      <section className="relative py-16 md:py-24 bg-blue-50 overflow-hidden" data-testid="section-testimonial">
+        <div className="absolute inset-0 opacity-5">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <pattern id="testimonialPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M0 10 L10 0 L20 10 L10 20 Z" fill="currentColor" className="text-primary"/>
+            </pattern>
+            <rect x="0" y="0" width="100" height="100" fill="url(#testimonialPattern)"/>
+          </svg>
+        </div>
+        <div className="container mx-auto px-4 relative">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="hidden lg:block">
+              <img 
+                src={africanMedicalTeam} 
+                alt="African medical professionals collaborating" 
+                className="rounded-2xl shadow-xl w-full object-cover aspect-video"
+              />
             </div>
-            <blockquote className="text-2xl font-semibold text-slate-900 mb-6 italic">
-              "Working with VIA Global health has been the most satisfying experience business wise in my many years of working with international medical companies. From the impeccable communication of the international sales team through Mr. Reza Garda, to the product delivery and packaging."
-            </blockquote>
-            <p className="text-lg text-slate-700 font-semibold">VIA Verified Buyer, Gambia</p>
-            <Link href="/catalog" className="mt-8 inline-block">
-              <Button variant="outline">
-                Read Customer Testimonials
-              </Button>
-            </Link>
+            <div className="text-center lg:text-left">
+              <div className="mb-6">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className="text-yellow-400 text-2xl">★</span>
+                ))}
+              </div>
+              <blockquote className="text-2xl font-semibold text-slate-900 mb-6 italic">
+                "VIA understands our reality. They don't just sell equipment—they partner with us to strengthen healthcare delivery across West Africa. This is what true partnership looks like."
+              </blockquote>
+              <p className="text-lg text-slate-700 font-semibold">Dr. Fatou Jallow</p>
+              <p className="text-slate-600">Medical Director, Regional Health Network, Gambia</p>
+              <Link href="/catalog" className="mt-8 inline-block">
+                <Button variant="outline">
+                  Browse Our Catalog
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-16 md:py-24 bg-slate-900 text-white" data-testid="section-final-cta">
-        <div className="container mx-auto px-4 text-center">
+      <section className="relative py-16 md:py-24 bg-slate-900 text-white overflow-hidden" data-testid="section-final-cta">
+        <div className="absolute inset-0 opacity-10">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <pattern id="ctaPattern2" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+              <circle cx="5" cy="5" r="1" fill="white"/>
+              <path d="M0 5 L5 0 L10 5 L5 10 Z" fill="none" stroke="white" strokeWidth="0.3"/>
+            </pattern>
+            <rect x="0" y="0" width="100" height="100" fill="url(#ctaPattern2)"/>
+          </svg>
+        </div>
+        <div className="container mx-auto px-4 text-center relative">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Get Started?</h2>
           <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-            Medical supply buyers deserve a frictionless experience. Browse our product catalog and request a quote customized to your location, budget and timeline.
+            Join hundreds of healthcare organizations building stronger health systems across Africa. Together, we're making quality medical equipment accessible to those who need it most.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
