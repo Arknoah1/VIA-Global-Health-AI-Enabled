@@ -158,8 +158,7 @@ export default function HomePage() {
               className="relative rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
             />
             <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-lg p-4 border">
-              <p className="text-sm font-semibold text-slate-900">Africans Helping Africans</p>
-              <p className="text-xs text-slate-600">Building stronger health systems together</p>
+              <p className="text-sm font-semibold text-slate-900">Building stronger health systems together</p>
             </div>
           </div>
         </div>

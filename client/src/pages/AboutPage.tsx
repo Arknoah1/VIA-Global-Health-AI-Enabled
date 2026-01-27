@@ -28,7 +28,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">Africans Helping Africans Build Stronger Health Systems</h1>
+              <h1 className="text-4xl md:text-5xl font-bold mb-6">Building Stronger Health Systems Together</h1>
               <p className="text-xl text-blue-100 mb-8">
                 VIA Global Health partners with distributors, healthcare providers, and NGOs across Africa. We respond to every inquiry—because every order matters.
               </p>
