@@ -141,3 +141,66 @@ export const insertCustomerSegmentSchema = createInsertSchema(customerSegments).
 
 export type InsertCustomerSegment = z.infer<typeof insertCustomerSegmentSchema>;
 export type CustomerSegment = typeof customerSegments.$inferSelect;
+
+export const proformaInvoices = pgTable("proforma_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referenceNumber: varchar("reference_number", { length: 50 }).notNull().unique(),
+  quoteRequestId: varchar("quote_request_id").references(() => quoteRequests.id),
+  
+  // Customer info
+  customerName: text("customer_name").notNull(),
+  customerEmail: text("customer_email"),
+  customerPhone: text("customer_phone"),
+  customerOrganization: text("customer_organization"),
+  customerAddress: text("customer_address"),
+  
+  // Delivery info
+  deliveryAddress: text("delivery_address"),
+  deliveryCountry: text("delivery_country"),
+  deliveryCity: text("delivery_city"),
+  poNumber: text("po_number"),
+  
+  // Line items as JSON array: [{name, description, quantity, unitPriceCents, totalCents}]
+  lineItems: jsonb("line_items").notNull().default(sql`'[]'::jsonb`),
+  
+  // Costs in cents
+  subtotalCents: integer("subtotal_cents").notNull().default(0),
+  shippingCents: integer("shipping_cents").default(0),
+  bankFeeCents: integer("bank_fee_cents").default(3000), // $30 default
+  totalCents: integer("total_cents").notNull().default(0),
+  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+  
+  // Shipping details
+  shippingMethod: text("shipping_method"),
+  incoterms: text("incoterms").default("CIP"),
+  
+  // Comments/notes
+  comments: text("comments"),
+  
+  // Created by
+  createdByName: text("created_by_name").default("VIA Global Health"),
+  createdByEmail: text("created_by_email").default("quotes@viaglobalhealth.com"),
+  createdByPhone: text("created_by_phone"),
+  createdByTitle: text("created_by_title"),
+  
+  // Dates
+  quoteCreatedAt: timestamp("quote_created_at").notNull().defaultNow(),
+  quoteExpiresAt: timestamp("quote_expires_at"),
+  
+  // Status
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  emailSentAt: timestamp("email_sent_at"),
+  emailSentTo: text("email_sent_to"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertProformaInvoiceSchema = createInsertSchema(proformaInvoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProformaInvoice = z.infer<typeof insertProformaInvoiceSchema>;
+export type ProformaInvoice = typeof proformaInvoices.$inferSelect;

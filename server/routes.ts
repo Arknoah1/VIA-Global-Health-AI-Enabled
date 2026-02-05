@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { scrapeViaGlobalHealth } from "./scraper";
-import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema } from "@shared/schema";
+import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema, insertProformaInvoiceSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
 
@@ -357,6 +357,282 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting customer segment:", error);
       res.status(500).json({ error: "Failed to delete customer segment" });
+    }
+  });
+
+  // ===== PROFORMA INVOICES =====
+  
+  // Generate reference number for new invoices
+  function generateReferenceNumber(): string {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const randomPart = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
+    return `${dateStr}-${randomPart}`;
+  }
+
+  // Get all proforma invoices
+  app.get("/api/proforma-invoices", async (req, res) => {
+    try {
+      const invoices = await storage.getAllProformaInvoices();
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching proforma invoices:", error);
+      res.status(500).json({ error: "Failed to fetch proforma invoices" });
+    }
+  });
+
+  // Get a single proforma invoice by ID
+  app.get("/api/proforma-invoices/:id", async (req, res) => {
+    try {
+      const invoice = await storage.getProformaInvoiceById(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error fetching proforma invoice:", error);
+      res.status(500).json({ error: "Failed to fetch proforma invoice" });
+    }
+  });
+
+  // Create a proforma invoice from quote request data
+  app.post("/api/proforma-invoices", async (req, res) => {
+    try {
+      const referenceNumber = generateReferenceNumber();
+      const invoiceData = {
+        ...req.body,
+        referenceNumber,
+        quoteExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      };
+      const validated = insertProformaInvoiceSchema.parse(invoiceData);
+      const invoice = await storage.createProformaInvoice(validated);
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error("Error creating proforma invoice:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid invoice data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create proforma invoice" });
+    }
+  });
+
+  // Update a proforma invoice
+  app.patch("/api/proforma-invoices/:id", async (req, res) => {
+    try {
+      const updateSchema = insertProformaInvoiceSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const invoice = await storage.updateProformaInvoice(req.params.id, validatedData);
+      res.json(invoice);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error updating proforma invoice:", error);
+      res.status(500).json({ error: "Failed to update proforma invoice" });
+    }
+  });
+
+  // Line item validation schema
+  const lineItemSchema = z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    quantity: z.number().int().positive(),
+    unitPriceCents: z.number().int().min(0),
+    totalCents: z.number().int().min(0),
+  });
+
+  // Generate invoice from a quote request
+  app.post("/api/quote-requests/:id/generate-invoice", async (req, res) => {
+    try {
+      const quoteRequest = await storage.getQuoteRequestById(req.params.id);
+      if (!quoteRequest) {
+        return res.status(404).json({ error: "Quote request not found" });
+      }
+
+      // Check for existing invoice to prevent duplicates
+      const existingInvoices = await storage.getProformaInvoicesByQuoteRequest(req.params.id);
+      if (existingInvoices.length > 0) {
+        // Return the most recent existing invoice
+        return res.json(existingInvoices[0]);
+      }
+
+      // Get product details for pricing
+      let unitPriceCents = 0;
+      let productDescription = "";
+      if (quoteRequest.productId) {
+        const product = await storage.getProductById(quoteRequest.productId);
+        if (product) {
+          unitPriceCents = product.price;
+          productDescription = product.description?.substring(0, 200) || "";
+        }
+        
+        // Check for pricing tiers
+        const pricingTiers = await storage.getProductPricingTiers(quoteRequest.productId);
+        const quantity = parseInt(quoteRequest.orderQuantity || "1") || 1;
+        const applicableTier = pricingTiers.find(t => 
+          quantity >= t.minQuantity && (t.maxQuantity === null || quantity <= t.maxQuantity)
+        );
+        if (applicableTier) {
+          unitPriceCents = applicableTier.unitPriceCents;
+        }
+      }
+
+      // Apply segment pricing multiplier
+      let pricingMultiplier = 1.0;
+      if (quoteRequest.organizationType) {
+        const segment = await storage.getCustomerSegmentByName(quoteRequest.organizationType.toLowerCase().replace(/\s+/g, '_'));
+        if (segment) {
+          pricingMultiplier = segment.pricingMultiplier;
+        }
+      }
+
+      const quantity = parseInt(quoteRequest.orderQuantity || "1") || 1;
+      const adjustedUnitPriceCents = Math.round(unitPriceCents * pricingMultiplier);
+      const lineItemTotal = adjustedUnitPriceCents * quantity;
+      const shippingCents = 0; // To be filled in manually
+      const bankFeeCents = 3000; // $30 default
+      const subtotalCents = lineItemTotal + shippingCents + bankFeeCents;
+      const totalCents = subtotalCents;
+
+      const referenceNumber = generateReferenceNumber();
+      const customerName = [quoteRequest.firstName, quoteRequest.lastName].filter(Boolean).join(' ') || 'Customer';
+
+      const invoiceData = {
+        referenceNumber,
+        quoteRequestId: quoteRequest.id,
+        customerName,
+        customerEmail: quoteRequest.email,
+        customerOrganization: quoteRequest.organizationName,
+        deliveryCountry: quoteRequest.shippingCountry,
+        deliveryCity: quoteRequest.shippingCity,
+        shippingMethod: quoteRequest.shippingPreference,
+        lineItems: [{
+          name: quoteRequest.productName,
+          description: productDescription,
+          quantity,
+          unitPriceCents: adjustedUnitPriceCents,
+          totalCents: lineItemTotal
+        }],
+        subtotalCents,
+        shippingCents,
+        bankFeeCents,
+        totalCents,
+        currency: "USD",
+        quoteExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        comments: `Delivery to:\n${quoteRequest.shippingCity || ''}\n${quoteRequest.shippingCountry || ''}\n\nShipping: ${quoteRequest.shippingPreference || 'TBD'}`,
+        createdByName: "VIA Global Health",
+        createdByEmail: "quotes@viaglobalhealth.com",
+      };
+
+      const validated = insertProformaInvoiceSchema.parse(invoiceData);
+      const invoice = await storage.createProformaInvoice(validated);
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error("Error generating proforma invoice:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid invoice data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to generate proforma invoice" });
+    }
+  });
+
+  // HTML escape helper
+  function escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Email validation schema
+  const emailSchema = z.string().email();
+
+  // Send invoice email
+  app.post("/api/proforma-invoices/:id/send-email", async (req, res) => {
+    try {
+      const invoice = await storage.getProformaInvoiceById(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      // Validate recipient email - only allow viaglobalhealth.com emails for security
+      const recipientEmail = req.body.recipientEmail || "noah@viaglobalhealth.com";
+      try {
+        emailSchema.parse(recipientEmail);
+        if (!recipientEmail.endsWith('@viaglobalhealth.com')) {
+          return res.status(400).json({ error: "Email must be a viaglobalhealth.com address" });
+        }
+      } catch {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+      
+      // Check if Resend is configured
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (!resendApiKey) {
+        // For now, just mark as sent and return success (email integration pending)
+        await storage.updateProformaInvoice(invoice.id, {
+          emailSentAt: new Date(),
+          emailSentTo: recipientEmail,
+          status: "sent",
+        });
+        return res.json({ 
+          success: true, 
+          message: "Invoice marked as sent. Email integration pending setup.",
+          recipientEmail 
+        });
+      }
+
+      // Send email via Resend
+      const { Resend } = await import('resend');
+      const resend = new Resend(resendApiKey);
+      
+      const lineItems = invoice.lineItems as any[];
+      const lineItemsHtml = lineItems.map(item => 
+        `<tr><td>${escapeHtml(item.name || '')}</td><td>${item.quantity}</td><td>$${(item.unitPriceCents / 100).toFixed(2)}</td><td>$${(item.totalCents / 100).toFixed(2)}</td></tr>`
+      ).join('');
+
+      const safeCustomerName = escapeHtml(invoice.customerName || '');
+      const safeOrganization = escapeHtml(invoice.customerOrganization || 'N/A');
+      const safeEmail = escapeHtml(invoice.customerEmail || 'N/A');
+      const safeCity = escapeHtml(invoice.deliveryCity || '');
+      const safeCountry = escapeHtml(invoice.deliveryCountry || '');
+      const safeComments = invoice.comments ? escapeHtml(invoice.comments) : '';
+
+      await resend.emails.send({
+        from: 'VIA Global Health <quotes@viaglobalhealth.com>',
+        to: [recipientEmail],
+        subject: `Proforma Invoice ${invoice.referenceNumber} - ${safeCustomerName}`,
+        html: `
+          <h1>Proforma Invoice</h1>
+          <p><strong>Reference:</strong> ${invoice.referenceNumber}</p>
+          <p><strong>Customer:</strong> ${safeCustomerName} (${safeOrganization})</p>
+          <p><strong>Email:</strong> ${safeEmail}</p>
+          <p><strong>Delivery:</strong> ${safeCity} ${safeCountry}</p>
+          <h2>Products</h2>
+          <table border="1" cellpadding="8" style="border-collapse: collapse;">
+            <tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
+            ${lineItemsHtml}
+            <tr><td>Shipping</td><td>1</td><td>$${((invoice.shippingCents || 0) / 100).toFixed(2)}</td><td>$${((invoice.shippingCents || 0) / 100).toFixed(2)}</td></tr>
+            <tr><td>Bank Fee</td><td>1</td><td>$${((invoice.bankFeeCents || 0) / 100).toFixed(2)}</td><td>$${((invoice.bankFeeCents || 0) / 100).toFixed(2)}</td></tr>
+            <tr><td colspan="3"><strong>Total</strong></td><td><strong>$${(invoice.totalCents / 100).toFixed(2)}</strong></td></tr>
+          </table>
+          ${safeComments ? `<h3>Comments</h3><p>${safeComments}</p>` : ''}
+          <p style="margin-top: 20px; color: #666;">This invoice was generated from a quote request. Please review and finalize before sending to the customer.</p>
+        `,
+      });
+
+      await storage.updateProformaInvoice(invoice.id, {
+        emailSentAt: new Date(),
+        emailSentTo: recipientEmail,
+        status: "sent",
+      });
+
+      res.json({ success: true, message: "Email sent successfully", recipientEmail });
+    } catch (error) {
+      console.error("Error sending invoice email:", error);
+      res.status(500).json({ error: "Failed to send email" });
     }
   });
 

@@ -4,7 +4,8 @@ import {
   type QuoteRequestMessage, type InsertQuoteRequestMessage, quoteRequestMessages,
   type ProductPricingTier, type InsertProductPricingTier, productPricingTiers,
   type ProductRestrictedCountry, type InsertProductRestrictedCountry, productRestrictedCountries,
-  type CustomerSegment, type InsertCustomerSegment, customerSegments
+  type CustomerSegment, type InsertCustomerSegment, customerSegments,
+  type ProformaInvoice, type InsertProformaInvoice, proformaInvoices
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
@@ -34,6 +35,14 @@ export interface IStorage {
   createCustomerSegment(segment: InsertCustomerSegment): Promise<CustomerSegment>;
   updateCustomerSegment(id: string, data: Partial<InsertCustomerSegment>): Promise<CustomerSegment>;
   deleteCustomerSegment(id: string): Promise<void>;
+  
+  // Proforma Invoices
+  createProformaInvoice(invoice: InsertProformaInvoice): Promise<ProformaInvoice>;
+  getProformaInvoiceById(id: string): Promise<ProformaInvoice | undefined>;
+  getProformaInvoiceByReference(referenceNumber: string): Promise<ProformaInvoice | undefined>;
+  updateProformaInvoice(id: string, data: Partial<InsertProformaInvoice>): Promise<ProformaInvoice>;
+  getAllProformaInvoices(): Promise<ProformaInvoice[]>;
+  getProformaInvoicesByQuoteRequest(quoteRequestId: string): Promise<ProformaInvoice[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -198,6 +207,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomerSegment(id: string): Promise<void> {
     await db.delete(customerSegments).where(eq(customerSegments.id, id));
+  }
+
+  // Proforma Invoice methods
+  async createProformaInvoice(invoice: InsertProformaInvoice): Promise<ProformaInvoice> {
+    const result = await db.insert(proformaInvoices).values(invoice).returning();
+    return result[0];
+  }
+
+  async getProformaInvoiceById(id: string): Promise<ProformaInvoice | undefined> {
+    const result = await db.select().from(proformaInvoices).where(eq(proformaInvoices.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getProformaInvoiceByReference(referenceNumber: string): Promise<ProformaInvoice | undefined> {
+    const result = await db.select().from(proformaInvoices).where(eq(proformaInvoices.referenceNumber, referenceNumber)).limit(1);
+    return result[0];
+  }
+
+  async updateProformaInvoice(id: string, data: Partial<InsertProformaInvoice>): Promise<ProformaInvoice> {
+    const result = await db
+      .update(proformaInvoices)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(proformaInvoices.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getAllProformaInvoices(): Promise<ProformaInvoice[]> {
+    return await db.select().from(proformaInvoices).orderBy(desc(proformaInvoices.createdAt));
+  }
+
+  async getProformaInvoicesByQuoteRequest(quoteRequestId: string): Promise<ProformaInvoice[]> {
+    return await db
+      .select()
+      .from(proformaInvoices)
+      .where(eq(proformaInvoices.quoteRequestId, quoteRequestId))
+      .orderBy(desc(proformaInvoices.createdAt));
   }
 }
 

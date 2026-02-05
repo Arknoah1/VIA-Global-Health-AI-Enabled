@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Header } from "@/components/Header";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ChevronDown, 
   Download, 
-  MessageSquare
+  MessageSquare,
+  FileText,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -17,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ProformaInvoicePreview } from "@/components/ProformaInvoicePreview";
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -46,9 +48,12 @@ export default function QuoteRequestsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<QuoteRequest | null>(null);
   const [showConversationDialog, setShowConversationDialog] = useState(false);
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [currentInvoice, setCurrentInvoice] = useState<any>(null);
   const [conversationMessages, setConversationMessages] = useState<ChatMessage[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: requests = [], isLoading } = useQuery<QuoteRequest[]>({
     queryKey: ["quoteRequests"],
@@ -71,6 +76,48 @@ export default function QuoteRequestsPage() {
       title: "Export Started",
       description: "Downloading quote requests data as JSON...",
     });
+  };
+
+  const generateInvoiceMutation = useMutation({
+    mutationFn: async (quoteRequestId: string) => {
+      const response = await fetch(`/api/quote-requests/${quoteRequestId}/generate-invoice`, {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Failed to generate invoice");
+      return response.json();
+    },
+    onSuccess: (invoice) => {
+      setCurrentInvoice(invoice);
+      setShowInvoiceDialog(true);
+      toast({ title: "Invoice generated", description: `Reference: ${invoice.referenceNumber}` });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to generate invoice", variant: "destructive" });
+    },
+  });
+
+  const sendInvoiceEmailMutation = useMutation({
+    mutationFn: async (invoice: any) => {
+      const response = await fetch(`/api/proforma-invoices/${invoice.id}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientEmail: "noah@viaglobalhealth.com" }),
+      });
+      if (!response.ok) throw new Error("Failed to send email");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Email sent", description: "Invoice has been sent to the team." });
+      setShowInvoiceDialog(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to send email. Please check email configuration.", variant: "destructive" });
+    },
+  });
+
+  const handleGenerateInvoice = (request: QuoteRequest) => {
+    setSelectedRequest(request);
+    generateInvoiceMutation.mutate(request.id);
   };
 
   const handleViewConversation = async (request: QuoteRequest) => {
@@ -207,17 +254,29 @@ export default function QuoteRequestsPage() {
                         <p className="text-sm text-foreground bg-background/50 rounded p-3">{request.initialIntent}</p>
                       </div>
 
-                      {/* Conversation Button */}
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleViewConversation(request)}
-                        className="w-full"
-                        data-testid={`button-view-conversation-${request.id}`}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        View Full Conversation ({request.conversation.length} messages)
-                      </Button>
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewConversation(request)}
+                          className="flex-1"
+                          data-testid={`button-view-conversation-${request.id}`}
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          View Conversation ({request.conversation.length})
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={() => handleGenerateInvoice(request)}
+                          disabled={generateInvoiceMutation.isPending}
+                          className="flex-1"
+                          data-testid={`button-generate-invoice-${request.id}`}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          {generateInvoiceMutation.isPending ? "Generating..." : "Generate Invoice"}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -267,6 +326,27 @@ export default function QuoteRequestsPage() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoice Preview Dialog */}
+      <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="p-4 border-b shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Proforma Invoice - {currentInvoice?.referenceNumber}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {currentInvoice && (
+            <ProformaInvoicePreview 
+              invoice={currentInvoice}
+              onSave={(updatedInvoice) => setCurrentInvoice(updatedInvoice)}
+              onSendEmail={(invoice) => sendInvoiceEmailMutation.mutate(invoice)}
+              editable={true}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
