@@ -568,25 +568,39 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid email address" });
       }
       
-      // Check if Resend is configured
-      const resendApiKey = process.env.RESEND_API_KEY;
-      if (!resendApiKey) {
-        // For now, just mark as sent and return success (email integration pending)
-        await storage.updateProformaInvoice(invoice.id, {
-          emailSentAt: new Date(),
-          emailSentTo: recipientEmail,
-          status: "sent",
-        });
-        return res.json({ 
-          success: true, 
-          message: "Invoice marked as sent. Email integration pending setup.",
-          recipientEmail 
-        });
+      // Get Resend client from Replit connector
+      const { Resend } = await import('resend');
+      
+      // Resend integration via Replit connector
+      let connectionSettings: any;
+      const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+      const xReplitToken = process.env.REPL_IDENTITY 
+        ? 'repl ' + process.env.REPL_IDENTITY 
+        : process.env.WEB_REPL_RENEWAL 
+        ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+        : null;
+
+      if (!xReplitToken || !hostname) {
+        return res.status(500).json({ error: "Resend integration not configured" });
       }
 
-      // Send email via Resend
-      const { Resend } = await import('resend');
-      const resend = new Resend(resendApiKey);
+      const connResponse = await fetch(
+        'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
+        {
+          headers: {
+            'Accept': 'application/json',
+            'X_REPLIT_TOKEN': xReplitToken
+          }
+        }
+      );
+      connectionSettings = await connResponse.json().then(data => data.items?.[0]);
+
+      if (!connectionSettings || !connectionSettings.settings.api_key) {
+        return res.status(500).json({ error: "Resend not connected" });
+      }
+
+      const resend = new Resend(connectionSettings.settings.api_key);
+      const fromEmail = connectionSettings.settings.from_email || 'quotes@viaglobalhealth.com';
       
       const lineItems = invoice.lineItems as any[];
       const lineItemsHtml = lineItems.map(item => 
@@ -601,7 +615,7 @@ export async function registerRoutes(
       const safeComments = invoice.comments ? escapeHtml(invoice.comments) : '';
 
       await resend.emails.send({
-        from: 'VIA Global Health <quotes@viaglobalhealth.com>',
+        from: fromEmail,
         to: [recipientEmail],
         subject: `Proforma Invoice ${invoice.referenceNumber} - ${safeCustomerName}`,
         html: `
