@@ -1296,20 +1296,19 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   const email = emailMatch ? emailMatch[0] : undefined;
 
   // Extract contact name from user message
-  // Look for patterns like "I'm John Smith", "my name is John Smith", "this is John Smith"
-  // Case-insensitive and handles lowercase input
+  // Strip email addresses first so they don't interfere with name matching
+  const messageWithoutEmail = userMessage.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '').trim();
   let firstName: string | undefined;
   let lastName: string | undefined;
   const namePatterns = [
     /(?:i'm|i am|my name is|this is|it's|its|call me)\s+([a-zA-Z'-]+)(?:\s+([a-zA-Z'-]+))?/i,
     /(?:name:?\s*)([a-zA-Z'-]+)(?:\s+([a-zA-Z'-]+))?/i,
-    /^([a-zA-Z'-]+)\s+([a-zA-Z'-]+)$/  // Just a two-word name as full message
+    /^([a-zA-Z'-]+)\s+([a-zA-Z'-]+)$/  // Just a two-word name as full message (after email stripped)
   ];
   
   for (const pattern of namePatterns) {
-    const match = userMessage.match(pattern);
+    const match = messageWithoutEmail.match(pattern);
     if (match && match[1] && match[1].length >= 2) {
-      // Capitalise first letter of each name
       firstName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
       if (match[2] && match[2].length >= 2) {
         lastName = match[2].charAt(0).toUpperCase() + match[2].slice(1).toLowerCase();
@@ -1339,10 +1338,11 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   }
 
   // Extract quantity from user message (look for numbers with units)
+  // Use messageWithoutEmail to avoid matching digits inside email addresses
   let orderQuantity: string | undefined;
-  const quantityMatch = userMessage.match(/(\d+[\s-]*(units?|pieces?|pcs?|sets?)?|\d+[\s-]*to[\s-]*\d+)/i);
+  const quantityMatch = messageWithoutEmail.match(/\b(\d+[\s-]*(units?|pieces?|pcs?|sets?)?|\d+[\s-]*to[\s-]*\d+)\b/i);
   if (quantityMatch) {
-    orderQuantity = quantityMatch[0];
+    orderQuantity = quantityMatch[0].trim();
   }
 
   // Extract country names (expanded global list)

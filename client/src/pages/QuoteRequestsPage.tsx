@@ -264,7 +264,7 @@ export default function QuoteRequestsPage() {
                           data-testid={`button-view-conversation-${request.id}`}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
-                          View Conversation ({request.conversation.length})
+                          View Conversation
                         </Button>
                         <Button 
                           size="sm"
