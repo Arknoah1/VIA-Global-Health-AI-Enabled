@@ -3,11 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
   Database, 
-  Settings, 
-  Download, 
   Menu,
-  Globe,
-  Package,
   MessageSquare,
   DollarSign
 } from "lucide-react";
@@ -20,7 +16,6 @@ export function Sidebar() {
     { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/quote-requests", icon: MessageSquare, label: "Quote Requests" },
     { href: "/admin/pricing", icon: DollarSign, label: "Pricing & Restrictions" },
-    { href: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 
   // Fetch product count

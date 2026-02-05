@@ -38,15 +38,6 @@ export function Footer() {
               <li>
                 <Link href="/catalog" className="hover:text-white transition" data-testid="link-footer-wholesale">Wholesale Pricing</Link>
               </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-territory">Territory Partners</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-training-dist">Training Programs</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-support">Supply Chain Support</a>
-              </li>
             </ul>
           </div>
 
@@ -57,15 +48,6 @@ export function Footer() {
               <li>
                 <Link href="/catalog" className="hover:text-white transition" data-testid="link-footer-medical">Medical Products</Link>
               </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-technical">Technical Support</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-training-health">Training & Installation</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-financing">Financing Options</a>
-              </li>
             </ul>
           </div>
 
@@ -74,16 +56,7 @@ export function Footer() {
             <h4 className="font-semibold text-white mb-4">For NGOs & Non-Profits</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-ngo-pricing">Special Pricing</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-partnerships">Partnership Programs</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-donations">Donation Programs</a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-impact">Impact Reporting</a>
+                <Link href="/catalog" className="hover:text-white transition" data-testid="link-footer-ngo-catalog">Browse Catalog</Link>
               </li>
             </ul>
           </div>
@@ -94,9 +67,7 @@ export function Footer() {
           <div className="grid md:grid-cols-2 gap-4 text-sm">
             <div className="space-y-2" data-testid="footer-legal">
               <div className="flex flex-wrap gap-4">
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-privacy">Privacy Policy</a>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-terms">Terms of Service</a>
-                <a href="#" className="hover:text-white transition" data-testid="link-footer-contact">Contact Us</a>
+                <Link href="/about" className="hover:text-white transition" data-testid="link-footer-about">About Us</Link>
               </div>
             </div>
             <div className="text-right md:text-right" data-testid="footer-copyright">
