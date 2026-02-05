@@ -5,7 +5,8 @@ import {
   type ProductPricingTier, type InsertProductPricingTier, productPricingTiers,
   type ProductRestrictedCountry, type InsertProductRestrictedCountry, productRestrictedCountries,
   type CustomerSegment, type InsertCustomerSegment, customerSegments,
-  type ProformaInvoice, type InsertProformaInvoice, proformaInvoices
+  type ProformaInvoice, type InsertProformaInvoice, proformaInvoices,
+  type TrainingTranscript, type InsertTrainingTranscript, trainingTranscripts
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
@@ -43,6 +44,14 @@ export interface IStorage {
   updateProformaInvoice(id: string, data: Partial<InsertProformaInvoice>): Promise<ProformaInvoice>;
   getAllProformaInvoices(): Promise<ProformaInvoice[]>;
   getProformaInvoicesByQuoteRequest(quoteRequestId: string): Promise<ProformaInvoice[]>;
+
+  // Training Transcripts
+  createTrainingTranscript(transcript: InsertTrainingTranscript): Promise<TrainingTranscript>;
+  getTrainingTranscriptById(id: string): Promise<TrainingTranscript | undefined>;
+  updateTrainingTranscript(id: string, data: Partial<InsertTrainingTranscript>): Promise<TrainingTranscript>;
+  deleteTrainingTranscript(id: string): Promise<void>;
+  getAllTrainingTranscripts(): Promise<TrainingTranscript[]>;
+  getProcessedTrainingTranscripts(): Promise<TrainingTranscript[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -244,6 +253,41 @@ export class DatabaseStorage implements IStorage {
       .from(proformaInvoices)
       .where(eq(proformaInvoices.quoteRequestId, quoteRequestId))
       .orderBy(desc(proformaInvoices.createdAt));
+  }
+
+  async createTrainingTranscript(transcript: InsertTrainingTranscript): Promise<TrainingTranscript> {
+    const result = await db.insert(trainingTranscripts).values(transcript).returning();
+    return result[0];
+  }
+
+  async getTrainingTranscriptById(id: string): Promise<TrainingTranscript | undefined> {
+    const result = await db.select().from(trainingTranscripts).where(eq(trainingTranscripts.id, id)).limit(1);
+    return result[0];
+  }
+
+  async updateTrainingTranscript(id: string, data: Partial<InsertTrainingTranscript>): Promise<TrainingTranscript> {
+    const result = await db
+      .update(trainingTranscripts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(trainingTranscripts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteTrainingTranscript(id: string): Promise<void> {
+    await db.delete(trainingTranscripts).where(eq(trainingTranscripts.id, id));
+  }
+
+  async getAllTrainingTranscripts(): Promise<TrainingTranscript[]> {
+    return await db.select().from(trainingTranscripts).orderBy(desc(trainingTranscripts.createdAt));
+  }
+
+  async getProcessedTrainingTranscripts(): Promise<TrainingTranscript[]> {
+    return await db
+      .select()
+      .from(trainingTranscripts)
+      .where(eq(trainingTranscripts.isProcessed, true))
+      .orderBy(desc(trainingTranscripts.createdAt));
   }
 }
 

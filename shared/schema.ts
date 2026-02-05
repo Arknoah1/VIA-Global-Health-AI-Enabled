@@ -204,3 +204,28 @@ export const insertProformaInvoiceSchema = createInsertSchema(proformaInvoices).
 
 export type InsertProformaInvoice = z.infer<typeof insertProformaInvoiceSchema>;
 export type ProformaInvoice = typeof proformaInvoices.$inferSelect;
+
+export const trainingTranscripts = pgTable("training_transcripts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  rawTranscript: text("raw_transcript").notNull(),
+  annotations: text("annotations"),
+  buyerType: text("buyer_type"),
+  country: text("country"),
+  productsDiscussed: text("products_discussed"),
+  objections: text("objections"),
+  outcome: varchar("outcome", { length: 30 }),
+  aiExtractedInsights: jsonb("ai_extracted_insights").default(sql`'{}'::jsonb`),
+  isProcessed: boolean("is_processed").default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertTrainingTranscriptSchema = createInsertSchema(trainingTranscripts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTrainingTranscript = z.infer<typeof insertTrainingTranscriptSchema>;
+export type TrainingTranscript = typeof trainingTranscripts.$inferSelect;

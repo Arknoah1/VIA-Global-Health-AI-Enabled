@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const QuoteRequestsPage = lazy(() => import("@/pages/QuoteRequestsPage"));
 const QuoteTrackingPage = lazy(() => import("@/pages/QuoteTrackingPage"));
 const ProductPricingPage = lazy(() => import("@/pages/ProductPricingPage"));
+const TrainingTranscriptsPage = lazy(() => import("@/pages/TrainingTranscriptsPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 // Loading fallback component
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/admin" component={Dashboard} />
         <Route path="/admin/quote-requests" component={QuoteRequestsPage} />
         <Route path="/admin/pricing" component={ProductPricingPage} />
+        <Route path="/admin/training" component={TrainingTranscriptsPage} />
         {/* Fallback to 404 */}
         <Route component={NotFound} />
       </Switch>
