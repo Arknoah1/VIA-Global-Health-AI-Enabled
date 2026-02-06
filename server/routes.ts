@@ -267,6 +267,27 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quote-requests/track", async (req, res) => {
+    try {
+      const email = req.query.email as string;
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({ error: "Valid email address required" });
+      }
+      const quotes = await storage.getQuoteRequestsByEmail(email.trim());
+      const safeQuotes = quotes.map(q => ({
+        id: q.id,
+        productName: q.productName,
+        status: q.status,
+        createdAt: q.createdAt,
+        updatedAt: q.updatedAt,
+      }));
+      res.json(safeQuotes);
+    } catch (error) {
+      console.error("Error tracking quotes by email:", error);
+      res.status(500).json({ error: "Failed to look up quotes" });
+    }
+  });
+
   // Get single quote request by ID (for tracking)
   app.get("/api/quote-requests/:id", async (req, res) => {
     try {

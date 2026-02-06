@@ -23,6 +23,7 @@ export interface IStorage {
   getQuoteRequestById(id: string): Promise<QuoteRequest | undefined>;
   updateQuoteRequest(id: string, data: Partial<InsertQuoteRequest>): Promise<QuoteRequest>;
   getAllQuoteRequests(): Promise<QuoteRequest[]>;
+  getQuoteRequestsByEmail(email: string): Promise<QuoteRequest[]>;
   createQuoteRequestMessage(message: InsertQuoteRequestMessage): Promise<QuoteRequestMessage>;
   getQuoteRequestMessages(quoteRequestId: string): Promise<QuoteRequestMessage[]>;
   getProductPricingTiers(productId: string): Promise<ProductPricingTier[]>;
@@ -135,6 +136,14 @@ export class DatabaseStorage implements IStorage {
 
   async getAllQuoteRequests(): Promise<QuoteRequest[]> {
     return await db.select().from(quoteRequests).orderBy(desc(quoteRequests.createdAt));
+  }
+
+  async getQuoteRequestsByEmail(email: string): Promise<QuoteRequest[]> {
+    return await db
+      .select()
+      .from(quoteRequests)
+      .where(ilike(quoteRequests.email, email))
+      .orderBy(desc(quoteRequests.createdAt));
   }
 
   async createQuoteRequestMessage(message: InsertQuoteRequestMessage): Promise<QuoteRequestMessage> {
