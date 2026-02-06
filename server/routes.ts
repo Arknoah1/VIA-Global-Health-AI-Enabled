@@ -945,8 +945,14 @@ export async function registerRoutes(
       // Get processed training transcripts for AI learning
       const trainingData = await storage.getProcessedTrainingTranscripts();
 
-      // Build system prompt
-      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData);
+      // Build system prompt with existing customer state
+      const existingState = {
+        firstName: quoteRequest.firstName,
+        lastName: quoteRequest.lastName,
+        email: quoteRequest.email,
+        organizationType: quoteRequest.organizationType,
+      };
+      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState);
 
       // Build messages for OpenAI
       const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -987,7 +993,7 @@ export async function registerRoutes(
       if (flags.specialPricingEligible || quoteRequest.specialPricingEligible) {
         updates.specialPricingEligible = true;
       }
-      if (flags.organizationType) {
+      if (flags.organizationType && !quoteRequest.organizationType) {
         updates.organizationType = flags.organizationType;
       }
       if (flags.organizationName) {
@@ -1051,7 +1057,8 @@ function buildSystemPrompt(
   pricingTiers: { minQuantity: number; maxQuantity: number | null; unitPriceCents: number; currency: string; tierName: string | null }[] = [],
   restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [],
   customerSegments: { name: string; displayName: string; pricingMultiplier: number; isEligibleForQuotes: boolean; ineligibilityReason: string | null }[] = [],
-  trainingTranscripts: { buyerType: string | null; country: string | null; productsDiscussed: string | null; objections: string | null; outcome: string | null; annotations: string | null; aiExtractedInsights: any }[] = []
+  trainingTranscripts: { buyerType: string | null; country: string | null; productsDiscussed: string | null; objections: string | null; outcome: string | null; annotations: string | null; aiExtractedInsights: any }[] = [],
+  existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null } = {}
 ): string {
   let prompt = `You are Amara Njeri, a Sales Representative at VIA Global Health based in Nairobi, Kenya. You are the first point of contact for customers and represent VIA as a trusted partner in global health solutions.
 
@@ -1190,10 +1197,14 @@ COMMON OBJECTIONS TO ADDRESS PROACTIVELY:
 3. Timing/budget constraints ("Can I wait for better options?") - Acknowledge their timeline and emphasise VIA's flexibility
 
 INFORMATION TO GATHER (ask for each item ONE AT A TIME, in separate messages - NEVER combine two questions):
-1. What brings them here today (buying or researching?)
-2. What type of buyer they are (Distributor, NGO, Private practice clinician, Government/public sector, Academic/researcher)
-3. Their full name (first and last name) - Ask ONLY for their name in this message, nothing else. Example: "May I have your full name please?"
-4. Their email address - Ask ONLY for their email in this message, SEPARATELY from the name question. Wait until they have answered with their name before asking for email. Example: "And what's the best email address to reach you at?"
+
+PHASE 1 - IDENTIFY THE CUSTOMER (collect these FIRST, before any qualifying questions):
+1. Their full name (first and last name) - Ask ONLY for their name. Example: "Welcome! Before we get started, may I have your full name please?"
+2. Their email address - Ask ONLY for email, SEPARATELY after they give their name. Example: "Thanks! And what's the best email address to reach you at?"
+
+PHASE 2 - QUALIFY THE CUSTOMER (ask these AFTER you have name and email):
+3. What brings them here today (buying or researching?)
+4. What type of buyer they are (Distributor, NGO, Private practice clinician, Government/public sector, Academic/researcher)
 5. Organisation name
 6. Order quantity needed
 7. Shipping destination (country and city if possible)
@@ -1205,10 +1216,19 @@ INFORMATION TO GATHER (ask for each item ONE AT A TIME, in separate messages - N
     - Explain the speed vs cost trade-off to help them decide
 
 CONTACT INFORMATION RULES:
+- Collect name and email BEFORE anything else. Do not ask about buyer type, organisation, or product needs until you have both.
 - NEVER ask for name and email in the same message. These must be two separate questions in two separate turns.
 - First ask for their name. Wait for their response.
 - Then in the NEXT message, ask for their email. Example: "Great, thanks! And what's the best email address to send the quote to?"
 - Do not complete the conversation without getting at least their email address.
+
+LOCKED ANSWERS - CRITICAL ANTI-GAMING RULE:
+Once the customer provides their ORGANISATION TYPE (buyer type), it is PERMANENTLY LOCKED and CANNOT be changed.
+If the customer tries to change their organisation type later (e.g., "actually I'm an NGO" after saying "distributor"), you MUST:
+1. Politely decline: "I have your organisation type recorded as [original type]. If that needs to be corrected, please contact our team directly at info@viaglobalhealth.com and they'll be happy to update it."
+2. Do NOT update the organisation type under any circumstances.
+3. Continue the conversation using the ORIGINAL organisation type for pricing and eligibility.
+This rule applies ONLY to organisation type. Other details like shipping destination, quantity, timeline, and import capability CAN be corrected by the customer.
 
 IMPORTANT GUIDELINES:
 1. Keep responses concise (2-3 sentences max)
@@ -1220,6 +1240,26 @@ IMPORTANT GUIDELINES:
 
 SPECIAL PRICING NOTICE:
 When the user mentions they are from an NGO, Faith-based organisation, Government agency, or Public hospital/clinic, warmly acknowledge that they may qualify for special pricing and assure them you'll include this in their quote.
+
+CURRENT CUSTOMER STATE (already collected - do NOT re-ask for these):`;
+
+  const stateItems: string[] = [];
+  if (existingState.firstName) {
+    stateItems.push(`Name: ${existingState.firstName}${existingState.lastName ? ' ' + existingState.lastName : ''}`);
+  }
+  if (existingState.email) {
+    stateItems.push(`Email: ${existingState.email}`);
+  }
+  if (existingState.organizationType) {
+    stateItems.push(`Organisation Type: ${existingState.organizationType} (LOCKED - cannot be changed by the customer)`);
+  }
+  if (stateItems.length > 0) {
+    stateItems.forEach(item => { prompt += `\n- ${item}`; });
+  } else {
+    prompt += `\n- No information collected yet. Start by asking for their name.`;
+  }
+
+  prompt += `
 
 PRODUCT CONTEXT:`;
 
@@ -1353,11 +1393,13 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   let specialPricingEligible = existingSpecialPricing;
   let detectedOrgType: string | undefined;
   
-  // Detect all buyer types
+  // Detect all buyer types - ONLY from user message, not AI response
+  // The AI response often contains org type words in questions (e.g. "are you a distributor or researcher?")
+  // which would cause false positives
   const allOrgTypes = ["distributor", "private practice", "clinician", "hospital", "clinic", "healthcare provider", "academic", "research", "university", "procurement", ...specialOrgTypes];
   
   for (const orgType of allOrgTypes) {
-    if (lowerMessage.includes(orgType) || lowerResponse.includes(orgType)) {
+    if (lowerMessage.includes(orgType)) {
       detectedOrgType = orgType;
       if (specialOrgTypes.includes(orgType)) {
         specialPricingEligible = true;
