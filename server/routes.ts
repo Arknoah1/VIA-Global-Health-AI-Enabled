@@ -1474,8 +1474,11 @@ PRODUCT CONTEXT:`;
     });
   }
 
-  prompt += `\n\nCONFIRMATION STEP (CRITICAL):
-Once ALL 4 eligibility checkpoints are confirmed, you MUST provide a product price estimate AND a summary. Format each detail on a NEW LINE using this exact format with line breaks:
+  prompt += `\n\nQUOTE DELIVERY - TWO-STEP SEQUENCE (CRITICAL):
+You MUST deliver the quote in TWO SEPARATE messages, NOT one. This prevents information from being pushed off screen.
+
+===== STEP A: PRICING MESSAGE (send this FIRST) =====
+Once ALL 4 eligibility checkpoints are confirmed, send ONLY the pricing in this message. Keep it short. Do NOT include the details confirmation in this same message.
 
 "Great news! Based on your requirements, here's your estimated product pricing:
 
@@ -1484,9 +1487,16 @@ Quantity: [quantity]
 Unit Price: [price per unit based on the pricing tiers and customer segment multiplier]
 Estimated Product Total: [quantity x unit price]
 
-Note: This is the product cost only. Shipping, insurance, and any applicable duties are not included.
+This is the product cost only - shipping, insurance, and duties are not included.
 
-Let me also confirm your details:
+Does this pricing look good to you?"
+
+STOP HERE. Wait for the customer to respond before continuing to Step B.
+
+===== STEP B: CONFIRMATION MESSAGE (send AFTER customer acknowledges pricing) =====
+Only after the customer responds to the pricing (whether positively or with questions), send the details confirmation:
+
+"Perfect! Let me confirm your details:
 
 Name: [their name]
 Email: [their email]
@@ -1496,7 +1506,9 @@ Import clearance: [can handle / needs assistance]
 Timeline: [their timeline]
 Shipping: [air/sea freight recommendation]
 
-Would you like our team to prepare a complete proforma invoice that includes shipping costs, payment terms, and delivery timeline? We'll email it to you within 24 hours."
+Would you like our team to prepare a complete proforma invoice with shipping costs, payment terms, and delivery timeline? We'll email it to you within 24 hours."
+
+CRITICAL: Do NOT combine Steps A and B into one message. They MUST be separate responses in separate turns.
 
 IMPORTANT PRICING RULES:
 - You MUST calculate and show the unit price and total based on the pricing tiers provided above
