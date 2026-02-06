@@ -130,7 +130,7 @@ export default function HomePage() {
           <div className="text-center lg:text-left">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
               You Need Specific Equipment.<br />
-              <span className="text-primary">We Actually Respond.</span>
+              <span className="text-primary">We Respond.</span>
             </h1>
             <p className="text-xl text-slate-600 mb-8 max-w-2xl">
               From a single unit to a national tender, every inquiry gets the same attention. Quote response within 24 hours—no runaround, no silence.
