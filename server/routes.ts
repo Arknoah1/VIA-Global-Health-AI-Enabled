@@ -1691,6 +1691,48 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     }
   }
 
+  // Fallback: Extract name from the AI response when the AI acknowledges it.
+  // Handles cases where user just types "joe" or "shmo" without any prefix.
+  // The AI typically responds with "Thank you, Joe" or "Thank you, Joe Shmo!"
+  if (!firstName || !lastName) {
+    const aiNamePatterns = [
+      /(?:thank you|thanks|nice to meet you|hello|hi|welcome),?\s+([A-Z][a-z'-]+)(?:\s+([A-Z][a-z'-]+))?[!.,\s]/,
+      /(?:thank you|thanks|nice to meet you|hello|hi|welcome),?\s+([A-Z][a-z'-]+)(?:\s+([A-Z][a-z'-]+))?$/,
+    ];
+    for (const pattern of aiNamePatterns) {
+      const match = aiResponse.match(pattern);
+      if (match && match[1] && match[1].length >= 2) {
+        const candidateFirst = match[1];
+        if (!nonNameWords.has(candidateFirst.toLowerCase())) {
+          if (!firstName) {
+            firstName = candidateFirst;
+          }
+          if (!lastName && match[2] && match[2].length >= 2 && !nonNameWords.has(match[2].toLowerCase())) {
+            lastName = match[2];
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // Single-word name fallback: Only use when the AI response confirms a name was received.
+  // Check if AI response uses the word in a name-acknowledgment context (e.g. "Thank you, Joe")
+  if (!firstName || !lastName) {
+    const singleWord = messageWithoutEmail.match(/^([a-zA-Z'-]+)$/);
+    if (singleWord && singleWord[1].length >= 2 && !nonNameWords.has(singleWord[1].toLowerCase()) && !conversationalPhrases.has(singleWord[1].toLowerCase())) {
+      const nameCandidate = singleWord[1].charAt(0).toUpperCase() + singleWord[1].slice(1).toLowerCase();
+      const aiUsesWordAsName = new RegExp(`(?:thank you|thanks|nice to meet you|hello|hi|welcome|great)[,!]?\\s+${nameCandidate}`, 'i').test(aiResponse);
+      if (aiUsesWordAsName) {
+        if (!firstName) {
+          firstName = nameCandidate;
+        } else if (!lastName && nameCandidate !== firstName) {
+          lastName = nameCandidate;
+        }
+      }
+    }
+  }
+
   // Extract organisation name from user message
   // Look for patterns like "I work for ABC Health", "from XYZ Hospital", "organisation is..."
   // Case-insensitive and handles lowercase input
