@@ -557,13 +557,9 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Invoice not found" });
       }
 
-      // Validate recipient email - only allow viaglobalhealth.com emails for security
       const recipientEmail = req.body.recipientEmail || "noah@viaglobalhealth.com";
       try {
         emailSchema.parse(recipientEmail);
-        if (!recipientEmail.endsWith('@viaglobalhealth.com')) {
-          return res.status(400).json({ error: "Email must be a viaglobalhealth.com address" });
-        }
       } catch {
         return res.status(400).json({ error: "Invalid email address" });
       }
@@ -614,7 +610,7 @@ export async function registerRoutes(
       const safeCountry = escapeHtml(invoice.deliveryCountry || '');
       const safeComments = invoice.comments ? escapeHtml(invoice.comments) : '';
 
-      await resend.emails.send({
+      const emailResult = await resend.emails.send({
         from: fromEmail,
         to: [recipientEmail],
         subject: `Proforma Invoice ${invoice.referenceNumber} - ${safeCustomerName}`,
@@ -637,16 +633,23 @@ export async function registerRoutes(
         `,
       });
 
+      console.log("Resend API response:", JSON.stringify(emailResult));
+
+      if (emailResult.error) {
+        console.error("Resend error:", emailResult.error);
+        return res.status(500).json({ error: `Email service error: ${emailResult.error.message || JSON.stringify(emailResult.error)}` });
+      }
+
       await storage.updateProformaInvoice(invoice.id, {
         emailSentAt: new Date(),
         emailSentTo: recipientEmail,
         status: "sent",
       });
 
-      res.json({ success: true, message: "Email sent successfully", recipientEmail });
-    } catch (error) {
+      res.json({ success: true, message: "Email sent successfully", recipientEmail, emailId: emailResult.data?.id });
+    } catch (error: any) {
       console.error("Error sending invoice email:", error);
-      res.status(500).json({ error: "Failed to send email" });
+      res.status(500).json({ error: `Failed to send email: ${error.message || 'Unknown error'}` });
     }
   });
 
