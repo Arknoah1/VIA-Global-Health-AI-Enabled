@@ -11,6 +11,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailSheet } from "@/components/ProductDetailSheet";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 import { SmartQuoteFlow } from "@/components/SmartQuoteFlow";
+import { RecommendedProducts } from "@/components/RecommendedProducts";
 
 export default function PublicCatalog() {
   const [location] = useLocation();
@@ -126,6 +127,12 @@ export default function PublicCatalog() {
               ))}
             </div>
           </div>
+
+          {/* AI Recommendations */}
+          <RecommendedProducts
+            onSelectProduct={setSelectedProduct}
+            allProducts={products}
+          />
 
           {/* Products Grid */}
           {isLoading ? (

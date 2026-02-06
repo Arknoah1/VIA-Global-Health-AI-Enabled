@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect, useMemo } from "react";
+import { trackProductView } from "@/lib/browsingHistory";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
@@ -176,6 +177,12 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (isOpen && product) {
+      trackProductView({ id: product.id, name: product.name, category: product.category });
+    }
+  }, [isOpen, product?.id]);
 
   useEffect(() => {
     if (!isOpen || showQuoteDialog || autoOpenDismissed) return;

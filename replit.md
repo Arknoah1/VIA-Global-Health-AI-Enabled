@@ -46,6 +46,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/scrape` - Trigger product scraping from VIA Global Health website
 - `POST /api/quote-requests` - Submit quote requests
 - `POST /api/chat` - AI-powered chat for quote assistance
+- `POST /api/recommendations` - AI-powered product recommendations based on browsing history (rate-limited per IP)
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM

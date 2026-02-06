@@ -1048,6 +1048,124 @@ export async function registerRoutes(
     }
   });
 
+  const recommendationLimits = new Map<string, number>();
+  app.post("/api/recommendations", async (req, res) => {
+    try {
+      const ip = req.ip || "unknown";
+      const now = Date.now();
+      const lastCall = recommendationLimits.get(ip) || 0;
+      if (now - lastCall < 5000) {
+        return res.status(429).json({ recommendations: [], error: "Please wait before requesting again" });
+      }
+      recommendationLimits.set(ip, now);
+
+      const { viewedProductIds, categoryPreferences } = req.body;
+
+      if (!viewedProductIds || !Array.isArray(viewedProductIds) || viewedProductIds.length === 0 || viewedProductIds.length > 20) {
+        return res.json({ recommendations: [] });
+      }
+
+      const allProducts = await storage.getAllProducts();
+      if (allProducts.length === 0) {
+        return res.json({ recommendations: [] });
+      }
+
+      const viewedProducts = allProducts.filter(p => viewedProductIds.includes(p.id));
+      const unseenProducts = allProducts.filter(p => !viewedProductIds.includes(p.id));
+
+      if (unseenProducts.length === 0) {
+        return res.json({ recommendations: [] });
+      }
+
+      const viewedSummary = viewedProducts.map(p => ({
+        name: p.name,
+        category: p.category,
+        description: p.description.substring(0, 150),
+      }));
+
+      const candidateSummary = unseenProducts.map(p => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        description: p.description.substring(0, 150),
+      }));
+
+      const categoryPrefStr = categoryPreferences
+        ? Object.entries(categoryPreferences)
+            .sort(([, a], [, b]) => (b as number) - (a as number))
+            .map(([cat, count]) => `${cat} (${count} views)`)
+            .join(", ")
+        : "none";
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a product recommendation engine for VIA Global Health, a medical equipment supplier. Based on the user's browsing history and preferences, recommend the most relevant products they haven't seen yet.
+
+Consider:
+- Category affinity (they browse similar categories)
+- Complementary products (items that pair well with what they viewed)
+- Clinical workflow relevance (products used in similar medical procedures)
+
+Return a JSON array of recommended product IDs with brief reasons. Format:
+[{"id": "product-id", "reason": "Brief explanation why this is relevant"}]
+
+Return at most 4 recommendations. Only return the JSON array, no other text.`
+          },
+          {
+            role: "user",
+            content: `Browsing history (recently viewed products):
+${JSON.stringify(viewedSummary, null, 2)}
+
+Category preferences: ${categoryPrefStr}
+
+Available products to recommend from:
+${JSON.stringify(candidateSummary, null, 2)}`
+          }
+        ],
+        temperature: 0.5,
+        max_tokens: 500
+      });
+
+      const aiText = completion.choices[0]?.message?.content || "[]";
+
+      let recommendations: { id: string; reason: string }[] = [];
+      try {
+        const jsonMatch = aiText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          recommendations = JSON.parse(jsonMatch[0]);
+        }
+      } catch {
+        recommendations = [];
+      }
+
+      const validIds = new Set(unseenProducts.map(p => p.id));
+      const validRecs = recommendations
+        .filter(r => validIds.has(r.id))
+        .slice(0, 4);
+
+      const recommendedProducts = validRecs.map(rec => {
+        const product = unseenProducts.find(p => p.id === rec.id)!;
+        return {
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          imageUrl: product.imageUrl,
+          description: product.description.substring(0, 200),
+          sku: product.sku,
+          reason: rec.reason,
+        };
+      });
+
+      res.json({ recommendations: recommendedProducts });
+    } catch (error) {
+      console.error("Error generating recommendations:", error);
+      res.json({ recommendations: [] });
+    }
+  });
+
   return httpServer;
 }
 
