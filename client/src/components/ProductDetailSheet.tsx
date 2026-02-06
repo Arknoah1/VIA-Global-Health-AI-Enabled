@@ -183,7 +183,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       if (!showQuoteDialog) {
         setShowQuoteDialog(true);
       }
-    }, 10000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [isOpen, showQuoteDialog, autoOpenDismissed]);
 
