@@ -13,6 +13,36 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   return res.status(401).json({ error: "Unauthorized" });
 }
 
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000;
+
+function checkLoginRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+  if (!record) return true;
+  if (now - record.lastAttempt > LOCKOUT_DURATION) {
+    loginAttempts.delete(ip);
+    return true;
+  }
+  return record.count < MAX_LOGIN_ATTEMPTS;
+}
+
+function recordLoginAttempt(ip: string, success: boolean) {
+  if (success) {
+    loginAttempts.delete(ip);
+    return;
+  }
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+  if (record && now - record.lastAttempt < LOCKOUT_DURATION) {
+    record.count++;
+    record.lastAttempt = now;
+  } else {
+    loginAttempts.set(ip, { count: 1, lastAttempt: now });
+  }
+}
+
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -55,15 +85,21 @@ export async function registerRoutes(
   });
 
   app.post("/api/admin/login", (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    if (!checkLoginRateLimit(ip)) {
+      return res.status(429).json({ error: "Too many login attempts. Please try again in 15 minutes." });
+    }
     const { password } = req.body;
     const adminPassword = process.env.ADMIN_PASSWORD;
     if (!adminPassword) {
       return res.status(500).json({ error: "Admin password not configured" });
     }
     if (password === adminPassword) {
+      recordLoginAttempt(ip, true);
       req.session.isAdmin = true;
       return res.json({ success: true });
     }
+    recordLoginAttempt(ip, false);
     return res.status(401).json({ error: "Invalid password" });
   });
 

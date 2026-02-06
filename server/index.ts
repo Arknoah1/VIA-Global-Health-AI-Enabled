@@ -33,19 +33,29 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+const isProduction = process.env.NODE_ENV === "production";
+if (!process.env.SESSION_SECRET) {
+  process.env.SESSION_SECRET = crypto.randomBytes(32).toString("hex");
+  console.warn("[session] No SESSION_SECRET set, using random value (sessions won't persist across restarts)");
+}
+
 const PgSession = connectPgSimple(session);
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
 app.use(
   session({
     store: new PgSession({
       conString: process.env.DATABASE_URL,
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false,
+      secure: isProduction,
       httpOnly: true,
+      sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     },
   })

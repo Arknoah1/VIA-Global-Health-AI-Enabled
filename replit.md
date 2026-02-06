@@ -21,7 +21,19 @@ Preferred communication style: Simple, everyday language.
 - `/` - Homepage with audience-specific content (distributors, providers, NGOs)
 - `/catalog` - Public product catalog with search and filtering
 - `/about` - Company information page
-- `/admin` - Admin dashboard for product management and scraping
+- `/admin` - Admin dashboard (password-protected) for product management and scraping
+- `/admin/quote-requests` - Manage quote requests and generate invoices
+- `/admin/pricing` - Configure pricing tiers, country restrictions, customer segments
+- `/admin/training` - Training transcript management
+
+### Admin Authentication
+- Session-based authentication using `express-session` with PostgreSQL session store (`connect-pg-simple`)
+- Password stored in `ADMIN_PASSWORD` secret
+- Rate limiting: 5 failed attempts per IP triggers 15-minute lockout
+- Secure cookies in production (httpOnly, sameSite: lax, secure flag)
+- Login page at `/admin` when not authenticated, logout button in sidebar
+- All admin API endpoints protected with `requireAdmin` middleware
+- Public endpoints (GET products, quote-request chat) remain open
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
