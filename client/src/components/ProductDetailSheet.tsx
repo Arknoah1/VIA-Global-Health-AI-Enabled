@@ -116,6 +116,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [faqSearchQuery, setFaqSearchQuery] = useState('');
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
   const [showSupportChat, setShowSupportChat] = useState(false);
+  const [autoOpenDismissed, setAutoOpenDismissed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -175,6 +176,21 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!isOpen || showQuoteDialog || autoOpenDismissed) return;
+    const timer = setTimeout(() => {
+      if (!showQuoteDialog) {
+        setShowQuoteDialog(true);
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [isOpen, showQuoteDialog, autoOpenDismissed]);
+
+  const handleCloseQuoteDialogWithDismiss = () => {
+    setAutoOpenDismissed(true);
+    handleCloseQuoteDialog();
+  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
@@ -639,7 +655,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       </SheetContent>
 
       {/* AI Quote Assistant Dialog - Chat with Amara */}
-      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialog()}>
+      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialogWithDismiss()}>
         <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
           <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
             <DialogTitle className="flex items-center gap-2">
