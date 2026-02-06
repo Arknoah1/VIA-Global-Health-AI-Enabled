@@ -1374,15 +1374,36 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   const messageWithoutEmail = userMessage.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '').trim();
   let firstName: string | undefined;
   let lastName: string | undefined;
+
+  const conversationalPhrases = new Set([
+    "looks good", "sounds good", "sounds great", "looks great", "looks fine",
+    "sounds fine", "sounds right", "looks right", "looks correct", "sounds correct",
+    "thank you", "thanks much", "thanks again", "many thanks",
+    "yes please", "no thanks", "not sure", "no problem", "no worries",
+    "go ahead", "move forward", "proceed please", "please proceed",
+    "got it", "all good", "very good", "pretty good", "so far",
+    "come back", "hold on", "hang on", "one moment", "just checking",
+    "thats right", "thats correct", "thats fine", "thats great", "thats all",
+    "right away", "of course", "for sure", "sure thing",
+    "well done", "nice work", "great job", "good job",
+    "how much", "how many", "how long", "what about", "tell me",
+    "per unit", "each unit", "more info", "more information",
+    "next step", "whats next", "please continue", "continue please",
+  ]);
+
   const namePatterns = [
     /(?:i'm|i am|my name is|this is|it's|its|call me)\s+([a-zA-Z'-]+)(?:\s+([a-zA-Z'-]+))?/i,
     /(?:name:?\s*)([a-zA-Z'-]+)(?:\s+([a-zA-Z'-]+))?/i,
-    /^([a-zA-Z'-]+)\s+([a-zA-Z'-]+)$/  // Just a two-word name as full message (after email stripped)
+    /^([a-zA-Z'-]+)\s+([a-zA-Z'-]+)$/
   ];
   
   for (const pattern of namePatterns) {
     const match = messageWithoutEmail.match(pattern);
     if (match && match[1] && match[1].length >= 2) {
+      const candidate = (match[1] + (match[2] ? " " + match[2] : "")).toLowerCase();
+      if (conversationalPhrases.has(candidate)) {
+        continue;
+      }
       firstName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
       if (match[2] && match[2].length >= 2) {
         lastName = match[2].charAt(0).toUpperCase() + match[2].slice(1).toLowerCase();
