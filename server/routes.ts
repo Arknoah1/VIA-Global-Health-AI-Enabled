@@ -563,40 +563,28 @@ export async function registerRoutes(
       } catch {
         return res.status(400).json({ error: "Invalid email address" });
       }
-      
-      // Get Resend client from Replit connector
-      const { Resend } = await import('resend');
-      
-      // Resend integration via Replit connector
-      let connectionSettings: any;
-      const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-      const xReplitToken = process.env.REPL_IDENTITY 
-        ? 'repl ' + process.env.REPL_IDENTITY 
-        : process.env.WEB_REPL_RENEWAL 
-        ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-        : null;
 
-      if (!xReplitToken || !hostname) {
-        return res.status(500).json({ error: "Resend integration not configured" });
+      const smtpUser = process.env.SMTP_USER;
+      const smtpPass = process.env.SMTP_PASS;
+
+      if (!smtpUser || !smtpPass) {
+        return res.status(500).json({ error: "Email credentials not configured. Please set SMTP_USER and SMTP_PASS." });
       }
 
-      const connResponse = await fetch(
-        'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-        {
-          headers: {
-            'Accept': 'application/json',
-            'X_REPLIT_TOKEN': xReplitToken
-          }
-        }
-      );
-      connectionSettings = await connResponse.json().then(data => data.items?.[0]);
-
-      if (!connectionSettings || !connectionSettings.settings.api_key) {
-        return res.status(500).json({ error: "Resend not connected" });
-      }
-
-      const resend = new Resend(connectionSettings.settings.api_key);
-      const fromEmail = connectionSettings.settings.from_email || 'quotes@viaglobalhealth.com';
+      const nodemailer = await import('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.office365.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+        tls: {
+          ciphers: 'SSLv3',
+          rejectUnauthorized: false,
+        },
+      });
       
       const lineItems = invoice.lineItems as any[];
       const lineItemsHtml = lineItems.map(item => 
@@ -610,9 +598,9 @@ export async function registerRoutes(
       const safeCountry = escapeHtml(invoice.deliveryCountry || '');
       const safeComments = invoice.comments ? escapeHtml(invoice.comments) : '';
 
-      const emailResult = await resend.emails.send({
-        from: fromEmail,
-        to: [recipientEmail],
+      const emailResult = await transporter.sendMail({
+        from: smtpUser,
+        to: recipientEmail,
         subject: `Proforma Invoice ${invoice.referenceNumber} - ${safeCustomerName}`,
         html: `
           <h1>Proforma Invoice</h1>
@@ -633,12 +621,7 @@ export async function registerRoutes(
         `,
       });
 
-      console.log("Resend API response:", JSON.stringify(emailResult));
-
-      if (emailResult.error) {
-        console.error("Resend error:", emailResult.error);
-        return res.status(500).json({ error: `Email service error: ${emailResult.error.message || JSON.stringify(emailResult.error)}` });
-      }
+      console.log("Email sent via Microsoft 365:", emailResult.messageId);
 
       await storage.updateProformaInvoice(invoice.id, {
         emailSentAt: new Date(),
@@ -646,7 +629,7 @@ export async function registerRoutes(
         status: "sent",
       });
 
-      res.json({ success: true, message: "Email sent successfully", recipientEmail, emailId: emailResult.data?.id });
+      res.json({ success: true, message: "Email sent successfully", recipientEmail, messageId: emailResult.messageId });
     } catch (error: any) {
       console.error("Error sending invoice email:", error);
       res.status(500).json({ error: `Failed to send email: ${error.message || 'Unknown error'}` });
