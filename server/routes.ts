@@ -1,10 +1,17 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { scrapeViaGlobalHealth } from "./scraper";
 import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema, insertProformaInvoiceSchema, insertTrainingTranscriptSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
+
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+  return res.status(401).json({ error: "Unauthorized" });
+}
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({
@@ -45,6 +52,29 @@ export async function registerRoutes(
   app.use((_req, res, next) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
     next();
+  });
+
+  app.post("/api/admin/login", (req, res) => {
+    const { password } = req.body;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      return res.status(500).json({ error: "Admin password not configured" });
+    }
+    if (password === adminPassword) {
+      req.session.isAdmin = true;
+      return res.json({ success: true });
+    }
+    return res.status(401).json({ error: "Invalid password" });
+  });
+
+  app.post("/api/admin/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/admin/check", (req, res) => {
+    res.json({ authenticated: !!(req.session && req.session.isAdmin) });
   });
 
   // Get all products (with optional search) - with caching
@@ -94,7 +124,7 @@ export async function registerRoutes(
   });
 
   // Scrape products from ViaGlobal and save to database
-  app.post("/api/scrape", async (req, res) => {
+  app.post("/api/scrape", requireAdmin, async (req, res) => {
     try {
       console.log("[API] Starting scrape request");
       const { urls } = req.body;
@@ -122,7 +152,7 @@ export async function registerRoutes(
   });
 
   // Create products (bulk insert from scraper or manual)
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", requireAdmin, async (req, res) => {
     try {
       const body = req.body;
       
@@ -148,7 +178,7 @@ export async function registerRoutes(
   });
 
   // Delete product
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/products/:id", requireAdmin, async (req, res) => {
     try {
       await storage.deleteProduct(req.params.id);
       invalidateCache();
@@ -160,7 +190,7 @@ export async function registerRoutes(
   });
 
   // Delete all products (for testing)
-  app.delete("/api/products", async (req, res) => {
+  app.delete("/api/products", requireAdmin, async (req, res) => {
     try {
       await storage.deleteAllProducts();
       invalidateCache();
@@ -190,8 +220,8 @@ export async function registerRoutes(
     }
   });
 
-  // Get all quote requests
-  app.get("/api/quote-requests", async (req, res) => {
+  // Get all quote requests (admin)
+  app.get("/api/quote-requests", requireAdmin, async (req, res) => {
     try {
       const quoteRequests = await storage.getAllQuoteRequests();
       res.json(quoteRequests);
@@ -240,7 +270,7 @@ export async function registerRoutes(
   });
 
   // Create a pricing tier for a product
-  app.post("/api/products/:productId/pricing-tiers", async (req, res) => {
+  app.post("/api/products/:productId/pricing-tiers", requireAdmin, async (req, res) => {
     try {
       const validated = insertProductPricingTierSchema.parse({
         ...req.body,
@@ -258,7 +288,7 @@ export async function registerRoutes(
   });
 
   // Delete all pricing tiers for a product
-  app.delete("/api/products/:productId/pricing-tiers", async (req, res) => {
+  app.delete("/api/products/:productId/pricing-tiers", requireAdmin, async (req, res) => {
     try {
       await storage.deleteProductPricingTiers(req.params.productId);
       res.json({ message: "Pricing tiers deleted" });
@@ -282,7 +312,7 @@ export async function registerRoutes(
   });
 
   // Create a restricted country for a product
-  app.post("/api/products/:productId/restricted-countries", async (req, res) => {
+  app.post("/api/products/:productId/restricted-countries", requireAdmin, async (req, res) => {
     try {
       const validated = insertProductRestrictedCountrySchema.parse({
         ...req.body,
@@ -300,7 +330,7 @@ export async function registerRoutes(
   });
 
   // Delete all restricted countries for a product
-  app.delete("/api/products/:productId/restricted-countries", async (req, res) => {
+  app.delete("/api/products/:productId/restricted-countries", requireAdmin, async (req, res) => {
     try {
       await storage.deleteProductRestrictedCountries(req.params.productId);
       res.json({ message: "Restricted countries deleted" });
@@ -324,7 +354,7 @@ export async function registerRoutes(
   });
 
   // Create a customer segment
-  app.post("/api/customer-segments", async (req, res) => {
+  app.post("/api/customer-segments", requireAdmin, async (req, res) => {
     try {
       const validated = insertCustomerSegmentSchema.parse(req.body);
       const segment = await storage.createCustomerSegment(validated);
@@ -339,7 +369,7 @@ export async function registerRoutes(
   });
 
   // Update a customer segment
-  app.patch("/api/customer-segments/:id", async (req, res) => {
+  app.patch("/api/customer-segments/:id", requireAdmin, async (req, res) => {
     try {
       const updateSchema = insertCustomerSegmentSchema.partial();
       const validatedData = updateSchema.parse(req.body);
@@ -355,7 +385,7 @@ export async function registerRoutes(
   });
 
   // Delete a customer segment
-  app.delete("/api/customer-segments/:id", async (req, res) => {
+  app.delete("/api/customer-segments/:id", requireAdmin, async (req, res) => {
     try {
       await storage.deleteCustomerSegment(req.params.id);
       res.json({ message: "Customer segment deleted" });
@@ -376,7 +406,7 @@ export async function registerRoutes(
   }
 
   // Get all proforma invoices
-  app.get("/api/proforma-invoices", async (req, res) => {
+  app.get("/api/proforma-invoices", requireAdmin, async (req, res) => {
     try {
       const invoices = await storage.getAllProformaInvoices();
       res.json(invoices);
@@ -387,7 +417,7 @@ export async function registerRoutes(
   });
 
   // Get a single proforma invoice by ID
-  app.get("/api/proforma-invoices/:id", async (req, res) => {
+  app.get("/api/proforma-invoices/:id", requireAdmin, async (req, res) => {
     try {
       const invoice = await storage.getProformaInvoiceById(req.params.id);
       if (!invoice) {
@@ -401,7 +431,7 @@ export async function registerRoutes(
   });
 
   // Create a proforma invoice from quote request data
-  app.post("/api/proforma-invoices", async (req, res) => {
+  app.post("/api/proforma-invoices", requireAdmin, async (req, res) => {
     try {
       const referenceNumber = generateReferenceNumber();
       const invoiceData = {
@@ -422,7 +452,7 @@ export async function registerRoutes(
   });
 
   // Update a proforma invoice
-  app.patch("/api/proforma-invoices/:id", async (req, res) => {
+  app.patch("/api/proforma-invoices/:id", requireAdmin, async (req, res) => {
     try {
       const updateSchema = insertProformaInvoiceSchema.partial();
       const validatedData = updateSchema.parse(req.body);
@@ -447,7 +477,7 @@ export async function registerRoutes(
   });
 
   // Generate invoice from a quote request
-  app.post("/api/quote-requests/:id/generate-invoice", async (req, res) => {
+  app.post("/api/quote-requests/:id/generate-invoice", requireAdmin, async (req, res) => {
     try {
       const quoteRequest = await storage.getQuoteRequestById(req.params.id);
       if (!quoteRequest) {
@@ -555,7 +585,7 @@ export async function registerRoutes(
   const emailSchema = z.string().email();
 
   // Send invoice email
-  app.post("/api/proforma-invoices/:id/send-email", async (req, res) => {
+  app.post("/api/proforma-invoices/:id/send-email", requireAdmin, async (req, res) => {
     try {
       const invoice = await storage.getProformaInvoiceById(req.params.id);
       if (!invoice) {
@@ -638,7 +668,7 @@ export async function registerRoutes(
   });
 
   // ===== Training Transcripts =====
-  app.get("/api/training-transcripts", async (_req, res) => {
+  app.get("/api/training-transcripts", requireAdmin, async (_req, res) => {
     try {
       const transcripts = await storage.getAllTrainingTranscripts();
       res.json(transcripts);
@@ -648,7 +678,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/training-transcripts/:id", async (req, res) => {
+  app.get("/api/training-transcripts/:id", requireAdmin, async (req, res) => {
     try {
       const transcript = await storage.getTrainingTranscriptById(req.params.id);
       if (!transcript) return res.status(404).json({ error: "Transcript not found" });
@@ -658,7 +688,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/training-transcripts", async (req, res) => {
+  app.post("/api/training-transcripts", requireAdmin, async (req, res) => {
     try {
       const validated = insertTrainingTranscriptSchema.parse(req.body);
       const transcript = await storage.createTrainingTranscript(validated);
@@ -676,7 +706,7 @@ export async function registerRoutes(
     annotations: z.string().max(5000).optional(),
   });
 
-  app.patch("/api/training-transcripts/:id", async (req, res) => {
+  app.patch("/api/training-transcripts/:id", requireAdmin, async (req, res) => {
     try {
       const transcript = await storage.getTrainingTranscriptById(req.params.id);
       if (!transcript) return res.status(404).json({ error: "Transcript not found" });
@@ -691,7 +721,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/training-transcripts/:id", async (req, res) => {
+  app.delete("/api/training-transcripts/:id", requireAdmin, async (req, res) => {
     try {
       await storage.deleteTrainingTranscript(req.params.id);
       res.json({ success: true });
@@ -700,7 +730,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/training-transcripts/:id/process", async (req, res) => {
+  app.post("/api/training-transcripts/:id/process", requireAdmin, async (req, res) => {
     try {
       const transcript = await storage.getTrainingTranscriptById(req.params.id);
       if (!transcript) return res.status(404).json({ error: "Transcript not found" });

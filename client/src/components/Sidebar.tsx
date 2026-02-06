@@ -1,18 +1,20 @@
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   LayoutDashboard, 
   Database, 
   Menu,
   MessageSquare,
   DollarSign,
-  BookOpen
+  BookOpen,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const links = [
     { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/admin/quote-requests", icon: MessageSquare, label: "Quote Requests" },
@@ -58,7 +60,7 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-3">
         <div className="rounded-lg bg-muted/50 p-4">
           <div className="text-xs font-medium text-muted-foreground">Database Status</div>
           <div className="mt-2 flex items-center justify-between">
@@ -72,6 +74,19 @@ export function Sidebar() {
             ></div>
           </div>
         </div>
+        <Button
+          data-testid="button-admin-logout"
+          variant="ghost"
+          className="w-full justify-start text-muted-foreground hover:text-foreground"
+          onClick={async () => {
+            await fetch("/api/admin/logout", { method: "POST" });
+            queryClient.invalidateQueries({ queryKey: ["admin-auth"] });
+            setLocation("/");
+          }}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Log Out
+        </Button>
       </div>
     </div>
   );
