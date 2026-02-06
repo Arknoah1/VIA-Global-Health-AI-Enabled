@@ -47,6 +47,8 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/quote-requests` - Submit quote requests
 - `POST /api/chat` - AI-powered chat for quote assistance
 - `POST /api/recommendations` - AI-powered product recommendations based on browsing history (rate-limited per IP)
+- `POST /api/quote-requests/start` - Start quote session, accepts optional `customerProfile` for returning customers
+- `POST /api/quote-requests/:id/messages` - Chat message handler, returns `profileUpdate` for frontend persistence
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
@@ -56,6 +58,7 @@ Preferred communication style: Simple, everyday language.
 **Main Tables**:
 - `products` - Medical equipment and pharmaceutical products with pricing, images, specifications, FAQs
 - `quote_requests` - Customer quote requests with conversation history
+- Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type is locked once set. "Not you?" button allows profile reset.
 
 ### Web Scraping
 - **Tool**: Puppeteer with headless Chromium

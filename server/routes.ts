@@ -837,23 +837,41 @@ export async function registerRoutes(
   // Start a new AI-powered quote request session
   app.post("/api/quote-requests/start", async (req, res) => {
     try {
-      const { productId, productName, productSku } = req.body;
+      const { productId, productName, productSku, customerProfile } = req.body;
       
       if (!productId || !productName) {
         return res.status(400).json({ error: "productId and productName are required" });
       }
 
-      // Create initial quote request
-      const quoteRequest = await storage.createQuoteRequest({
+      // Pre-populate from returning customer profile if available
+      const initialData: Record<string, unknown> = {
         productId,
         productName,
         productSku,
         conversation: [],
         status: "active"
-      });
+      };
 
-      // Initial greeting message from Amara
-      const greeting = `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${productName}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`;
+      if (customerProfile) {
+        if (customerProfile.firstName) initialData.firstName = customerProfile.firstName;
+        if (customerProfile.lastName) initialData.lastName = customerProfile.lastName;
+        if (customerProfile.email) initialData.email = customerProfile.email;
+        if (customerProfile.organizationType) initialData.organizationType = customerProfile.organizationType;
+        if (customerProfile.organizationName) initialData.organizationName = customerProfile.organizationName;
+        if (customerProfile.shippingCountry) initialData.shippingCountry = customerProfile.shippingCountry;
+        if (customerProfile.importCapability) initialData.importAssistance = customerProfile.importCapability;
+      }
+
+      // Create initial quote request
+      const quoteRequest = await storage.createQuoteRequest(initialData as any);
+
+      // Personalized greeting for returning customers
+      let greeting: string;
+      if (customerProfile?.firstName) {
+        greeting = `Welcome back, ${customerProfile.firstName}! I'm Amara from VIA Global Health. Great to see you again. I see you're interested in the ${productName}. How can I help you today?`;
+      } else {
+        greeting = `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${productName}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`;
+      }
       
       // Save initial assistant message
       await storage.createQuoteRequestMessage({
@@ -951,6 +969,9 @@ export async function registerRoutes(
         lastName: quoteRequest.lastName,
         email: quoteRequest.email,
         organizationType: quoteRequest.organizationType,
+        organizationName: quoteRequest.organizationName,
+        shippingCountry: quoteRequest.shippingCountry,
+        importCapability: quoteRequest.importAssistance,
       };
       const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState);
 
@@ -1040,7 +1061,16 @@ export async function registerRoutes(
         organizationType: flags.organizationType || quoteRequest.organizationType,
         referToAgent: flags.referToAgent,
         referralReason: flags.referralReason,
-        recommendedProducts: flags.showRecommendations ? similarProducts : []
+        recommendedProducts: flags.showRecommendations ? similarProducts : [],
+        profileUpdate: {
+          firstName: flags.firstName || quoteRequest.firstName || undefined,
+          lastName: flags.lastName || quoteRequest.lastName || undefined,
+          email: flags.email || quoteRequest.email || undefined,
+          organizationType: flags.organizationType || quoteRequest.organizationType || undefined,
+          organizationName: flags.organizationName || quoteRequest.organizationName || undefined,
+          shippingCountry: flags.shippingCountry || quoteRequest.shippingCountry || undefined,
+          importCapability: flags.importAssistance || quoteRequest.importAssistance || undefined,
+        }
       });
     } catch (error) {
       console.error("Error processing chat message:", error);
@@ -1176,7 +1206,7 @@ function buildSystemPrompt(
   restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [],
   customerSegments: { name: string; displayName: string; pricingMultiplier: number; isEligibleForQuotes: boolean; ineligibilityReason: string | null }[] = [],
   trainingTranscripts: { buyerType: string | null; country: string | null; productsDiscussed: string | null; objections: string | null; outcome: string | null; annotations: string | null; aiExtractedInsights: any }[] = [],
-  existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null } = {}
+  existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null; shippingCountry?: string | null; importCapability?: string | null } = {}
 ): string {
   let prompt = `You are Amara Njeri, a Sales Representative at VIA Global Health based in Nairobi, Kenya. You are the first point of contact for customers and represent VIA as a trusted partner in global health solutions.
 
@@ -1359,6 +1389,14 @@ IMPORTANT GUIDELINES:
 SPECIAL PRICING NOTICE:
 When the user mentions they are from an NGO, Faith-based organisation, Government agency, or Public hospital/clinic, warmly acknowledge that they may qualify for special pricing and assure them you'll include this in their quote.
 
+RETURNING CUSTOMER HANDLING:
+If the customer already has information on file from previous visits (shown in CURRENT CUSTOMER STATE below), DO NOT re-ask for that information. Instead:
+- Greet them warmly by name if you know it
+- Skip questions you already have answers to (name, email, org type, country, import capability)
+- Jump straight to the qualification checkpoints that are still missing
+- For shipping country: you may confirm if they want to ship to the same country as before, or a different one. Example: "Last time you shipped to [country]. Would you like to ship there again, or to a different destination?"
+- Organisation type from a previous session is LOCKED and cannot be changed
+
 CURRENT CUSTOMER STATE (already collected - do NOT re-ask for these):`;
 
   const stateItems: string[] = [];
@@ -1370,6 +1408,15 @@ CURRENT CUSTOMER STATE (already collected - do NOT re-ask for these):`;
   }
   if (existingState.organizationType) {
     stateItems.push(`Organisation Type: ${existingState.organizationType} (LOCKED - cannot be changed by the customer)`);
+  }
+  if (existingState.organizationName) {
+    stateItems.push(`Organisation Name: ${existingState.organizationName}`);
+  }
+  if (existingState.shippingCountry) {
+    stateItems.push(`Previous Shipping Country: ${existingState.shippingCountry} (confirm or update for this order)`);
+  }
+  if (existingState.importCapability) {
+    stateItems.push(`Import Capability: ${existingState.importCapability} (previously confirmed)`);
   }
   if (stateItems.length > 0) {
     stateItems.forEach(item => { prompt += `\n- ${item}`; });

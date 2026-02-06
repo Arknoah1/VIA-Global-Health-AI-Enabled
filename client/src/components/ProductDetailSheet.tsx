@@ -15,6 +15,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/browsingHistory";
+import { getCustomerProfile, saveCustomerProfile, clearCustomerProfile } from "@/lib/customerProfile";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
@@ -139,13 +140,15 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setInitError(null);
     
     try {
+      const customerProfile = getCustomerProfile();
       const response = await fetch('/api/quote-requests/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: product.id,
           productName: product.name,
-          productSku: product.sku
+          productSku: product.sku,
+          customerProfile: customerProfile || undefined
         })
       });
       
@@ -249,6 +252,10 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       
       if (data.recommendedProducts && data.recommendedProducts.length > 0) {
         setRecommendedProducts(data.recommendedProducts);
+      }
+      
+      if (data.profileUpdate) {
+        saveCustomerProfile(data.profileUpdate);
       }
       
       if (data.referToAgent) {
@@ -665,15 +672,30 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialogWithDismiss()}>
         <DialogContent className="w-[95vw] sm:max-w-md h-[85vh] sm:h-[600px] max-h-[600px] flex flex-col p-0 rounded-t-xl sm:rounded-xl">
           <DialogHeader className="p-3 sm:p-4 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                <Stethoscope className="h-4 w-4" />
-              </div>
-              <div className="flex flex-col">
-                <span>Chat with Amara</span>
-                <span className="text-xs font-normal text-muted-foreground">Clinical Procurement Specialist</span>
-              </div>
-            </DialogTitle>
+            <div className="flex items-center justify-between w-full">
+              <DialogTitle className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                  <Stethoscope className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span>Chat with Amara</span>
+                  <span className="text-xs font-normal text-muted-foreground">Clinical Procurement Specialist</span>
+                </div>
+              </DialogTitle>
+              {getCustomerProfile() && (
+                <button
+                  onClick={() => {
+                    clearCustomerProfile();
+                    handleCloseQuoteDialog();
+                    setTimeout(() => setShowQuoteDialog(true), 100);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded min-h-[44px] flex items-center"
+                  data-testid="button-not-you"
+                >
+                  Not you?
+                </button>
+              )}
+            </div>
             <DialogDescription className="sr-only">AI-powered chat assistant to help you get a custom quote for this product</DialogDescription>
           </DialogHeader>
 
