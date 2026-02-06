@@ -79,17 +79,17 @@ export function RecommendedProducts({ onSelectProduct, allProducts }: Recommende
         {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
       {isLoading && recommendations.length === 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[1, 2, 3, 4].map(i => (
-            <Card key={i} className="p-4 animate-pulse">
-              <div className="h-32 bg-muted rounded mb-3" />
+            <Card key={i} className="p-3 sm:p-4 animate-pulse">
+              <div className="h-24 sm:h-32 bg-muted rounded mb-3" />
               <div className="h-4 bg-muted rounded w-3/4 mb-2" />
               <div className="h-3 bg-muted rounded w-full" />
             </Card>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {recommendations.map(rec => {
             const fullProduct = allProducts.find(p => p.id === rec.id);
             return (

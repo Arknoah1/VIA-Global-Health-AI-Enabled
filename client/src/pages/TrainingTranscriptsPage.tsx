@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -356,6 +357,7 @@ export default function TrainingTranscriptsPage() {
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Add Training Transcript</DialogTitle>
+                  <DialogDescription className="sr-only">Upload a new training conversation transcript for AI analysis</DialogDescription>
                 </DialogHeader>
                 <TranscriptForm onClose={() => setIsAddOpen(false)} />
               </DialogContent>
@@ -477,6 +479,7 @@ export default function TrainingTranscriptsPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Transcript Details</DialogTitle>
+            <DialogDescription className="sr-only">View transcript content and AI-extracted insights</DialogDescription>
           </DialogHeader>
           {selectedTranscript && (
             <TranscriptDetail

@@ -120,6 +120,7 @@ export default function PublicCatalog() {
                   variant={selectedCategory === cat ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(cat)}
+                  className="min-h-[44px] sm:min-h-0"
                   data-testid={`button-category-${cat}`}
                 >
                   {cat === "all" ? "All Categories" : cat}

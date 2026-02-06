@@ -12,7 +12,7 @@ import {
   Stethoscope, Activity, Heart, Thermometer, FlaskConical, ClipboardCheck,
   Microscope, Syringe, Briefcase, Pill, Building2
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/browsingHistory";
 import { Input } from "@/components/ui/input";
@@ -331,7 +331,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               {product.images && (product.images as string[]).length > 0 && (
                 <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
                   <button 
-                    className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-sm ${selectedImageIndex === -1 ? 'border-primary ring-1 ring-primary/20' : 'border-transparent'}`}
+                    className={`relative h-14 w-14 sm:h-12 sm:w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-sm ${selectedImageIndex === -1 ? 'border-primary ring-1 ring-primary/20' : 'border-transparent'}`}
                     onClick={() => setSelectedImageIndex(-1)}
                     data-testid="product-thumbnail-main"
                   >
@@ -340,7 +340,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   {(product.images as string[]).map((img, idx) => (
                     <button 
                       key={idx}
-                      className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-sm ${selectedImageIndex === idx ? 'border-primary ring-1 ring-primary/20' : 'border-transparent'}`}
+                      className={`relative h-14 w-14 sm:h-12 sm:w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-sm ${selectedImageIndex === idx ? 'border-primary ring-1 ring-primary/20' : 'border-transparent'}`}
                       onClick={() => setSelectedImageIndex(idx)}
                       data-testid={`product-thumbnail-${idx}`}
                     >
@@ -410,17 +410,17 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
             {/* Tabs for Detailed Info */}
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto">
+              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto scrollbar-hide">
                 <TabsTrigger 
                   value="details" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                 >
                   <span className="text-sm">Overview</span>
                 </TabsTrigger>
                 {Object.keys(product.specifications).length > 0 && (
                   <TabsTrigger 
                     value="specs" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                   >
                     <span className="text-sm">Specs</span>
                   </TabsTrigger>
@@ -428,7 +428,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 {(product.videoUrl || (product.documents as any[]).length > 0) && (
                   <TabsTrigger 
                     value="media" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                   >
                     <span className="text-sm">Media</span>
                   </TabsTrigger>
@@ -436,7 +436,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 {product.faqs && (product.faqs as any[]).length > 0 && (
                   <TabsTrigger 
                     value="faqs" 
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                   >
                     <span className="text-sm">FAQs</span>
                   </TabsTrigger>
@@ -643,9 +643,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         </div>
 
         {/* Sticky Action Footer with Unified CTA */}
-        <div className="sticky bottom-0 p-4 sm:p-6 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm border-t space-y-2">
+        <div className="sticky bottom-0 p-3 sm:p-6 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm border-t space-y-1.5 sm:space-y-2">
           <Button 
-            className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full h-12 sm:h-12 text-sm sm:text-base font-semibold bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300"
             data-testid="button-request-quote-unified"
             onClick={() => setShowQuoteDialog(true)}
           >
@@ -663,8 +663,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
       {/* AI Quote Assistant Dialog - Chat with Amara */}
       <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialogWithDismiss()}>
-        <DialogContent className="sm:max-w-md h-[600px] flex flex-col p-0">
-          <DialogHeader className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
+        <DialogContent className="w-[95vw] sm:max-w-md h-[85vh] sm:h-[600px] max-h-[600px] flex flex-col p-0 rounded-t-xl sm:rounded-xl">
+          <DialogHeader className="p-3 sm:p-4 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
                 <Stethoscope className="h-4 w-4" />
@@ -674,6 +674,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 <span className="text-xs font-normal text-muted-foreground">Clinical Procurement Specialist</span>
               </div>
             </DialogTitle>
+            <DialogDescription className="sr-only">AI-powered chat assistant to help you get a custom quote for this product</DialogDescription>
           </DialogHeader>
 
           {/* Special Pricing Banner */}
@@ -765,21 +766,21 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             </div>
           </div>
 
-          <div className="p-4 border-t flex gap-2 bg-muted/30">
+          <div className="p-3 sm:p-4 border-t flex gap-2 bg-muted/30 shrink-0">
             <Input
               placeholder={isConversationComplete ? "Conversation complete" : "Type your message..."}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               disabled={isLoading || isConversationComplete}
-              className="bg-background"
+              className="bg-background h-11 text-base sm:text-sm"
               data-testid="input-chat-message"
             />
             <Button 
               size="icon" 
               onClick={handleSendMessage} 
               disabled={isLoading || !inputValue.trim() || isConversationComplete}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 h-11 w-11 shrink-0"
               data-testid="button-send-message"
             >
               <Send className="h-4 w-4" />
@@ -796,6 +797,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               <Headphones className="h-5 w-5 text-primary" />
               Live Support
             </DialogTitle>
+            <DialogDescription className="sr-only">Contact our support team for product assistance</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="text-center py-6">

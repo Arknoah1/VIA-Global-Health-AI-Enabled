@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   ArrowRight, ArrowLeft, Building2, Heart, HandshakeIcon, GraduationCap,
   Package, MapPin, Clock, Ship, Plane, CheckCircle2, Loader2, MessageSquare
@@ -165,6 +165,7 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">Request a Quote</DialogTitle>
+          <DialogDescription className="sr-only">Step-by-step form to request a custom quote for medical equipment</DialogDescription>
         </DialogHeader>
 
         {/* Progress Steps */}

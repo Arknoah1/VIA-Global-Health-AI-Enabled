@@ -64,7 +64,7 @@ export function Header() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2"
+            className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Toggle menu"
             data-testid="button-mobile-menu"
           >
@@ -82,7 +82,7 @@ export function Header() {
             <div className="space-y-3 pt-4">
               <Link 
                 href="/" 
-                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                className="block px-4 py-3 min-h-[44px] rounded-lg hover:bg-slate-100 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
                 data-testid="link-mobile-home"
               >
@@ -90,7 +90,7 @@ export function Header() {
               </Link>
               <Link 
                 href="/catalog" 
-                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                className="block px-4 py-3 min-h-[44px] rounded-lg hover:bg-slate-100 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
                 data-testid="link-mobile-catalog"
               >
@@ -98,7 +98,7 @@ export function Header() {
               </Link>
               <Link 
                 href="/about" 
-                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                className="block px-4 py-3 min-h-[44px] rounded-lg hover:bg-slate-100 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
                 data-testid="link-mobile-about"
               >
@@ -106,7 +106,7 @@ export function Header() {
               </Link>
               <Link 
                 href="/track-quote" 
-                className="block px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                className="block px-4 py-3 min-h-[44px] rounded-lg hover:bg-slate-100 transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
                 data-testid="link-mobile-track-quote"
               >

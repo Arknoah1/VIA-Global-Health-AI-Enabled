@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -293,6 +294,7 @@ export default function QuoteRequestsPage() {
             <DialogTitle>
               Conversation - {selectedRequest?.firstName} {selectedRequest?.lastName}
             </DialogTitle>
+            <DialogDescription className="sr-only">View the conversation history for this quote request</DialogDescription>
           </DialogHeader>
           
           <div className="flex-1 overflow-y-auto p-4">
@@ -337,6 +339,7 @@ export default function QuoteRequestsPage() {
               <FileText className="h-5 w-5" />
               Proforma Invoice - {currentInvoice?.referenceNumber}
             </DialogTitle>
+            <DialogDescription className="sr-only">Preview and edit the proforma invoice</DialogDescription>
           </DialogHeader>
           
           {currentInvoice && (
