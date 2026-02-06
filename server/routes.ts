@@ -1602,6 +1602,42 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     "private practice", "private hospital", "private clinic",
     "healthcare provider", "faith based", "faith-based",
     "sea freight", "air freight",
+    "buy it", "buy now", "buy this", "buy one", "buy some", "buy them",
+    "get it", "get one", "get some", "get this", "get them",
+    "want it", "want one", "want some", "want this", "want them",
+    "need it", "need one", "need some", "need this", "need them",
+    "order it", "order one", "order some", "order this", "order them",
+    "send it", "send one", "send some", "send this", "send them",
+    "ship it", "ship them", "ship this",
+    "hi there", "hello there", "hey there",
+    "yes sir", "yes ma'am", "yes maam", "no sir", "no ma'am",
+    "ok thanks", "ok great", "ok sure", "ok fine", "ok good",
+    "ill take", "we need", "we want", "we have", "we are",
+    "i need", "i want", "i have", "im interested", "im looking",
+    "please send", "please help", "please provide", "please share",
+    "can you", "could you", "would you", "will you",
+    "let me", "let us", "show me", "help me",
+    "just one", "just checking", "just wondering", "just curious",
+    "good morning", "good afternoon", "good evening", "good day",
+    "thats ok", "thats okay", "thats it",
+  ]);
+
+  const nonNameWords = new Set([
+    "buy", "get", "want", "need", "order", "send", "ship", "take", "make", "give",
+    "yes", "no", "ok", "okay", "sure", "thanks", "thank", "please", "hello", "hi",
+    "hey", "good", "great", "fine", "right", "well", "just", "also", "very", "much",
+    "the", "and", "but", "for", "not", "you", "all", "can", "had", "her", "was",
+    "one", "our", "out", "are", "has", "his", "how", "its", "may", "new", "now",
+    "old", "see", "way", "who", "did", "got", "let", "say", "she", "too", "use",
+    "about", "after", "also", "back", "been", "call", "come", "each", "find",
+    "from", "have", "here", "into", "know", "like", "look", "more", "next",
+    "only", "over", "some", "such", "them", "then", "this", "what", "when",
+    "will", "with", "would", "could", "should", "their", "there", "these", "those",
+    "it", "go", "do", "we", "me", "so", "if", "my", "up", "an", "or", "as", "at", "be",
+    "product", "products", "price", "pricing", "quote", "cost", "unit", "units",
+    "air", "sea", "freight", "shipping", "import", "export", "customs",
+    "medical", "equipment", "supply", "hospital", "clinic",
+    "interested", "looking", "checking", "wondering", "curious",
   ]);
 
   const namePatterns = [
@@ -1615,6 +1651,12 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     if (match && match[1] && match[1].length >= 2) {
       const candidate = (match[1] + (match[2] ? " " + match[2] : "")).toLowerCase();
       if (conversationalPhrases.has(candidate)) {
+        continue;
+      }
+      if (nonNameWords.has(match[1].toLowerCase())) {
+        continue;
+      }
+      if (match[2] && nonNameWords.has(match[2].toLowerCase())) {
         continue;
       }
       firstName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
