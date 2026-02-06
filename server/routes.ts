@@ -578,16 +578,12 @@ export async function registerRoutes(
 
       const nodemailer = await import('nodemailer');
       const transporter = nodemailer.createTransport({
-        host: 'smtp.office365.com',
+        host: 'smtp.gmail.com',
         port: 587,
         secure: false,
         auth: {
           user: smtpUser,
           pass: smtpPass,
-        },
-        tls: {
-          ciphers: 'SSLv3',
-          rejectUnauthorized: false,
         },
       });
       
