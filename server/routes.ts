@@ -999,13 +999,13 @@ export async function registerRoutes(
       if (flags.organizationName) {
         updates.organizationName = flags.organizationName;
       }
-      if (flags.firstName) {
+      if (flags.firstName && !quoteRequest.firstName) {
         updates.firstName = flags.firstName;
       }
-      if (flags.lastName) {
+      if (flags.lastName && !quoteRequest.lastName) {
         updates.lastName = flags.lastName;
       }
-      if (flags.email) {
+      if (flags.email && !quoteRequest.email) {
         updates.email = flags.email;
       }
       if (flags.shippingCountry) {
@@ -1432,6 +1432,11 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     "how much", "how many", "how long", "what about", "tell me",
     "per unit", "each unit", "more info", "more information",
     "next step", "whats next", "please continue", "continue please",
+    "government agency", "government hospital", "government clinic",
+    "public hospital", "public clinic", "public sector",
+    "private practice", "private hospital", "private clinic",
+    "healthcare provider", "faith based", "faith-based",
+    "sea freight", "air freight",
   ]);
 
   const namePatterns = [
