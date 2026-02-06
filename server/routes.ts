@@ -42,6 +42,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.use((_req, res, next) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+    next();
+  });
+
   // Get all products (with optional search) - with caching
   app.get("/api/products", async (req, res) => {
     try {
