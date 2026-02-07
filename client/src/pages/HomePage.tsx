@@ -70,21 +70,21 @@ export default function HomePage() {
       name: "NASG (Non-pneumatic Anti-Shock Garment)",
       description: "Life-saving device for treating obstetric hemorrhage and hypovolemic shock",
       category: "Maternal Health",
-      image: "/images/products/nasg.jpg",
+      image: "https://via-global-health-ai-enabled.replit.app/images/products/nasg.jpg",
       searchQuery: "NASG"
     },
     {
       name: "Thermocoagulator",
       description: "Portable device for cervical cancer treatment using thermal ablation",
       category: "Oncology",
-      image: "/images/products/thermocoagulator.png",
+      image: "https://via-global-health-ai-enabled.replit.app/images/products/thermocoagulator.png",
       searchQuery: "Thermocoagulator"
     },
     {
       name: "MTTS Beluga CPAP",
       description: "Affordable CPAP system designed for low-resource settings",
       category: "Neonatal Care",
-      image: "/images/products/beluga-cpap.jpg",
+      image: "https://via-global-health-ai-enabled.replit.app/images/products/beluga-cpap.jpg",
       searchQuery: "MTTS Beluga"
     }
   ];
