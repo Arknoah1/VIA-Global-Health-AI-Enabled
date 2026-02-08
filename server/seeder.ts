@@ -2,6 +2,7 @@ import { db } from "../db";
 import { products, customerSegments } from "@shared/schema";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { like, sql } from "drizzle-orm";
 
 function log(message: string, source = "seeder") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -33,6 +34,7 @@ function loadSeedData(): any[] | null {
 
 export async function seedDatabase() {
   await seedCustomerSegments();
+  await fixExternalImageUrls();
 
   try {
     const existingProducts = await db.select().from(products).limit(1);
@@ -73,6 +75,67 @@ export async function seedDatabase() {
     log(`Successfully seeded ${productsToInsert.length} products`, "seeder");
   } catch (error) {
     log(`Error seeding database: ${error}`, "seeder");
+  }
+}
+
+async function fixExternalImageUrls() {
+  try {
+    const allProducts = await db.select({ id: products.id, name: products.name, imageUrl: products.imageUrl, images: products.images })
+      .from(products);
+
+    let fixedCount = 0;
+
+    for (const product of allProducts) {
+      const updates: { imageUrl?: string; images?: string[] } = {};
+
+      if (product.imageUrl?.includes('viaglobalhealth.com')) {
+        const filename = product.imageUrl.split('/').pop()?.toLowerCase();
+        if (filename) {
+          const localFile = join(process.cwd(), "client", "public", "images", "products", filename);
+          if (existsSync(localFile)) {
+            updates.imageUrl = `/images/products/${filename}`;
+          } else {
+            log(`Local file not found for "${product.name}" main image: ${filename}`, "seeder");
+          }
+        }
+      }
+
+      if (Array.isArray(product.images)) {
+        let galleryChanged = false;
+        const updatedImages = product.images.map((img: string) => {
+          if (img.includes('viaglobalhealth.com')) {
+            const imgFilename = img.split('/').pop()?.toLowerCase();
+            if (imgFilename) {
+              const imgLocalFile = join(process.cwd(), "client", "public", "images", "products", imgFilename);
+              if (existsSync(imgLocalFile)) {
+                galleryChanged = true;
+                return `/images/products/${imgFilename}`;
+              }
+            }
+          }
+          return img;
+        });
+        if (galleryChanged) {
+          updates.images = updatedImages;
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await db.update(products)
+          .set(updates)
+          .where(sql`${products.id} = ${product.id}`);
+        fixedCount++;
+        log(`Fixed image URLs for "${product.name}"`, "seeder");
+      }
+    }
+
+    if (fixedCount === 0) {
+      log("All product images already use local paths", "seeder");
+    } else {
+      log(`Fixed external image URLs for ${fixedCount} products`, "seeder");
+    }
+  } catch (error) {
+    log(`Error fixing external image URLs: ${error}`, "seeder");
   }
 }
 
