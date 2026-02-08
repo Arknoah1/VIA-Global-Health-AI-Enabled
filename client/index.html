@@ -47,6 +47,20 @@
       content="https://replit.com/public/images/opengraph.png"
     />
 
+    <script>
+    function getABGroup() {
+      const match = document.cookie.match(new RegExp('(^| )ab-test-variant=([^;]+)'));
+      return match ? match[2] : 'standard';
+    }
+
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+
+    gtag('set', 'user_properties', {
+      'ab_test_group': getABGroup()
+    });
+    </script>
+
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
