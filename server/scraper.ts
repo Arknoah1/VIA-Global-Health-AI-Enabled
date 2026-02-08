@@ -1,8 +1,50 @@
 import puppeteer from 'puppeteer';
 import type { InsertProduct } from '@shared/schema';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join, extname } from 'path';
 
 const MAX_PRICE_CENTS = 99999900;
 const DEFAULT_PRICE_CENTS = 50000;
+const IMAGES_DIR = join(process.cwd(), 'client', 'public', 'images', 'products');
+
+async function downloadImage(url: string, productSlug: string, index: number): Promise<string> {
+  try {
+    if (!url || !url.startsWith('http')) return url;
+
+    mkdirSync(IMAGES_DIR, { recursive: true });
+
+    const ext = extname(new URL(url).pathname).toLowerCase() || '.jpg';
+    const filename = `${productSlug}-${index}${ext}`;
+    const filepath = join(IMAGES_DIR, filename);
+
+    if (existsSync(filepath)) {
+      console.log(`[Scraper] Image already exists: ${filename}`);
+      return `/images/products/${filename}`;
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log(`[Scraper] Failed to download image: ${url} (${response.status})`);
+      return url;
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    writeFileSync(filepath, buffer);
+    console.log(`[Scraper] Downloaded image: ${filename} (${buffer.length} bytes)`);
+    return `/images/products/${filename}`;
+  } catch (err) {
+    console.log(`[Scraper] Error downloading image ${url}: ${err}`);
+    return url;
+  }
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 50);
+}
 
 function sanitizePrice(price: number): number {
   if (isNaN(price) || price <= 0 || price > 1000000) {
@@ -513,6 +555,19 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
       if (productDetails) {
         console.log(`[Scraper] Extracted product: ${productDetails.name}`);
         console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features`);
+        console.log(`[Scraper] Downloading ${productDetails.images.length + 1} image(s) locally...`);
+
+        const slug = slugify(productDetails.name);
+
+        const localMainImage = await downloadImage(productDetails.imageUrl, slug, 0);
+
+        const localImages: string[] = [];
+        for (let i = 0; i < productDetails.images.length; i++) {
+          const localPath = await downloadImage(productDetails.images[i], slug, i + 1);
+          localImages.push(localPath);
+        }
+
+        console.log(`[Scraper] Saved ${localImages.filter(p => p.startsWith('/')).length} image(s) locally`);
 
         products.push({
           name: productDetails.name,
@@ -521,8 +576,8 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           currency: 'USD',
           category: productDetails.category,
           sku: productDetails.sku || generateUniqueSKU(),
-          imageUrl: productDetails.imageUrl,
-          images: productDetails.images,
+          imageUrl: localMainImage,
+          images: localImages,
           videoUrl: productDetails.videoUrl || null,
           keyFeatures: productDetails.keyFeatures,
           documents: productDetails.documents,
