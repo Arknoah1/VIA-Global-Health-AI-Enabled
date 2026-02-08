@@ -22,13 +22,22 @@ async function downloadImage(url: string, productSlug: string, index: number): P
       return `/images/products/${filename}`;
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+    });
     if (!response.ok) {
       console.log(`[Scraper] Failed to download image: ${url} (${response.status})`);
       return url;
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
+
+    const header = buffer.slice(0, 20).toString('utf-8').toLowerCase();
+    if (header.includes('<!doctype') || header.includes('<html')) {
+      console.log(`[Scraper] Skipping invalid image (got HTML): ${url}`);
+      return url;
+    }
+
     writeFileSync(filepath, buffer);
     console.log(`[Scraper] Downloaded image: ${filename} (${buffer.length} bytes)`);
     return `/images/products/${filename}`;
