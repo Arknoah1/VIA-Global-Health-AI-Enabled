@@ -28,9 +28,15 @@ export interface IStorage {
   getQuoteRequestMessages(quoteRequestId: string): Promise<QuoteRequestMessage[]>;
   getProductPricingTiers(productId: string): Promise<ProductPricingTier[]>;
   createProductPricingTier(tier: InsertProductPricingTier): Promise<ProductPricingTier>;
+  createProductPricingTiersBulk(tiers: InsertProductPricingTier[]): Promise<ProductPricingTier[]>;
+  updateProductPricingTier(id: string, data: Partial<InsertProductPricingTier>): Promise<ProductPricingTier>;
+  deleteProductPricingTier(id: string): Promise<void>;
   deleteProductPricingTiers(productId: string): Promise<void>;
   getProductRestrictedCountries(productId: string): Promise<ProductRestrictedCountry[]>;
   createProductRestrictedCountry(restriction: InsertProductRestrictedCountry): Promise<ProductRestrictedCountry>;
+  createProductRestrictedCountriesBulk(restrictions: InsertProductRestrictedCountry[]): Promise<ProductRestrictedCountry[]>;
+  updateProductRestrictedCountry(id: string, data: Partial<InsertProductRestrictedCountry>): Promise<ProductRestrictedCountry>;
+  deleteProductRestrictedCountry(id: string): Promise<void>;
   deleteProductRestrictedCountries(productId: string): Promise<void>;
   getAllCustomerSegments(): Promise<CustomerSegment[]>;
   getCustomerSegmentByName(name: string): Promise<CustomerSegment | undefined>;
@@ -172,6 +178,20 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async createProductPricingTiersBulk(tiers: InsertProductPricingTier[]): Promise<ProductPricingTier[]> {
+    if (tiers.length === 0) return [];
+    return await db.insert(productPricingTiers).values(tiers).returning();
+  }
+
+  async updateProductPricingTier(id: string, data: Partial<InsertProductPricingTier>): Promise<ProductPricingTier> {
+    const result = await db.update(productPricingTiers).set(data).where(eq(productPricingTiers.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteProductPricingTier(id: string): Promise<void> {
+    await db.delete(productPricingTiers).where(eq(productPricingTiers.id, id));
+  }
+
   async deleteProductPricingTiers(productId: string): Promise<void> {
     await db.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
   }
@@ -187,6 +207,20 @@ export class DatabaseStorage implements IStorage {
   async createProductRestrictedCountry(restriction: InsertProductRestrictedCountry): Promise<ProductRestrictedCountry> {
     const result = await db.insert(productRestrictedCountries).values(restriction).returning();
     return result[0];
+  }
+
+  async createProductRestrictedCountriesBulk(restrictions: InsertProductRestrictedCountry[]): Promise<ProductRestrictedCountry[]> {
+    if (restrictions.length === 0) return [];
+    return await db.insert(productRestrictedCountries).values(restrictions).returning();
+  }
+
+  async updateProductRestrictedCountry(id: string, data: Partial<InsertProductRestrictedCountry>): Promise<ProductRestrictedCountry> {
+    const result = await db.update(productRestrictedCountries).set(data).where(eq(productRestrictedCountries.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteProductRestrictedCountry(id: string): Promise<void> {
+    await db.delete(productRestrictedCountries).where(eq(productRestrictedCountries.id, id));
   }
 
   async deleteProductRestrictedCountries(productId: string): Promise<void> {

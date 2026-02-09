@@ -344,6 +344,61 @@ export async function registerRoutes(
     }
   });
 
+  // Update a pricing tier
+  app.patch("/api/pricing-tiers/:tierId", requireAdmin, async (req, res) => {
+    try {
+      const updateSchema = insertProductPricingTierSchema.partial().omit({ productId: true });
+      const validated = updateSchema.parse(req.body);
+      if (Object.keys(validated).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+      const tier = await storage.updateProductPricingTier(req.params.tierId, validated);
+      if (!tier) {
+        return res.status(404).json({ error: "Pricing tier not found" });
+      }
+      res.json(tier);
+    } catch (error) {
+      console.error("Error updating pricing tier:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid pricing tier data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update pricing tier" });
+    }
+  });
+
+  // Delete a single pricing tier
+  app.delete("/api/pricing-tiers/:tierId", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteProductPricingTier(req.params.tierId);
+      res.json({ message: "Pricing tier deleted" });
+    } catch (error) {
+      console.error("Error deleting pricing tier:", error);
+      res.status(500).json({ error: "Failed to delete pricing tier" });
+    }
+  });
+
+  // Bulk create pricing tiers for a product
+  app.post("/api/products/:productId/pricing-tiers/bulk", requireAdmin, async (req, res) => {
+    try {
+      const { tiers } = req.body;
+      if (!Array.isArray(tiers) || tiers.length === 0) {
+        return res.status(400).json({ error: "tiers array is required" });
+      }
+      const validated = tiers.map((t: any) => insertProductPricingTierSchema.parse({
+        ...t,
+        productId: req.params.productId
+      }));
+      const created = await storage.createProductPricingTiersBulk(validated);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error bulk creating pricing tiers:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid pricing tier data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to bulk create pricing tiers" });
+    }
+  });
+
   // Delete all pricing tiers for a product
   app.delete("/api/products/:productId/pricing-tiers", requireAdmin, async (req, res) => {
     try {
@@ -383,6 +438,61 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid restriction data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to create restricted country" });
+    }
+  });
+
+  // Update a restricted country
+  app.patch("/api/restricted-countries/:restrictionId", requireAdmin, async (req, res) => {
+    try {
+      const updateSchema = insertProductRestrictedCountrySchema.partial().omit({ productId: true });
+      const validated = updateSchema.parse(req.body);
+      if (Object.keys(validated).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+      const restriction = await storage.updateProductRestrictedCountry(req.params.restrictionId, validated);
+      if (!restriction) {
+        return res.status(404).json({ error: "Restricted country not found" });
+      }
+      res.json(restriction);
+    } catch (error) {
+      console.error("Error updating restricted country:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid restriction data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update restricted country" });
+    }
+  });
+
+  // Delete a single restricted country
+  app.delete("/api/restricted-countries/:restrictionId", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteProductRestrictedCountry(req.params.restrictionId);
+      res.json({ message: "Restricted country deleted" });
+    } catch (error) {
+      console.error("Error deleting restricted country:", error);
+      res.status(500).json({ error: "Failed to delete restricted country" });
+    }
+  });
+
+  // Bulk create restricted countries for a product
+  app.post("/api/products/:productId/restricted-countries/bulk", requireAdmin, async (req, res) => {
+    try {
+      const { restrictions } = req.body;
+      if (!Array.isArray(restrictions) || restrictions.length === 0) {
+        return res.status(400).json({ error: "restrictions array is required" });
+      }
+      const validated = restrictions.map((r: any) => insertProductRestrictedCountrySchema.parse({
+        ...r,
+        productId: req.params.productId
+      }));
+      const created = await storage.createProductRestrictedCountriesBulk(validated);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error bulk creating restricted countries:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid restriction data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to bulk create restricted countries" });
     }
   });
 
