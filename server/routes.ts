@@ -541,48 +541,101 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Quote request not found" });
       }
 
-      // Check for existing invoice to prevent duplicates
-      const existingInvoices = await storage.getProformaInvoicesByQuoteRequest(req.params.id);
-      if (existingInvoices.length > 0) {
-        // Return the most recent existing invoice
-        return res.json(existingInvoices[0]);
-      }
+      const quantity = parseInt(quoteRequest.orderQuantity || "1") || 1;
 
-      // Get product details for pricing
-      let unitPriceCents = 0;
+      // Get product details and calculate pricing with adjustments
+      let basePriceCents = 0;
+      let volumePriceCents = 0;
       let productDescription = "";
+      let appliedTierName = "";
+
       if (quoteRequest.productId) {
         const product = await storage.getProductById(quoteRequest.productId);
         if (product) {
-          unitPriceCents = product.price;
+          basePriceCents = product.price;
+          volumePriceCents = product.price;
           productDescription = product.description?.substring(0, 200) || "";
         }
         
-        // Check for pricing tiers
         const pricingTiers = await storage.getProductPricingTiers(quoteRequest.productId);
-        const quantity = parseInt(quoteRequest.orderQuantity || "1") || 1;
-        const applicableTier = pricingTiers.find(t => 
-          quantity >= t.minQuantity && (t.maxQuantity === null || quantity <= t.maxQuantity)
-        );
-        if (applicableTier) {
-          unitPriceCents = applicableTier.unitPriceCents;
+        if (pricingTiers.length > 0) {
+          const applicableTier = pricingTiers.find(t => 
+            quantity >= t.minQuantity && (t.maxQuantity === null || quantity <= t.maxQuantity)
+          );
+          if (applicableTier) {
+            volumePriceCents = applicableTier.unitPriceCents;
+            appliedTierName = applicableTier.tierName || `${applicableTier.minQuantity}-${applicableTier.maxQuantity || '+'} units`;
+            console.log(`[Invoice] Volume pricing applied: ${appliedTierName} → $${(volumePriceCents / 100).toFixed(2)}/unit (base was $${(basePriceCents / 100).toFixed(2)})`);
+          }
         }
       }
 
       // Apply segment pricing multiplier
       let pricingMultiplier = 1.0;
       if (quoteRequest.organizationType) {
-        const segment = await storage.getCustomerSegmentByName(quoteRequest.organizationType.toLowerCase().replace(/\s+/g, '_'));
-        if (segment) {
-          pricingMultiplier = segment.pricingMultiplier;
+        const orgTypeLower = quoteRequest.organizationType.toLowerCase().trim();
+        const orgTypeNormalized = orgTypeLower.replace(/[\s\/]+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+        const allSegments = await storage.getAllCustomerSegments();
+
+        // Priority 1: exact match on segment name
+        let matchedSegment = allSegments.find(s => s.name === orgTypeNormalized || s.name === orgTypeLower);
+
+        // Priority 2: exact match on display name (case-insensitive)
+        if (!matchedSegment) {
+          matchedSegment = allSegments.find(s => s.displayName.toLowerCase() === orgTypeLower);
+        }
+
+        // Priority 3: segment name starts with the org type (e.g. "ngo" matches "ngo")
+        if (!matchedSegment) {
+          matchedSegment = allSegments.find(s => s.name.startsWith(orgTypeNormalized));
+        }
+
+        if (matchedSegment) {
+          pricingMultiplier = matchedSegment.pricingMultiplier;
+          console.log(`[Invoice] Segment pricing applied: "${matchedSegment.displayName}" (${matchedSegment.name}) → multiplier ${pricingMultiplier}`);
+        } else {
+          console.log(`[Invoice] No segment match found for org type: "${quoteRequest.organizationType}" (normalized: "${orgTypeNormalized}")`);
         }
       }
 
-      const quantity = parseInt(quoteRequest.orderQuantity || "1") || 1;
-      const adjustedUnitPriceCents = Math.round(unitPriceCents * pricingMultiplier);
+      const adjustedUnitPriceCents = Math.round(volumePriceCents * pricingMultiplier);
       const lineItemTotal = adjustedUnitPriceCents * quantity;
-      const shippingCents = 0; // To be filled in manually
-      const bankFeeCents = 3000; // $30 default
+
+      console.log(`[Invoice] Final pricing: $${(volumePriceCents / 100).toFixed(2)} × ${pricingMultiplier} = $${(adjustedUnitPriceCents / 100).toFixed(2)}/unit × ${quantity} = $${(lineItemTotal / 100).toFixed(2)}`);
+
+      // Check for existing invoice - update pricing if it has changed
+      const existingInvoices = await storage.getProformaInvoicesByQuoteRequest(req.params.id);
+      if (existingInvoices.length > 0) {
+        const existing = existingInvoices[0];
+        const existingLineItems = existing.lineItems as any[];
+        const existingUnitPrice = existingLineItems?.[0]?.unitPriceCents || 0;
+        const existingQty = existingLineItems?.[0]?.quantity || 0;
+
+        if (existingUnitPrice !== adjustedUnitPriceCents || existingQty !== quantity) {
+          console.log(`[Invoice] Updating existing invoice: price $${(existingUnitPrice / 100).toFixed(2)} → $${(adjustedUnitPriceCents / 100).toFixed(2)}/unit, qty ${existingQty} → ${quantity}`);
+          const shippingCents = existing.shippingCents || 0;
+          const bankFeeCents = existing.bankFeeCents || 3000;
+          const newSubtotal = lineItemTotal + shippingCents + bankFeeCents;
+          
+          const updatedInvoice = await storage.updateProformaInvoice(existing.id, {
+            lineItems: [{
+              name: existingLineItems[0]?.name || quoteRequest.productName,
+              description: existingLineItems[0]?.description || productDescription,
+              quantity,
+              unitPriceCents: adjustedUnitPriceCents,
+              totalCents: lineItemTotal
+            }],
+            subtotalCents: newSubtotal,
+            totalCents: newSubtotal,
+          });
+          return res.json(updatedInvoice);
+        }
+        return res.json(existing);
+      }
+
+      const shippingCents = 0;
+      const bankFeeCents = 3000;
       const subtotalCents = lineItemTotal + shippingCents + bankFeeCents;
       const totalCents = subtotalCents;
 
