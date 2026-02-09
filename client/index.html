@@ -47,18 +47,22 @@
       content="https://replit.com/public/images/opengraph.png"
     />
 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DG1SWZRLCX"></script>
     <script>
-    function getABGroup() {
-      const match = document.cookie.match(new RegExp('(^| )ab-test-variant=([^;]+)'));
-      return match ? match[2] : 'standard';
-    }
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+      function getABGroup() {
+        const match = document.cookie.match(new RegExp('(^| )ab-test-variant=([^;]+)'));
+        return match ? match[2] : 'standard';
+      }
 
-    gtag('set', 'user_properties', {
-      'ab_test_group': getABGroup()
-    });
+      gtag('config', 'G-DG1SWZRLCX', {
+        'user_properties': {
+          'ab_test_group': getABGroup()
+        }
+      });
     </script>
 
     <link rel="icon" type="image/png" href="/favicon.png" />
