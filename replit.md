@@ -16,6 +16,14 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state, local React state for UI
 - **Styling**: Tailwind CSS v4 with shadcn/ui component library (New York style)
 - **Build Tool**: Vite with custom plugins for Replit integration
+- **Internationalization (i18n)**: Custom React context-based system supporting 4 languages (English, French, Portuguese, Swahili)
+  - Translation files: `client/src/i18n/translations.ts` (200+ keys per language)
+  - Context provider: `client/src/i18n/LanguageProvider.tsx` with `useTranslation()` hook
+  - Language persists in localStorage under key `via-language`
+  - All public-facing pages and components use `t("key")` for UI text
+  - Product data (names, descriptions, categories) stays in English from the database
+  - Admin pages remain English-only
+  - AI chat (Amara) responds in the user's selected language via `language` parameter in API calls
 
 **Key Pages**:
 - `/` - Homepage with audience-specific content (distributors, providers, NGOs)

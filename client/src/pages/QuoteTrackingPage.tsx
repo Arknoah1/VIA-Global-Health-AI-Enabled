@@ -9,6 +9,7 @@ import {
   Search, Clock, CheckCircle2, Package, 
   Mail, AlertCircle, FileText
 } from "lucide-react";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 interface QuoteResult {
   id: string;
@@ -16,15 +17,6 @@ interface QuoteResult {
   status: string;
   createdAt: string;
   updatedAt: string;
-}
-
-function statusLabel(status: string) {
-  switch (status) {
-    case "active": return "In Progress";
-    case "completed": return "Quote Ready";
-    case "sent": return "Quote Sent";
-    default: return status.charAt(0).toUpperCase() + status.slice(1);
-  }
 }
 
 function statusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
@@ -46,16 +38,26 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 export default function QuoteTrackingPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [results, setResults] = useState<QuoteResult[]>([]);
   const [searched, setSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState("");
 
+  function statusLabel(status: string) {
+    switch (status) {
+      case "active": return t("trackQuote.statusActive");
+      case "completed": return t("trackQuote.statusCompleted");
+      case "sent": return t("trackQuote.statusSent");
+      default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  }
+
   const handleSearch = async () => {
     const trimmed = email.trim();
     if (!trimmed || !trimmed.includes("@")) {
-      setError("Please enter a valid email address.");
+      setError(t("trackQuote.invalidEmail"));
       return;
     }
 
@@ -71,10 +73,10 @@ export default function QuoteTrackingPage() {
         setResults(data);
         setSearched(true);
       } else {
-        setError("Unable to look up quotes. Please try again.");
+        setError(t("trackQuote.lookupError"));
       }
     } catch {
-      setError("Connection error. Please try again.");
+      setError(t("trackQuote.connectionError"));
     } finally {
       setIsSearching(false);
     }
@@ -88,9 +90,9 @@ export default function QuoteTrackingPage() {
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-primary mb-2" data-testid="text-track-title">Track Your Quotes</h1>
+              <h1 className="text-3xl font-bold text-primary mb-2" data-testid="text-track-title">{t("trackQuote.title")}</h1>
               <p className="text-muted-foreground">
-                Enter your email address to see all your quote requests and their current status
+                {t("trackQuote.subtitle")}
               </p>
             </div>
 
@@ -100,7 +102,7 @@ export default function QuoteTrackingPage() {
                   <div className="relative flex-1">
                     <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <Input
-                      placeholder="Enter your email address..."
+                      placeholder={t("trackQuote.emailPlaceholder")}
                       className="pl-10 h-12"
                       type="email"
                       value={email}
@@ -116,7 +118,7 @@ export default function QuoteTrackingPage() {
                     data-testid="button-search-quotes"
                   >
                     <Search className="h-4 w-4 mr-2" />
-                    {isSearching ? "Searching..." : "Look Up"}
+                    {isSearching ? t("trackQuote.searching") : t("trackQuote.lookUp")}
                   </Button>
                 </div>
                 {error && (
@@ -132,10 +134,9 @@ export default function QuoteTrackingPage() {
               <Card className="bg-slate-50">
                 <CardContent className="p-6 text-center">
                   <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <h3 className="font-semibold mb-1" data-testid="text-no-quotes">No quotes found</h3>
+                  <h3 className="font-semibold mb-1" data-testid="text-no-quotes">{t("trackQuote.noQuotes")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    We couldn't find any quote requests associated with this email address. 
-                    Make sure you're using the same email you provided during the quote process.
+                    {t("trackQuote.noQuotesDesc")}
                   </p>
                 </CardContent>
               </Card>
@@ -144,7 +145,7 @@ export default function QuoteTrackingPage() {
             {results.length > 0 && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold" data-testid="text-results-count">
-                  {results.length} quote{results.length !== 1 ? "s" : ""} found
+                  {results.length} {t("trackQuote.quoteRequest")}{results.length !== 1 ? "s" : ""} found
                 </h2>
                 {results.map((quote) => (
                   <Card key={quote.id} className="hover:shadow-md transition-shadow" data-testid={`card-quote-${quote.id}`}>
@@ -152,7 +153,7 @@ export default function QuoteTrackingPage() {
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
                           <StatusIcon status={quote.status} />
-                          {quote.productName || "Quote Request"}
+                          {quote.productName || t("trackQuote.quoteRequest")}
                         </CardTitle>
                         <Badge variant={statusVariant(quote.status)} data-testid={`badge-status-${quote.id}`}>
                           {statusLabel(quote.status)}
@@ -165,11 +166,11 @@ export default function QuoteTrackingPage() {
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Submitted</span>
+                          <span className="text-muted-foreground">{t("trackQuote.submitted")}</span>
                           <p className="font-medium">{new Date(quote.createdAt).toLocaleDateString()}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Last Updated</span>
+                          <span className="text-muted-foreground">{t("trackQuote.lastUpdated")}</span>
                           <p className="font-medium">{new Date(quote.updatedAt).toLocaleDateString()}</p>
                         </div>
                       </div>
@@ -182,19 +183,19 @@ export default function QuoteTrackingPage() {
             {!searched && (
               <Card className="bg-slate-50">
                 <CardContent className="p-6">
-                  <h3 className="font-semibold mb-4">How It Works</h3>
+                  <h3 className="font-semibold mb-4">{t("trackQuote.howItWorks")}</h3>
                   <div className="space-y-3 text-sm text-muted-foreground">
                     <div className="flex items-start gap-3">
                       <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-xs font-bold">1</div>
-                      <span>Enter the email address you used when requesting a quote</span>
+                      <span>{t("trackQuote.step1")}</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-xs font-bold">2</div>
-                      <span>View all your quote requests and their current status</span>
+                      <span>{t("trackQuote.step2")}</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 text-xs font-bold">3</div>
-                      <span>Check back anytime to see updates on your quotes</span>
+                      <span>{t("trackQuote.step3")}</span>
                     </div>
                   </div>
                 </CardContent>

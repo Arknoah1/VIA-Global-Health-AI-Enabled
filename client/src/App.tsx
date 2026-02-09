@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { LanguageProvider } from "@/i18n/LanguageProvider";
 
 const HomePage = lazy(() => import("@/pages/HomePage"));
 const PublicCatalog = lazy(() => import("@/pages/PublicCatalog"));
@@ -82,10 +83,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

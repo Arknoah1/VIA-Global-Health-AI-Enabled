@@ -19,6 +19,7 @@ import { getCustomerProfile, saveCustomerProfile, clearCustomerProfile } from "@
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -104,6 +105,7 @@ interface RecommendedProduct {
 }
 
 export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSheetProps) {
+  const { t, language } = useTranslation();
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -148,7 +150,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           productId: product.id,
           productName: product.name,
           productSku: product.sku,
-          customerProfile: customerProfile || undefined
+          customerProfile: customerProfile || undefined,
+          language
         })
       });
       
@@ -161,10 +164,10 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       setMessages([{ role: 'assistant', content: data.message }]);
     } catch (error) {
       console.error('Error starting quote session:', error);
-      setInitError('Unable to start chat. Please try again.');
+      setInitError(t("productDetail.connectionError"));
       setMessages([{ 
         role: 'assistant', 
-        content: `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${product.name}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`
+        content: t("chat.fallbackGreeting", { product: product.name })
       }]);
     } finally {
       setIsLoading(false);
@@ -216,7 +219,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         setTimeout(() => {
           setMessages(prev => [...prev, { 
             role: 'assistant', 
-            content: "I apologize, but I'm having trouble with my connection. Please close this chat and try again."
+            content: t("chat.connectionTrouble")
           }]);
           setIsLoading(false);
         }, 500);
@@ -234,7 +237,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             category: product.category,
             specifications: product.specifications,
             faqs: product.faqs
-          }
+          },
+          language
         })
       });
 
@@ -300,7 +304,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             aria-label="Close product details"
             data-testid="button-close-sheet"
           >
-            ← Back to catalog
+            {t("productDetail.backToCatalog")}
           </button>
           <div className="space-y-2">
             <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground">
@@ -331,7 +335,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 <div className="absolute top-2 right-2 flex gap-2">
                   <div className="bg-black/70 text-white border-0 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
                     <Eye className="h-2.5 w-2.5" />
-                    Hover to zoom
+                    {t("productDetail.hoverToZoom")}
                   </div>
                 </div>
               </div>
@@ -364,7 +368,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-3 border">
                   <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                     <Stethoscope className="h-3 w-3 text-primary" />
-                    Key Features
+                    {t("productDetail.keyFeatures")}
                   </h3>
                   <ul className="space-y-2">
                     {(product.keyFeatures as string[]).slice(0, 4).map((feature, idx) => {
@@ -390,7 +394,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 <div className="bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20 rounded-xl p-3 border">
                   <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                     <Settings className="h-3 w-3 text-blue-600" />
-                    Quick Specs
+                    {t("productDetail.quickSpecs")}
                   </h3>
                   <dl className="space-y-2 text-xs">
                     {Object.entries(product.specifications).slice(0, 4).map(([key, value], idx) => {
@@ -405,7 +409,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                         >
                           <dt className="text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{key}</dt>
                           <dd className="text-foreground font-medium line-clamp-2">
-                            {extractedValue || "See full specs"}
+                            {extractedValue || t("productDetail.seeFullSpecs")}
                           </dd>
                         </motion.div>
                       );
@@ -422,14 +426,14 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   value="details" 
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                 >
-                  <span className="text-sm">Overview</span>
+                  <span className="text-sm">{t("productDetail.overview")}</span>
                 </TabsTrigger>
                 {Object.keys(product.specifications).length > 0 && (
                   <TabsTrigger 
                     value="specs" 
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                   >
-                    <span className="text-sm">Specs</span>
+                    <span className="text-sm">{t("productDetail.specs")}</span>
                   </TabsTrigger>
                 )}
                 {(product.videoUrl || (product.documents as any[]).length > 0) && (
@@ -437,7 +441,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     value="media" 
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                   >
-                    <span className="text-sm">Media</span>
+                    <span className="text-sm">{t("productDetail.media")}</span>
                   </TabsTrigger>
                 )}
                 {product.faqs && (product.faqs as any[]).length > 0 && (
@@ -445,7 +449,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     value="faqs" 
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
                   >
-                    <span className="text-sm">FAQs</span>
+                    <span className="text-sm">{t("productDetail.faqs")}</span>
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -456,7 +460,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   <div className="bg-muted/20 rounded-xl p-5 border">
                     <h3 className="font-semibold mb-3 text-base flex items-center gap-2">
                       <ClipboardCheck className="h-5 w-5 text-primary" />
-                      Clinical Overview
+                      {t("productDetail.clinicalOverview")}
                     </h3>
                     <div className="text-muted-foreground leading-relaxed text-sm sm:text-base">
                       {formatBulletText(product.description)}
@@ -468,7 +472,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   <div>
                     <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
                       <Activity className="h-5 w-5 text-primary" />
-                      Key Specifications
+                      {t("productDetail.keySpecifications")}
                     </h3>
                     <div className="grid gap-3">
                       {(product.keyFeatures as string[]).map((feature, idx) => {
@@ -525,7 +529,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   {product.videoUrl && (
                     <div>
                       <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
-                        <Play className="h-5 w-5 text-primary" /> Product Video
+                        <Play className="h-5 w-5 text-primary" /> {t("productDetail.productVideo")}
                       </h3>
                       <div className="aspect-video rounded-xl overflow-hidden bg-black/5 border shadow-lg">
                         <iframe 
@@ -545,7 +549,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   {product.documents && (product.documents as any[]).length > 0 && (
                     <div>
                       <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
-                        <FileText className="h-5 w-5 text-primary" /> Documents
+                        <FileText className="h-5 w-5 text-primary" /> {t("productDetail.documents")}
                       </h3>
                       <div className="grid gap-3">
                         {(product.documents as any[]).map((doc, idx) => (
@@ -565,7 +569,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                             </div>
                             <Button variant="outline" size="sm" className="gap-2" data-testid={`download-document-${idx}`}>
                               <Download className="h-4 w-4" />
-                              Download
+                              {t("productDetail.downloadDocument")}
                             </Button>
                           </motion.div>
                         ))}
@@ -582,7 +586,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        placeholder="Search FAQs..." 
+                        placeholder={t("productDetail.searchFaqs")} 
                         value={faqSearchQuery}
                         onChange={(e) => setFaqSearchQuery(e.target.value)}
                         className="pl-10"
@@ -678,7 +682,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   <Stethoscope className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col">
-                  <span>Chat with Amara</span>
+                  <span>{t("productDetail.chatTitle")}</span>
                   <span className="text-xs font-normal text-muted-foreground">Clinical Procurement Specialist</span>
                 </div>
               </DialogTitle>
@@ -790,7 +794,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
           <div className="p-3 sm:p-4 border-t flex gap-2 bg-muted/30 shrink-0">
             <Input
-              placeholder={isConversationComplete ? "Conversation complete" : "Type your message..."}
+              placeholder={isConversationComplete ? "Conversation complete" : t("productDetail.typeMessage")}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}

@@ -12,8 +12,10 @@ import { ProductDetailSheet } from "@/components/ProductDetailSheet";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 import { SmartQuoteFlow } from "@/components/SmartQuoteFlow";
 import { RecommendedProducts } from "@/components/RecommendedProducts";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 export default function PublicCatalog() {
+  const { t } = useTranslation();
   const [location] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const initialSearch = searchParams.get("search") || "";
@@ -58,8 +60,8 @@ export default function PublicCatalog() {
     <div className="min-h-screen bg-background flex flex-col">
       <ProductSEO products={products} selectedProduct={selectedProduct} />
       <BreadcrumbSEO items={[
-        { name: "Home", url: "/" },
-        { name: "Catalog", url: "/catalog" },
+        { name: t("breadcrumb.home"), url: "/" },
+        { name: t("breadcrumb.catalog"), url: "/catalog" },
         ...(selectedProduct ? [{ name: selectedProduct.name }] : [])
       ]} />
       
@@ -73,21 +75,21 @@ export default function PublicCatalog() {
               <ol className="flex items-center gap-2" itemScope itemType="https://schema.org/BreadcrumbList">
                 <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
                   <a href="/" itemProp="item" className="hover:text-primary transition-colors">
-                    <span itemProp="name">Home</span>
+                    <span itemProp="name">{t("breadcrumb.home")}</span>
                   </a>
                   <meta itemProp="position" content="1" />
                 </li>
                 <li aria-hidden="true">/</li>
                 <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
-                  <span itemProp="name" className="text-foreground font-medium">Catalog</span>
+                  <span itemProp="name" className="text-foreground font-medium">{t("breadcrumb.catalog")}</span>
                   <meta itemProp="position" content="2" />
                 </li>
               </ol>
             </nav>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-primary mb-2">Medical Products Catalog</h1>
-                <p className="text-muted-foreground">Quality Medical Equipment & Supplies</p>
+                <h1 className="text-3xl font-bold text-primary mb-2">{t("catalog.title")}</h1>
+                <p className="text-muted-foreground">{t("catalog.subtitle")}</p>
               </div>
               <Button 
                 size="lg" 
@@ -95,7 +97,7 @@ export default function PublicCatalog() {
                 data-testid="button-request-quote"
               >
                 <MessageSquare className="h-5 w-5 mr-2" />
-                Request Quote
+                {t("catalog.requestQuote")}
               </Button>
             </div>
           </div>
@@ -107,7 +109,7 @@ export default function PublicCatalog() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Search products..." 
+                placeholder={t("catalog.searchPlaceholder")} 
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -123,7 +125,7 @@ export default function PublicCatalog() {
                   className="min-h-[44px] sm:min-h-0"
                   data-testid={`button-category-${cat}`}
                 >
-                  {cat === "all" ? "All Categories" : cat}
+                  {cat === "all" ? t("catalog.allCategories") : cat}
                 </Button>
               ))}
             </div>
@@ -138,11 +140,11 @@ export default function PublicCatalog() {
           {/* Products Grid */}
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Loading products...</p>
+              <p className="text-muted-foreground">{t("catalog.loading")}</p>
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No products found</p>
+              <p className="text-muted-foreground">{t("catalog.noProducts")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

@@ -890,11 +890,13 @@ export async function registerRoutes(
   // Start a new AI-powered quote request session
   app.post("/api/quote-requests/start", async (req, res) => {
     try {
-      const { productId, productName, productSku, customerProfile } = req.body;
+      const { productId, productName, productSku, customerProfile, language } = req.body;
       
       if (!productId || !productName) {
         return res.status(400).json({ error: "productId and productName are required" });
       }
+
+      const lang = language || "en";
 
       // Pre-populate from returning customer profile if available
       const initialData: Record<string, unknown> = {
@@ -918,12 +920,31 @@ export async function registerRoutes(
       // Create initial quote request
       const quoteRequest = await storage.createQuoteRequest(initialData as any);
 
-      // Personalized greeting for returning customers
+      // Personalized greeting for returning customers, language-aware
       let greeting: string;
+      const greetings: Record<string, { returning: (name: string, product: string) => string; new: (product: string) => string }> = {
+        en: {
+          returning: (name, product) => `Welcome back, ${name}! I'm Amara from VIA Global Health. Great to see you again. I see you're interested in the ${product}. How can I help you today?`,
+          new: (product) => `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${product}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`
+        },
+        fr: {
+          returning: (name, product) => `Bienvenue à nouveau, ${name} ! Je suis Amara de VIA Global Health. Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product}. Comment puis-je vous aider aujourd'hui ?`,
+          new: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Merci pour votre intérêt pour le ${product}. Je suis là pour vous aider à trouver la bonne solution et vous fournir un devis personnalisé. Que puis-je faire pour vous aujourd'hui ?`
+        },
+        pt: {
+          returning: (name, product) => `Bem-vindo(a) de volta, ${name}! Sou Amara da VIA Global Health. Que bom ver você novamente. Vejo que está interessado(a) no ${product}. Como posso ajudá-lo(a) hoje?`,
+          new: (product) => `Olá! Sou Amara da VIA Global Health. Obrigada pelo seu interesse no ${product}. Estou aqui para ajudá-lo(a) a encontrar a solução certa e fornecer uma cotação personalizada. O que posso fazer por você hoje?`
+        },
+        sw: {
+          returning: (name, product) => `Karibu tena, ${name}! Mimi ni Amara kutoka VIA Global Health. Ni vizuri kukuona tena. Naona una nia ya ${product}. Naweza kukusaidia vipi leo?`,
+          new: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. Asante kwa nia yako katika ${product}. Niko hapa kukusaidia kupata suluhisho sahihi na kukupa nukuu maalum. Ninaweza kukusaidia na nini leo?`
+        }
+      };
+      const langGreetings = greetings[lang] || greetings.en;
       if (customerProfile?.firstName) {
-        greeting = `Welcome back, ${customerProfile.firstName}! I'm Amara from VIA Global Health. Great to see you again. I see you're interested in the ${productName}. How can I help you today?`;
+        greeting = langGreetings.returning(customerProfile.firstName, productName);
       } else {
-        greeting = `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${productName}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`;
+        greeting = langGreetings.new(productName);
       }
       
       // Save initial assistant message
@@ -948,7 +969,7 @@ export async function registerRoutes(
   app.post("/api/quote-requests/:id/messages", async (req, res) => {
     try {
       const { id } = req.params;
-      const { message, productDetails } = req.body;
+      const { message, productDetails, language } = req.body;
 
       if (!message) {
         return res.status(400).json({ error: "message is required" });
@@ -1026,7 +1047,8 @@ export async function registerRoutes(
         shippingCountry: quoteRequest.shippingCountry,
         importCapability: quoteRequest.importAssistance,
       };
-      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState);
+      const customerLanguage = language || "en";
+      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage);
 
       // Build messages for OpenAI
       const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -1259,16 +1281,27 @@ function buildSystemPrompt(
   restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [],
   customerSegments: { name: string; displayName: string; pricingMultiplier: number; isEligibleForQuotes: boolean; ineligibilityReason: string | null }[] = [],
   trainingTranscripts: { buyerType: string | null; country: string | null; productsDiscussed: string | null; objections: string | null; outcome: string | null; annotations: string | null; aiExtractedInsights: any }[] = [],
-  existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null; shippingCountry?: string | null; importCapability?: string | null } = {}
+  existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null; shippingCountry?: string | null; importCapability?: string | null } = {},
+  customerLanguage: string = "en"
 ): string {
+  const languageInstruction = customerLanguage === "fr"
+    ? "LANGUAGE INSTRUCTION: The customer is communicating in French. You MUST respond entirely in French. Use professional, warm French appropriate for African francophone markets. Keep product names and brand names in English but translate everything else."
+    : customerLanguage === "pt"
+    ? "LANGUAGE INSTRUCTION: The customer is communicating in Portuguese. You MUST respond entirely in Portuguese. Use professional, warm Portuguese appropriate for Lusophone African markets (Mozambique, Angola, etc.). Keep product names and brand names in English but translate everything else."
+    : customerLanguage === "sw"
+    ? "LANGUAGE INSTRUCTION: The customer is communicating in Swahili. You MUST respond entirely in Swahili (Kiswahili). Use professional, warm Swahili appropriate for East African markets. Keep product names and brand names in English but translate everything else."
+    : "LANGUAGE INSTRUCTION: Respond in English. Use British English spelling (e.g., organisation, colour, programme, centre).";
+
   let prompt = `You are Amara Njeri, a Sales Representative at VIA Global Health based in Nairobi, Kenya. You are the first point of contact for customers and represent VIA as a trusted partner in global health solutions.
+
+${languageInstruction}
 
 YOUR IDENTITY:
 - Name: Amara Njeri
 - Role: Sales Representative, VIA Global Health
 - Location: Nairobi, Kenya
 - Communication style: Professional, warm, relationship-focused, and hospitable
-- Language: Use British English spelling (e.g., organisation, colour, programme, centre)
+- Language: Follow the LANGUAGE INSTRUCTION above for the response language
 
 YOUR PERSONALITY:
 - Welcoming and patient - take time to understand the customer's needs

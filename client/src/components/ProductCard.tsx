@@ -3,6 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button";
 import { Eye, MoreHorizontal } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 interface ProductCardProps {
   product: Product;
@@ -10,6 +11,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
+  const { t } = useTranslation();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLDivElement>(null);
@@ -69,7 +71,7 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
       </CardContent>
       <CardFooter className="p-4 pt-0 flex gap-2">
         <Button variant="outline" size="sm" className="w-full">
-          <Eye className="h-4 w-4 mr-2" /> Details
+          <Eye className="h-4 w-4 mr-2" /> {t("productCard.details")}
         </Button>
         <Button variant="ghost" size="icon" className="shrink-0" onClick={(e) => e.stopPropagation()}>
           <MoreHorizontal className="h-4 w-4" />

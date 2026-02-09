@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Loader2 } from "lucide-react";
 import { getBrowsingHistory, getCategoryPreferences, getRecentProductIds, onHistoryChange } from "@/lib/browsingHistory";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 interface Recommendation {
   id: string;
@@ -19,6 +20,7 @@ interface RecommendedProductsProps {
 }
 
 export function RecommendedProducts({ onSelectProduct, allProducts }: RecommendedProductsProps) {
+  const { t } = useTranslation();
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedForIds, setFetchedForIds] = useState<string>("");
@@ -75,7 +77,7 @@ export function RecommendedProducts({ onSelectProduct, allProducts }: Recommende
     <div className="mb-8" data-testid="section-recommendations">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Recommended for You</h2>
+        <h2 className="text-lg font-semibold">{t("catalog.recommended")}</h2>
         {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
       {isLoading && recommendations.length === 0 ? (

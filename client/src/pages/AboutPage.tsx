@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Globe, Package, Zap, Users, Award, Heart, TrendingUp } from "lucide-react";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
 
 export default function AboutPage() {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
@@ -26,13 +29,13 @@ export default function AboutPage() {
         </div>
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">Building Stronger Health Systems Together</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">{t("about.heroTitle")}</h1>
             <p className="text-xl text-blue-100 mb-8">
-              VIA Global Health partners with distributors, healthcare providers, and NGOs across Africa. We respond to every inquiry—because every order matters.
+              {t("about.heroSubtitle")}
             </p>
             <Link href="/catalog">
               <Button size="lg" variant="secondary">
-                Get a Quote Today
+                {t("about.getQuote")}
               </Button>
             </Link>
           </div>
@@ -43,14 +46,14 @@ export default function AboutPage() {
       <section className="py-16 md:py-24 bg-slate-50" data-testid="section-about-via">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-8" data-testid="heading-about-via">About VIA Global Health</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-8" data-testid="heading-about-via">{t("about.aboutTitle")}</h2>
             
             <div className="space-y-6 text-slate-700 mb-8">
               <p className="text-lg">
-                VIA was founded in 2015 as a sustainable business serving global communities through better information, access, and delivery of life-saving medical equipment and supplies. Our growing global network of customers represent or serve public, private, non-government, and faith-based organizations, and we've distributed vital medical technologies to underserved communities in 90 countries.
+                {t("about.aboutText")}
               </p>
               <p className="text-lg font-semibold text-blue-600">
-                To date, VIA has positively impacted the lives of nearly eight million people by creating and scaling universal access to globally dispersed suppliers of essential medical devices and equipment.
+                {t("about.aboutHighlight")}
               </p>
             </div>
           </div>
@@ -62,17 +65,17 @@ export default function AboutPage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-slate-900 mb-6">Why Buyers Choose VIA</h2>
+              <h2 className="text-3xl font-bold text-slate-900 mb-6">{t("about.whyBuyersTitle")}</h2>
               <p className="text-lg text-slate-700 mb-6">
-                Whether you need a single unit or you're fulfilling a national tender, every inquiry gets the same attention. We treat all orders equally because we know your timeline matters regardless of size.
+                {t("about.whyBuyersDesc")}
               </p>
               <ul className="space-y-3 mb-8">
                 {[
-                  "24-hour quote response—from single units to large tenders",
-                  "Same attention for every order, every time",
-                  "Products designed for low-resource settings",
-                  "Training and technical support included",
-                  "One reliable partner instead of chasing suppliers"
+                  t("about.whyBuyersFeature1"),
+                  t("about.whyBuyersFeature2"),
+                  t("about.whyBuyersFeature3"),
+                  t("about.whyBuyersFeature4"),
+                  t("about.whyBuyersFeature5")
                 ].map((item, idx) => (
                   <li key={idx} className="flex gap-3 items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -81,14 +84,14 @@ export default function AboutPage() {
                 ))}
               </ul>
               <Link href="/catalog">
-                <Button>Browse Products</Button>
+                <Button>{t("about.browseProducts")}</Button>
               </Link>
             </div>
             <div className="bg-blue-50 rounded-lg p-8 border border-blue-200">
               <Users className="h-16 w-16 text-blue-600 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Every Order Gets Equal Attention</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">{t("about.equalAttention")}</h3>
               <p className="text-slate-700">
-                From a single unit to a national tender, you'll get a quote response within 24 hours. No order is too small. No order is too large.
+                {t("about.equalAttentionDesc")}
               </p>
             </div>
           </div>
@@ -101,23 +104,23 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="bg-green-50 rounded-lg p-8 border border-green-200 md:order-2">
               <Package className="h-16 w-16 text-green-600 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Become a Verified Seller</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">{t("about.becomeVerifiedSeller")}</h3>
               <p className="text-slate-700">
-                Expand your sales reach to over 85 countries. Our team provides expert design support and marketing strategy for your product launch.
+                {t("about.becomeVerifiedSellerDesc")}
               </p>
             </div>
             <div className="md:order-1">
-              <h2 className="text-3xl font-bold text-slate-900 mb-6">For Sellers</h2>
+              <h2 className="text-3xl font-bold text-slate-900 mb-6">{t("about.forSellers")}</h2>
               <p className="text-lg text-slate-700 mb-6">
-                VIA facilitates the sale and delivery of your products through our global network of Buyers in over 85 countries. When you join our marketplace, you will receive expert design support to showcase your product in our online catalog. Become a VIA Verified Seller to access a unique sales and marketing strategy for the launch of your product on the VIA Global Health marketplace.
+                {t("about.forSellersDesc")}
               </p>
               <ul className="space-y-3 mb-8">
                 {[
-                  "Access global buyer network",
-                  "Expert catalog design support",
-                  "Marketing strategy assistance",
-                  "Verified seller status",
-                  "Secure payment processing"
+                  t("about.sellerFeature1"),
+                  t("about.sellerFeature2"),
+                  t("about.sellerFeature3"),
+                  t("about.sellerFeature4"),
+                  t("about.sellerFeature5")
                 ].map((item, idx) => (
                   <li key={idx} className="flex gap-3 items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -125,7 +128,7 @@ export default function AboutPage() {
                   </li>
                 ))}
               </ul>
-              <Button variant="outline">Sell on VIA</Button>
+              <Button variant="outline">{t("about.sellOnVia")}</Button>
             </div>
           </div>
         </div>
@@ -134,27 +137,27 @@ export default function AboutPage() {
       {/* How VIA Works */}
       <section className="py-16 md:py-24" data-testid="section-how-it-works">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 text-center">How VIA Works</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 text-center">{t("about.howViaWorks")}</h2>
           <p className="text-lg text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-            Every order—from a single unit to a national tender—gets the same dedicated attention and 24-hour response time.
+            {t("about.howViaWorksDesc")}
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
                 icon: Globe,
-                title: "90+ Countries Served",
-                description: "We have successfully delivered medical equipment and pharmaceuticals to over 90 countries across Africa and beyond."
+                title: t("about.countriesServedTitle"),
+                description: t("about.countriesServedDesc")
               },
               {
                 icon: Package,
-                title: "You Get Equipment, Not Silence",
-                description: "Submit a quote request and get a response within 24 hours. We handle manufacturer relationships so you don't have to chase multiple contacts."
+                title: t("about.noSilenceTitle"),
+                description: t("about.noSilenceDesc")
               },
               {
                 icon: Zap,
-                title: "Deliver Before Your Deadline",
-                description: "Grant funding doesn't wait. We understand your timelines and work to get equipment delivered before your procurement window closes."
+                title: t("about.deliverTitle"),
+                description: t("about.deliverDesc")
               }
             ].map((item, idx) => {
               const Icon = item.icon;
@@ -178,17 +181,17 @@ export default function AboutPage() {
       <section className="py-16 md:py-24 bg-slate-50" data-testid="section-additional-services">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl font-bold text-slate-900 mb-6">Product Training, Rewards & More</h2>
+            <h2 className="text-3xl font-bold text-slate-900 mb-6">{t("about.servicesTitle")}</h2>
             <p className="text-lg text-slate-700 mb-8">
-              Take advantage of readily available product training and buyer's guides and earn loyalty rewards points through the VIA Rewards Program. Select distributors can work with our team to improve local presence and sales efforts with a customized distributor website.
+              {t("about.servicesDesc")}
             </p>
 
             <div className="grid md:grid-cols-2 gap-6">
               {[
-                { icon: Award, title: "Training Programs", desc: "Comprehensive product training and buyer's guides" },
-                { icon: TrendingUp, title: "Rewards Program", desc: "Earn loyalty points with every purchase" },
-                { icon: Globe, title: "Custom Websites", desc: "Distributor websites tailored to your market" },
-                { icon: Heart, title: "Dedicated Support", desc: "24/7 global and local sales team assistance" }
+                { icon: Award, title: t("about.trainingPrograms"), desc: t("about.trainingProgramsDesc") },
+                { icon: TrendingUp, title: t("about.rewardsProgram"), desc: t("about.rewardsProgramDesc") },
+                { icon: Globe, title: t("about.customWebsites"), desc: t("about.customWebsitesDesc") },
+                { icon: Heart, title: t("about.dedicatedSupport"), desc: t("about.dedicatedSupportDesc") }
               ].map((service, idx) => {
                 const Icon = service.icon;
                 return (
@@ -236,7 +239,7 @@ export default function AboutPage() {
               <p className="text-slate-600">Medical Director, Regional Health Network, Gambia</p>
               <Link href="/catalog" className="mt-8 inline-block">
                 <Button variant="outline">
-                  Browse Our Catalog
+                  {t("about.browseOurCatalog")}
                 </Button>
               </Link>
             </div>
@@ -256,18 +259,18 @@ export default function AboutPage() {
           </svg>
         </div>
         <div className="container mx-auto px-4 text-center relative">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Get Started?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">{t("cta.ready")}</h2>
           <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-            Join hundreds of healthcare organizations building stronger health systems across Africa. Together, we're making quality medical equipment accessible to those who need it most.
+            {t("about.ctaSubtitle")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
               <Button size="lg" variant="secondary">
-                Browse Products
+                {t("about.browseProducts")}
               </Button>
             </Link>
             <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-slate-900">
-              Become a Verified Buyer
+              {t("about.becomeVerifiedBuyer")}
             </Button>
           </div>
         </div>

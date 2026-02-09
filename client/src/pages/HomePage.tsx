@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { useTranslation } from "@/i18n/LanguageProvider";
 import { 
   ArrowRight, Building2, Heart, HandshakeIcon, Globe, Zap, Users, Award, 
   ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package,
@@ -15,55 +16,56 @@ import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
 import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"distributors" | "providers" | "ngos">("distributors");
 
-  const audienceData = {
+  const audienceData = useMemo(() => ({
     distributors: {
-      title: "Distributors",
+      title: t("audience.distributors"),
       icon: Building2,
       color: "bg-blue-50 border-blue-200",
       textColor: "text-blue-700",
-      description: "Your client needs a specific product. We'll actually respond.",
-      pricing: "Volume-based pricing with distributor margins",
+      description: t("audience.distributorsDesc"),
+      pricing: t("audience.distributorsPricing"),
       features: [
-        "Quote response within 24 hours—not weeks of silence",
-        "Access products manufacturers won't sell you directly",
-        "Reliable supply chain with flexible shipping options",
-        "One point of contact instead of chasing multiple suppliers"
+        t("audience.distributorsFeature1"),
+        t("audience.distributorsFeature2"),
+        t("audience.distributorsFeature3"),
+        t("audience.distributorsFeature4")
       ],
-      cta: "Get Distributor Quote"
+      cta: t("audience.distributorsCta")
     },
     providers: {
-      title: "Healthcare Providers",
+      title: t("audience.providers"),
       icon: Heart,
       color: "bg-green-50 border-green-200",
       textColor: "text-green-700",
-      description: "Get the equipment your facility needs without the runaround",
-      pricing: "Competitive pricing for healthcare facilities",
+      description: t("audience.providersDesc"),
+      pricing: t("audience.providersPricing"),
       features: [
-        "CE, FDA, and ISO certified medical devices",
-        "Technical support and product training included",
-        "Responsive team that answers your questions",
-        "Skip the manufacturer gatekeeping"
+        t("audience.providersFeature1"),
+        t("audience.providersFeature2"),
+        t("audience.providersFeature3"),
+        t("audience.providersFeature4")
       ],
-      cta: "Request Facility Quote"
+      cta: t("audience.providersCta")
     },
     ngos: {
-      title: "NGOs & Faith-based Organizations",
+      title: t("audience.ngos"),
       icon: HandshakeIcon,
       color: "bg-purple-50 border-purple-200",
       textColor: "text-purple-700",
-      description: "Your grant is approved. Now get the equipment before it expires.",
-      pricing: "NGO pricing at manufacturer-direct rates",
+      description: t("audience.ngosDesc"),
+      pricing: t("audience.ngosPricing"),
       features: [
-        "Fast quotes so you can finalize procurement on deadline",
-        "Products designed for low-resource settings",
-        "Documentation support for grant reporting",
-        "We understand your funding timelines"
+        t("audience.ngosFeature1"),
+        t("audience.ngosFeature2"),
+        t("audience.ngosFeature3"),
+        t("audience.ngosFeature4")
       ],
-      cta: "NGO Partnership Quote"
+      cta: t("audience.ngosCta")
     }
-  };
+  }), [t]);
 
   const heroProducts = [
     {
@@ -111,10 +113,10 @@ export default function HomePage() {
   ];
 
   const stats = [
-    { value: "15+", label: "Years Experience", icon: Clock },
-    { value: "90+", label: "Countries Served", icon: Globe },
-    { value: "8M+", label: "Patient Lives Touched", icon: Heart },
-    { value: "24hr", label: "Quote Response", icon: Zap }
+    { value: "15+", label: t("stats.yearsExperience"), icon: Clock },
+    { value: "90+", label: t("stats.countriesServed"), icon: Globe },
+    { value: "8M+", label: t("stats.patientLives"), icon: Heart },
+    { value: "24hr", label: t("stats.quoteResponse"), icon: Zap }
   ];
 
   const current = audienceData[activeTab];
@@ -129,23 +131,23 @@ export default function HomePage() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="text-center lg:text-left">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-              You Need Specific Equipment.<br />
-              <span className="text-primary">We Respond.</span>
+              {t("hero.title1")}<br />
+              <span className="text-primary">{t("hero.title2")}</span>
             </h1>
             <p className="text-xl text-slate-600 mb-8 max-w-2xl">
-              From a single unit to a national tender, every inquiry gets the same attention. Quote response within 24 hours—no runaround, no silence.
+              {t("hero.subtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link href="/catalog">
                 <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-view-products">
-                  View Products
+                  {t("hero.viewProducts")}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
               <Link href="/catalog">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-get-quote">
                   <MessageSquare className="mr-2 h-5 w-5" />
-                  Get a Quote
+                  {t("hero.getQuote")}
                 </Button>
               </Link>
             </div>
@@ -158,7 +160,7 @@ export default function HomePage() {
               className="relative rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
             />
             <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-lg p-4 border">
-              <p className="text-sm font-semibold text-slate-900">Building stronger health systems together</p>
+              <p className="text-sm font-semibold text-slate-900">{t("hero.tagline")}</p>
             </div>
           </div>
         </div>
@@ -187,9 +189,9 @@ export default function HomePage() {
       {/* Hero Products Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-slate-900 mb-3">Hard-to-Find Equipment, Easy to Quote</h2>
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">{t("products.title")}</h2>
           <p className="text-slate-600 max-w-2xl mx-auto">
-            Specialized medical equipment that manufacturers won't quote you directly—but we will
+            {t("products.subtitle")}
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
@@ -216,7 +218,7 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center text-primary text-sm font-medium">
-                    Request Quote <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    {t("products.requestQuote")} <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </CardContent>
               </Card>
@@ -229,8 +231,8 @@ export default function HomePage() {
       <section className="bg-slate-50 py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">Skip the Manufacturer Runaround</h2>
-            <p className="text-slate-600">Whether you're a distributor, healthcare provider, or NGO—we respond to every inquiry</p>
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">{t("audience.title")}</h2>
+            <p className="text-slate-600">{t("audience.subtitle")}</p>
           </div>
 
           {/* Audience Tabs */}
@@ -274,7 +276,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <h4 className="text-lg font-semibold text-slate-900 mb-4">What We Offer</h4>
+                  <h4 className="text-lg font-semibold text-slate-900 mb-4">{t("audience.whatWeOffer")}</h4>
                   <ul className="space-y-3 mb-8">
                     {current.features.map((feature, idx) => (
                       <li key={idx} className="flex gap-3 text-slate-700">
@@ -293,13 +295,13 @@ export default function HomePage() {
                 </div>
 
                 <div className="bg-white/50 rounded-xl p-6 border">
-                  <h4 className="text-lg font-semibold text-slate-900 mb-4">Quick Quote Process</h4>
+                  <h4 className="text-lg font-semibold text-slate-900 mb-4">{t("audience.quickQuoteProcess")}</h4>
                   <div className="space-y-4">
                     {[
-                      { step: "1", title: "Select Products", desc: "Browse our catalog and choose what you need" },
-                      { step: "2", title: "Share Requirements", desc: "Tell us quantity, destination, and timeline" },
-                      { step: "3", title: "Get Custom Quote", desc: "Receive personalized pricing within 24 hours" },
-                      { step: "4", title: "Confirm & Ship", desc: "Finalize order and choose shipping method" }
+                      { step: "1", title: t("audience.step1Title"), desc: t("audience.step1Desc") },
+                      { step: "2", title: t("audience.step2Title"), desc: t("audience.step2Desc") },
+                      { step: "3", title: t("audience.step3Title"), desc: t("audience.step3Desc") },
+                      { step: "4", title: t("audience.step4Title"), desc: t("audience.step4Desc") }
                     ].map((item, idx) => (
                       <div key={idx} className="flex gap-4">
                         <div className={`h-8 w-8 rounded-full ${current.color} ${current.textColor} flex items-center justify-center font-bold text-sm flex-shrink-0`}>
@@ -332,8 +334,8 @@ export default function HomePage() {
         </div>
         <div className="container mx-auto px-4 relative">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">Voices from Our Partners</h2>
-            <p className="text-slate-600">Healthcare leaders across Africa share their experience with VIA</p>
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">{t("testimonials.title")}</h2>
+            <p className="text-slate-600">{t("testimonials.subtitle")}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, idx) => (
@@ -358,8 +360,8 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
             <div>
-              <h2 className="text-3xl font-bold text-slate-900 mb-3">Why Choose VIA Global Health?</h2>
-              <p className="text-slate-600 mb-6">Built on relationships, delivered with trust. Our team of African healthcare professionals understands your challenges because we've lived them.</p>
+              <h2 className="text-3xl font-bold text-slate-900 mb-3">{t("whyVia.title")}</h2>
+              <p className="text-slate-600 mb-6">{t("whyVia.subtitle")}</p>
               <img 
                 src={africanMedicalTeam} 
                 alt="African medical professionals collaborating" 
@@ -368,10 +370,10 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-2 gap-6">
               {[
-                { icon: ShieldCheck, title: "Trusted Relationships", desc: "15+ years building partnerships across Africa" },
-                { icon: Zap, title: "Fast Quotes", desc: "Personalized quotes within 24 hours" },
-                { icon: Award, title: "Quality Assured", desc: "All products meet international standards" },
-                { icon: MapPin, title: "Africa Expertise", desc: "Deep understanding of regional needs" }
+                { icon: ShieldCheck, title: t("whyVia.trustedRelationships"), desc: t("whyVia.trustedRelationshipsDesc") },
+                { icon: Zap, title: t("whyVia.fastQuotes"), desc: t("whyVia.fastQuotesDesc") },
+                { icon: Award, title: t("whyVia.qualityAssured"), desc: t("whyVia.qualityAssuredDesc") },
+                { icon: MapPin, title: t("whyVia.africaExpertise"), desc: t("whyVia.africaExpertiseDesc") }
               ].map((item, idx) => {
                 const Icon = item.icon;
                 return (
@@ -403,20 +405,20 @@ export default function HomePage() {
           </svg>
         </div>
         <div className="container mx-auto px-4 text-center relative">
-          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+          <h2 className="text-3xl font-bold mb-4">{t("cta.ready")}</h2>
           <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-            Join hundreds of healthcare organizations across Africa who trust VIA Global Health. Together, we're building stronger health systems—one partnership at a time.
+            {t("cta.subtitle")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catalog">
               <Button size="lg" variant="secondary" className="text-lg px-8" data-testid="button-browse-catalog">
-                Browse Catalog
+                {t("cta.browseCatalog")}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link href="/about">
               <Button size="lg" variant="outline" className="bg-transparent text-white border-white hover:bg-white/10 text-lg px-8" data-testid="button-learn-more">
-                Learn About Us
+                {t("cta.learnMore")}
               </Button>
             </Link>
           </div>

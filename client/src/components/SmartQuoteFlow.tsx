@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import {
   Package, MapPin, Clock, Ship, Plane, CheckCircle2, Loader2, MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 interface SmartQuoteFlowProps {
   isOpen: boolean;
@@ -32,34 +33,8 @@ interface QuoteData {
   additionalNotes: string;
 }
 
-const STEPS = [
-  { id: 1, title: "Organization", icon: Building2 },
-  { id: 2, title: "Product", icon: Package },
-  { id: 3, title: "Destination", icon: MapPin },
-  { id: 4, title: "Timeline", icon: Clock },
-  { id: 5, title: "Review", icon: CheckCircle2 }
-];
-
-const ORG_TYPES = [
-  { value: "distributor", label: "Distributor", icon: Building2, desc: "Medical equipment distribution business" },
-  { value: "ngo", label: "NGO / Faith-based", icon: HandshakeIcon, desc: "Non-profit or humanitarian organization" },
-  { value: "provider", label: "Healthcare Provider", icon: Heart, desc: "Hospital, clinic, or health facility" },
-  { value: "academic", label: "Academic / Research", icon: GraduationCap, desc: "University or research institution" }
-];
-
-const TIMELINE_OPTIONS = [
-  { value: "urgent", label: "Urgent (1-2 weeks)", desc: "Need it as soon as possible" },
-  { value: "standard", label: "Standard (4-6 weeks)", desc: "Normal delivery timeline" },
-  { value: "flexible", label: "Flexible (6+ weeks)", desc: "Can wait for best pricing" }
-];
-
-const SHIPPING_OPTIONS = [
-  { value: "air", label: "Air Freight", icon: Plane, desc: "Fastest delivery, higher cost" },
-  { value: "sea", label: "Sea Freight", icon: Ship, desc: "Cost-effective for large orders" },
-  { value: "recommend", label: "Recommend Best Option", icon: CheckCircle2, desc: "Let us suggest based on your needs" }
-];
-
 export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }: SmartQuoteFlowProps) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -76,6 +51,33 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
     shippingPreference: "",
     additionalNotes: ""
   });
+
+  const STEPS = useMemo(() => [
+    { id: 1, title: t("quoteFlow.step.organization"), icon: Building2 },
+    { id: 2, title: t("quoteFlow.step.product"), icon: Package },
+    { id: 3, title: t("quoteFlow.step.destination"), icon: MapPin },
+    { id: 4, title: t("quoteFlow.step.timeline"), icon: Clock },
+    { id: 5, title: t("quoteFlow.step.review"), icon: CheckCircle2 }
+  ], [t]);
+
+  const ORG_TYPES = useMemo(() => [
+    { value: "distributor", label: t("quoteFlow.orgDistributor"), icon: Building2, desc: t("quoteFlow.orgDistributorDesc") },
+    { value: "ngo", label: t("quoteFlow.orgNgo"), icon: HandshakeIcon, desc: t("quoteFlow.orgNgoDesc") },
+    { value: "provider", label: t("quoteFlow.orgProvider"), icon: Heart, desc: t("quoteFlow.orgProviderDesc") },
+    { value: "academic", label: t("quoteFlow.orgAcademic"), icon: GraduationCap, desc: t("quoteFlow.orgAcademicDesc") }
+  ], [t]);
+
+  const TIMELINE_OPTIONS = useMemo(() => [
+    { value: "urgent", label: t("quoteFlow.urgent"), desc: t("quoteFlow.urgentDesc") },
+    { value: "standard", label: t("quoteFlow.standard"), desc: t("quoteFlow.standardDesc") },
+    { value: "flexible", label: t("quoteFlow.flexible"), desc: t("quoteFlow.flexibleDesc") }
+  ], [t]);
+
+  const SHIPPING_OPTIONS = useMemo(() => [
+    { value: "air", label: t("quoteFlow.airFreight"), icon: Plane, desc: t("quoteFlow.airFreightDesc") },
+    { value: "sea", label: t("quoteFlow.seaFreight"), icon: Ship, desc: t("quoteFlow.seaFreightDesc") },
+    { value: "recommend", label: t("quoteFlow.recommendBest"), icon: CheckCircle2, desc: t("quoteFlow.recommendBestDesc") }
+  ], [t]);
 
   const updateData = (field: keyof QuoteData, value: string) => {
     setQuoteData(prev => ({ ...prev, [field]: value }));
@@ -164,7 +166,7 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Request a Quote</DialogTitle>
+          <DialogTitle className="text-2xl">{t("quoteFlow.title")}</DialogTitle>
           <DialogDescription className="sr-only">Step-by-step form to request a custom quote for medical equipment</DialogDescription>
         </DialogHeader>
 
@@ -207,12 +209,12 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
               <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Quote Request Submitted!</h3>
+              <h3 className="text-xl font-semibold mb-2">{t("quoteFlow.submitted")}</h3>
               <p className="text-slate-600 mb-6">
-                We'll review your request and send a personalized quote within 24 hours.
+                {t("quoteFlow.submittedDesc")}
               </p>
               <Button onClick={handleClose} data-testid="button-close-quote">
-                Close
+                {t("quoteFlow.close")}
               </Button>
             </motion.div>
           ) : (
@@ -227,7 +229,7 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <Label className="text-base font-medium mb-3 block">Organization Type</Label>
+                    <Label className="text-base font-medium mb-3 block">{t("quoteFlow.orgType")}</Label>
                     <div className="grid grid-cols-2 gap-3">
                       {ORG_TYPES.map((org) => {
                         const Icon = org.icon;
@@ -251,34 +253,34 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
                   </div>
                   <div className="grid gap-4">
                     <div>
-                      <Label htmlFor="orgName">Organization Name</Label>
+                      <Label htmlFor="orgName">{t("quoteFlow.orgName")}</Label>
                       <Input
                         id="orgName"
                         value={quoteData.organizationName}
                         onChange={(e) => updateData('organizationName', e.target.value)}
-                        placeholder="Your organization name"
+                        placeholder={t("quoteFlow.orgNamePlaceholder")}
                         data-testid="input-org-name"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="contactName">Your Name</Label>
+                        <Label htmlFor="contactName">{t("quoteFlow.yourName")}</Label>
                         <Input
                           id="contactName"
                           value={quoteData.contactName}
                           onChange={(e) => updateData('contactName', e.target.value)}
-                          placeholder="Full name"
+                          placeholder={t("quoteFlow.yourNamePlaceholder")}
                           data-testid="input-contact-name"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="contactEmail">Email</Label>
+                        <Label htmlFor="contactEmail">{t("quoteFlow.email")}</Label>
                         <Input
                           id="contactEmail"
                           type="email"
                           value={quoteData.contactEmail}
                           onChange={(e) => updateData('contactEmail', e.target.value)}
-                          placeholder="your@email.com"
+                          placeholder={t("quoteFlow.emailPlaceholder")}
                           data-testid="input-contact-email"
                         />
                       </div>
@@ -291,34 +293,34 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
               {currentStep === 2 && (
                 <div className="space-y-6">
                   <div>
-                    <Label htmlFor="productName">Product Name</Label>
+                    <Label htmlFor="productName">{t("quoteFlow.productName")}</Label>
                     <Input
                       id="productName"
                       value={quoteData.productName}
                       onChange={(e) => updateData('productName', e.target.value)}
-                      placeholder="e.g., NASG, Thermocoagulator, MTTS CPAP"
+                      placeholder={t("quoteFlow.productNamePlaceholder")}
                       data-testid="input-product-name"
                     />
-                    <p className="text-xs text-slate-500 mt-1">Enter the product name or browse our catalog</p>
+                    <p className="text-xs text-slate-500 mt-1">{t("quoteFlow.productNameHint")}</p>
                   </div>
                   <div>
-                    <Label htmlFor="quantity">Quantity Needed</Label>
+                    <Label htmlFor="quantity">{t("quoteFlow.quantity")}</Label>
                     <Input
                       id="quantity"
                       value={quoteData.quantity}
                       onChange={(e) => updateData('quantity', e.target.value)}
-                      placeholder="e.g., 50 units, 100-200 units"
+                      placeholder={t("quoteFlow.quantityPlaceholder")}
                       data-testid="input-quantity"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="notes">Additional Product Requirements (Optional)</Label>
+                    <Label htmlFor="notes">{t("quoteFlow.additionalNotes")}</Label>
                     <textarea
                       id="notes"
                       className="w-full min-h-[80px] px-3 py-2 border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       value={quoteData.additionalNotes}
                       onChange={(e) => updateData('additionalNotes', e.target.value)}
-                      placeholder="Any specific requirements, accessories, or variations needed..."
+                      placeholder={t("quoteFlow.additionalNotesPlaceholder")}
                       data-testid="input-notes"
                     />
                   </div>
@@ -329,30 +331,29 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <Label htmlFor="country">Destination Country</Label>
+                    <Label htmlFor="country">{t("quoteFlow.destinationCountry")}</Label>
                     <Input
                       id="country"
                       value={quoteData.destinationCountry}
                       onChange={(e) => updateData('destinationCountry', e.target.value)}
-                      placeholder="e.g., Kenya, Nigeria, Tanzania"
+                      placeholder={t("quoteFlow.destinationCountryPlaceholder")}
                       data-testid="input-country"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="city">City / Port (Optional)</Label>
+                    <Label htmlFor="city">{t("quoteFlow.destinationCity")}</Label>
                     <Input
                       id="city"
                       value={quoteData.destinationCity}
                       onChange={(e) => updateData('destinationCity', e.target.value)}
-                      placeholder="e.g., Nairobi, Lagos, Dar es Salaam"
+                      placeholder={t("quoteFlow.destinationCityPlaceholder")}
                       data-testid="input-city"
                     />
                   </div>
                   <Card className="bg-blue-50 border-blue-200">
                     <CardContent className="p-4">
                       <p className="text-sm text-blue-800">
-                        <strong>Note:</strong> Shipping costs depend on destination, volume, and current rates. 
-                        We'll provide detailed shipping options in your quote.
+                        <strong>Note:</strong> {t("quoteFlow.shippingNote")}
                       </p>
                     </CardContent>
                   </Card>
@@ -363,7 +364,7 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
               {currentStep === 4 && (
                 <div className="space-y-6">
                   <div>
-                    <Label className="text-base font-medium mb-3 block">When do you need this?</Label>
+                    <Label className="text-base font-medium mb-3 block">{t("quoteFlow.whenNeeded")}</Label>
                     <RadioGroup
                       value={quoteData.timeline}
                       onValueChange={(value) => updateData('timeline', value)}
@@ -387,7 +388,7 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
                   </div>
 
                   <div>
-                    <Label className="text-base font-medium mb-3 block">Shipping Preference</Label>
+                    <Label className="text-base font-medium mb-3 block">{t("quoteFlow.shippingPreference")}</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {SHIPPING_OPTIONS.map((option) => {
                         const Icon = option.icon;
@@ -417,43 +418,43 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
                 <div className="space-y-4">
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Review Your Request</CardTitle>
-                      <CardDescription>Please confirm your details before submitting</CardDescription>
+                      <CardTitle className="text-lg">{t("quoteFlow.reviewTitle")}</CardTitle>
+                      <CardDescription>{t("quoteFlow.reviewSubtitle")}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <div className="text-slate-500">Organization</div>
+                          <div className="text-slate-500">{t("quoteFlow.reviewOrganization")}</div>
                           <div className="font-medium">{quoteData.organizationName}</div>
                           <div className="text-slate-600 capitalize">{quoteData.organizationType}</div>
                         </div>
                         <div>
-                          <div className="text-slate-500">Contact</div>
+                          <div className="text-slate-500">{t("quoteFlow.reviewContact")}</div>
                           <div className="font-medium">{quoteData.contactName}</div>
                           <div className="text-slate-600">{quoteData.contactEmail}</div>
                         </div>
                         <div>
-                          <div className="text-slate-500">Product</div>
+                          <div className="text-slate-500">{t("quoteFlow.reviewProduct")}</div>
                           <div className="font-medium">{quoteData.productName}</div>
-                          <div className="text-slate-600">Qty: {quoteData.quantity}</div>
+                          <div className="text-slate-600">{t("quoteFlow.qty")}: {quoteData.quantity}</div>
                         </div>
                         <div>
-                          <div className="text-slate-500">Destination</div>
+                          <div className="text-slate-500">{t("quoteFlow.reviewDestination")}</div>
                           <div className="font-medium">{quoteData.destinationCountry}</div>
                           {quoteData.destinationCity && <div className="text-slate-600">{quoteData.destinationCity}</div>}
                         </div>
                         <div>
-                          <div className="text-slate-500">Timeline</div>
+                          <div className="text-slate-500">{t("quoteFlow.reviewTimeline")}</div>
                           <div className="font-medium capitalize">{quoteData.timeline}</div>
                         </div>
                         <div>
-                          <div className="text-slate-500">Shipping</div>
+                          <div className="text-slate-500">{t("quoteFlow.reviewShipping")}</div>
                           <div className="font-medium capitalize">{quoteData.shippingPreference}</div>
                         </div>
                       </div>
                       {quoteData.additionalNotes && (
                         <div>
-                          <div className="text-slate-500 text-sm">Notes</div>
+                          <div className="text-slate-500 text-sm">{t("quoteFlow.reviewNotes")}</div>
                           <div className="text-sm">{quoteData.additionalNotes}</div>
                         </div>
                       )}
@@ -465,9 +466,9 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
                       <div className="flex items-start gap-3">
                         <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
                         <div>
-                          <p className="font-medium text-green-800">What happens next?</p>
+                          <p className="font-medium text-green-800">{t("quoteFlow.whatHappensNext")}</p>
                           <p className="text-sm text-green-700">
-                            Our team will review your request and send you a personalized quote within 24 hours via email.
+                            {t("quoteFlow.whatHappensNextDesc")}
                           </p>
                         </div>
                       </div>
@@ -489,7 +490,7 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
               data-testid="button-back"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              {t("quoteFlow.back")}
             </Button>
             {currentStep < 5 ? (
               <Button
@@ -497,7 +498,7 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
                 disabled={!canProceed()}
                 data-testid="button-next"
               >
-                Next
+                {t("quoteFlow.next")}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
@@ -509,12 +510,12 @@ export function SmartQuoteFlow({ isOpen, onClose, productName = "", productId }:
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Submitting...
+                    {t("quoteFlow.submitting")}
                   </>
                 ) : (
                   <>
                     <MessageSquare className="h-4 w-4 mr-2" />
-                    Submit Quote Request
+                    {t("quoteFlow.submitQuote")}
                   </>
                 )}
               </Button>
