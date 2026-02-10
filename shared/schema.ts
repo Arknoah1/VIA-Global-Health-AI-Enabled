@@ -18,6 +18,8 @@ export const products = pgTable("products", {
   documents: jsonb("documents").notNull().default(sql`'[]'::jsonb`),
   specifications: jsonb("specifications").notNull().default(sql`'{}'::jsonb`),
   faqs: jsonb("faqs").notNull().default(sql`'[]'::jsonb`),
+  unitsPerPack: integer("units_per_pack"),
+  packType: text("pack_type"),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   scrapedAt: timestamp("scraped_at").notNull().defaultNow(),
 });
