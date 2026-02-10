@@ -360,11 +360,6 @@ export default function QuoteRequestsPage() {
                         </div>
                       </div>
 
-                      {/* Initial Intent */}
-                      <div>
-                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">What Brings Them Here</div>
-                        <p className="text-sm text-foreground bg-background/50 rounded p-3">{request.initialIntent}</p>
-                      </div>
 
                       {/* Action Buttons */}
                       <div className="flex gap-2 flex-wrap">

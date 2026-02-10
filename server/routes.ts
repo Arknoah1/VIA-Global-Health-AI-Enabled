@@ -1080,20 +1080,20 @@ export async function registerRoutes(
       let greeting: string;
       const greetings: Record<string, { returning: (name: string, product: string) => string; new: (product: string) => string }> = {
         en: {
-          returning: (name, product) => `Welcome back, ${name}! I'm Amara from VIA Global Health. Great to see you again. I see you're interested in the ${product}. How can I help you today?`,
-          new: (product) => `Hello! I'm Amara from VIA Global Health. Thank you for your interest in the ${product}. I'm here to help you find the right solution and get you a custom quote. What brings you to us today?`
+          returning: (name, product) => `Welcome back, ${name}! I'm Amara from VIA Global Health. Great to see you again. I see you're interested in the ${product}. To get you a quote quickly, may I start with your full name?`,
+          new: (product) => `Hello! I'm Amara from VIA Global Health. I'd love to help you get a quote for the ${product}. To get started, may I have your full name please?`
         },
         fr: {
-          returning: (name, product) => `Bienvenue à nouveau, ${name} ! Je suis Amara de VIA Global Health. Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product}. Comment puis-je vous aider aujourd'hui ?`,
-          new: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Merci pour votre intérêt pour le ${product}. Je suis là pour vous aider à trouver la bonne solution et vous fournir un devis personnalisé. Que puis-je faire pour vous aujourd'hui ?`
+          returning: (name, product) => `Bienvenue à nouveau, ${name} ! Je suis Amara de VIA Global Health. Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product}. Pour préparer votre devis rapidement, puis-je commencer par votre nom complet ?`,
+          new: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Je serais ravie de vous aider à obtenir un devis pour le ${product}. Pour commencer, puis-je avoir votre nom complet s'il vous plaît ?`
         },
         pt: {
-          returning: (name, product) => `Bem-vindo(a) de volta, ${name}! Sou Amara da VIA Global Health. Que bom ver você novamente. Vejo que está interessado(a) no ${product}. Como posso ajudá-lo(a) hoje?`,
-          new: (product) => `Olá! Sou Amara da VIA Global Health. Obrigada pelo seu interesse no ${product}. Estou aqui para ajudá-lo(a) a encontrar a solução certa e fornecer uma cotação personalizada. O que posso fazer por você hoje?`
+          returning: (name, product) => `Bem-vindo(a) de volta, ${name}! Sou Amara da VIA Global Health. Que bom ver você novamente. Vejo que está interessado(a) no ${product}. Para preparar sua cotação rapidamente, posso começar com seu nome completo?`,
+          new: (product) => `Olá! Sou Amara da VIA Global Health. Ficarei feliz em ajudá-lo(a) a obter uma cotação para o ${product}. Para começar, posso ter seu nome completo, por favor?`
         },
         sw: {
-          returning: (name, product) => `Karibu tena, ${name}! Mimi ni Amara kutoka VIA Global Health. Ni vizuri kukuona tena. Naona una nia ya ${product}. Naweza kukusaidia vipi leo?`,
-          new: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. Asante kwa nia yako katika ${product}. Niko hapa kukusaidia kupata suluhisho sahihi na kukupa nukuu maalum. Ninaweza kukusaidia na nini leo?`
+          returning: (name, product) => `Karibu tena, ${name}! Mimi ni Amara kutoka VIA Global Health. Ni vizuri kukuona tena. Naona una nia ya ${product}. Ili kukupa nukuu haraka, naweza kuanza na jina lako kamili?`,
+          new: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. Ningependa kukusaidia kupata nukuu ya ${product}. Ili kuanza, naweza kupata jina lako kamili tafadhali?`
         }
       };
       const langGreetings = greetings[lang] || greetings.en;
@@ -1593,14 +1593,13 @@ PHASE 1 - IDENTIFY THE CUSTOMER (collect these FIRST, before any qualifying ques
 2. Their email address - Ask ONLY for email, SEPARATELY after they give their name. Example: "Thanks! And what's the best email address to reach you at?"
 
 PHASE 2 - QUALIFY THE CUSTOMER (ask these AFTER you have name and email):
-3. What brings them here today (buying or researching?)
-4. What type of buyer they are (Distributor, NGO, Private practice clinician, Government/public sector, Academic/researcher)
-5. Organisation name
-6. Order quantity needed
-7. Shipping destination (country and city if possible)
-8. Import capability - Can they handle customs clearance at port? (Explain: "Since we ship to port, you'll need to clear the goods through customs and arrange final delivery. Is that something your organisation can handle?")
-9. Timeline - when do they need the product?
-10. Shipping method - RECOMMEND based on quantity and urgency (don't just ask preference):
+3. What type of buyer they are (Distributor, NGO, Private practice clinician, Government/public sector, Academic/researcher)
+4. Organisation name
+5. Order quantity needed
+6. Shipping destination (country and city if possible)
+7. Import capability - Can they handle customs clearance at port? (Explain: "Since we ship to port, you'll need to clear the goods through customs and arrange final delivery. Is that something your organisation can handle?")
+8. Timeline - when do they need the product?
+9. Shipping method - RECOMMEND based on quantity and urgency (don't just ask preference):
     - Small volumes or urgent → Recommend air freight
     - Larger volumes (container-sized) → Recommend sea freight
     - Explain the speed vs cost trade-off to help them decide
