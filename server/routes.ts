@@ -1431,7 +1431,7 @@ ${JSON.stringify(candidateSummary, null, 2)}`
 }
 
 function buildSystemPrompt(
-  productDetails: { name?: string; description?: string; specifications?: Record<string, string>; faqs?: { question: string; answer: string }[] } | undefined,
+  productDetails: { name?: string; description?: string; specifications?: Record<string, string>; faqs?: { question: string; answer: string }[]; unitsPerPack?: number | null; packType?: string | null } | undefined,
   similarProducts: { id: string; name: string; sku: string }[],
   pricingTiers: { minQuantity: number; maxQuantity: number | null; unitPriceCents: number; currency: string; tierName: string | null }[] = [],
   restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [],
@@ -1672,6 +1672,14 @@ PRODUCT CONTEXT:`;
     if (productDetails.description) {
       prompt += `\nDescription: ${productDetails.description}`;
     }
+    if (productDetails.unitsPerPack && productDetails.packType) {
+      prompt += `\n\nPACKAGING: This product is sold in ${productDetails.packType}s of ${productDetails.unitsPerPack} units. Customers MUST order in complete ${productDetails.packType}s only.`;
+      prompt += `\n- 1 ${productDetails.packType} = ${productDetails.unitsPerPack} units`;
+      prompt += `\n- When asking about quantity, ask "How many ${productDetails.packType}s would you like?" (NOT "how many units")`;
+      prompt += `\n- If a customer says a number of units, convert to ${productDetails.packType}s. For example, if they say "50 units", respond "That would be 2 ${productDetails.packType}s (50 units). Shall I quote for 2 ${productDetails.packType}s?"`;
+      prompt += `\n- If the number of units doesn't divide evenly into ${productDetails.packType}s, round UP and explain. For example: "Since each ${productDetails.packType} contains ${productDetails.unitsPerPack} units, the closest option would be X ${productDetails.packType}s (Y units). Would that work for you?"`;
+      prompt += `\n- Always show both the number of ${productDetails.packType}s AND the total units in your pricing summary`;
+    }
     if (productDetails.specifications && Object.keys(productDetails.specifications).length > 0) {
       prompt += `\nKey Specifications: ${JSON.stringify(productDetails.specifications)}`;
     }
@@ -1684,6 +1692,8 @@ PRODUCT CONTEXT:`;
   }
 
   if (pricingTiers.length > 0) {
+    const isKitProduct = productDetails?.unitsPerPack && productDetails?.packType;
+    const packLabel = isKitProduct ? productDetails.packType : 'unit';
     prompt += `\n\nPRODUCT PRICING (use these to provide quotes):`;
     pricingTiers.forEach(tier => {
       const unitPrice = (tier.unitPriceCents / 100).toFixed(2);
@@ -1691,9 +1701,17 @@ PRODUCT CONTEXT:`;
       const tierLabel = tier.tierName ? ` (${tier.tierName})` : "";
       const currencySymbol = tier.currency === 'USD' ? '$' : tier.currency === 'EUR' ? '€' : tier.currency === 'GBP' ? '£' : '';
       const priceDisplay = currencySymbol ? `${currencySymbol}${unitPrice}` : `${unitPrice} ${tier.currency}`;
-      prompt += `\n- ${tier.minQuantity}-${maxQty} units: ${priceDisplay} per unit${tierLabel}`;
+      if (isKitProduct) {
+        prompt += `\n- ${tier.minQuantity}-${maxQty} ${packLabel}s: ${priceDisplay} per ${packLabel}${tierLabel}`;
+      } else {
+        prompt += `\n- ${tier.minQuantity}-${maxQty} units: ${priceDisplay} per unit${tierLabel}`;
+      }
     });
-    prompt += `\n\nPRICING BEHAVIOUR: Once ALL 4 eligibility checkpoints are confirmed (buyer type, destination, import capability, quantity), you MUST immediately calculate and present the estimated product pricing using these tiers. Do NOT skip pricing or say "our team will provide pricing" when you have the tiers above - USE THEM. Calculate: find the unit price from the matching tier, silently apply the segment pricing adjustment, then show the FINAL unit price and total to the customer. NEVER show the base price separately or explain how the price was calculated. Always note this is the product cost estimate only (shipping costs are separate and will be included in the proforma invoice).`;
+    if (isKitProduct) {
+      prompt += `\n\nPRICING BEHAVIOUR: Once ALL 4 eligibility checkpoints are confirmed (buyer type, destination, import capability, quantity in ${packLabel}s), you MUST immediately calculate and present the estimated product pricing using these tiers. Do NOT skip pricing or say "our team will provide pricing" when you have the tiers above - USE THEM. Calculate: find the price per ${packLabel} from the matching tier, silently apply the segment pricing adjustment, then show the FINAL price per ${packLabel} and total to the customer. Show both the number of ${packLabel}s and total units (e.g., "3 ${packLabel}s = ${3 * productDetails!.unitsPerPack!} units"). NEVER show the base price separately or explain how the price was calculated. Always note this is the product cost estimate only (shipping costs are separate and will be included in the proforma invoice).`;
+    } else {
+      prompt += `\n\nPRICING BEHAVIOUR: Once ALL 4 eligibility checkpoints are confirmed (buyer type, destination, import capability, quantity), you MUST immediately calculate and present the estimated product pricing using these tiers. Do NOT skip pricing or say "our team will provide pricing" when you have the tiers above - USE THEM. Calculate: find the unit price from the matching tier, silently apply the segment pricing adjustment, then show the FINAL unit price and total to the customer. NEVER show the base price separately or explain how the price was calculated. Always note this is the product cost estimate only (shipping costs are separate and will be included in the proforma invoice).`;
+    }
   } else {
     prompt += `\n\nPRICING NOTE: No specific pricing tiers are available for this product. Collect the customer's requirements and let them know our team will provide a custom quote based on their volume and needs.`;
   }
@@ -1713,12 +1731,26 @@ PRODUCT CONTEXT:`;
     });
   }
 
+  const isKitProductForTemplate = productDetails?.unitsPerPack && productDetails?.packType;
+  const templatePackLabel = isKitProductForTemplate ? productDetails.packType : null;
+  const templateUnitsPerPack = isKitProductForTemplate ? productDetails.unitsPerPack : null;
+
   prompt += `\n\nQUOTE DELIVERY - TWO-STEP SEQUENCE (CRITICAL):
 You MUST deliver the quote in TWO SEPARATE messages, NOT one. This prevents information from being pushed off screen.
 
 ===== STEP A: PRICING MESSAGE (send this FIRST) =====
 Once ALL 4 eligibility checkpoints are confirmed, send ONLY the pricing in this message. Keep it short. Do NOT include the details confirmation in this same message.
+${isKitProductForTemplate ? `
+"Great news! Based on your requirements, here's your estimated product pricing:
 
+Product: [product name]
+Quantity: [number of ${templatePackLabel}s] ${templatePackLabel}s ([total units] units)
+Price per ${templatePackLabel}: [final price per ${templatePackLabel} after silently applying segment adjustment]
+Estimated Product Total: [number of ${templatePackLabel}s x price per ${templatePackLabel}]
+
+Each ${templatePackLabel} contains ${templateUnitsPerPack} units. This is the product cost only - shipping, insurance, and duties are not included.
+
+Does this pricing look good to you?"` : `
 "Great news! Based on your requirements, here's your estimated product pricing:
 
 Product: [product name]
@@ -1728,7 +1760,7 @@ Estimated Product Total: [quantity x unit price]
 
 This is the product cost only - shipping, insurance, and duties are not included.
 
-Does this pricing look good to you?"
+Does this pricing look good to you?"`}
 
 STOP HERE. Wait for the customer to respond before continuing to Step B.
 

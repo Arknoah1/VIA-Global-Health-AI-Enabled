@@ -236,7 +236,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
             description: product.description,
             category: product.category,
             specifications: product.specifications,
-            faqs: product.faqs
+            faqs: product.faqs,
+            unitsPerPack: product.unitsPerPack,
+            packType: product.packType
           },
           language
         })
@@ -311,6 +313,14 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               {product.name}
             </h2>
             <p className="text-xs text-muted-foreground font-mono">SKU: {product.sku}</p>
+            {product.unitsPerPack && product.packType && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1 text-xs font-semibold" data-testid="product-pack-info">
+                  <Package className="h-3 w-3" />
+                  Sold in {product.packType}s of {product.unitsPerPack} units
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
