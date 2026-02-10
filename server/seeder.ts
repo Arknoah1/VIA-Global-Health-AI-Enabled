@@ -35,6 +35,7 @@ function loadSeedData(): any[] | null {
 export async function seedDatabase() {
   await seedCustomerSegments();
   await fixExternalImageUrls();
+  await ensureProductPackaging();
 
   try {
     const existingProducts = await db.select().from(products).limit(1);
@@ -136,6 +137,31 @@ async function fixExternalImageUrls() {
     }
   } catch (error) {
     log(`Error fixing external image URLs: ${error}`, "seeder");
+  }
+}
+
+async function ensureProductPackaging() {
+  try {
+    const packagingRules = [
+      { skuPattern: '%Ellavi%', namePattern: '%Ellavi%', unitsPerPack: 25, packType: 'kit' },
+    ];
+
+    for (const rule of packagingRules) {
+      const result = await db.select({ id: products.id, name: products.name, unitsPerPack: products.unitsPerPack })
+        .from(products)
+        .where(sql`(${products.sku} ILIKE ${rule.skuPattern} OR ${products.name} ILIKE ${rule.namePattern})`);
+
+      for (const product of result) {
+        if (!product.unitsPerPack) {
+          await db.update(products)
+            .set({ unitsPerPack: rule.unitsPerPack, packType: rule.packType })
+            .where(sql`${products.id} = ${product.id}`);
+          log(`Set packaging for "${product.name}": ${rule.unitsPerPack} units per ${rule.packType}`, "seeder");
+        }
+      }
+    }
+  } catch (error) {
+    log(`Error ensuring product packaging: ${error}`, "seeder");
   }
 }
 
