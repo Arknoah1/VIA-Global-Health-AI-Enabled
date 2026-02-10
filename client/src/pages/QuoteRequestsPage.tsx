@@ -8,7 +8,11 @@ import {
   Download, 
   MessageSquare,
   FileText,
-  Send
+  Send,
+  Pencil,
+  Trash2,
+  X,
+  Check
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -20,6 +24,20 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProformaInvoicePreview } from "@/components/ProformaInvoicePreview";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -53,6 +71,20 @@ export default function QuoteRequestsPage() {
   const [currentInvoice, setCurrentInvoice] = useState<any>(null);
   const [conversationMessages, setConversationMessages] = useState<ChatMessage[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<QuoteRequest | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    organizationName: "",
+    organizationType: "",
+    orderQuantity: "",
+    shippingCountry: "",
+    productName: "",
+    status: "",
+    decisionTimeline: "",
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -116,6 +148,43 @@ export default function QuoteRequestsPage() {
     },
   });
 
+  const updateQuoteRequestMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, any> }) => {
+      const response = await fetch(`/api/quote-requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to update quote request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quoteRequests"] });
+      toast({ title: "Updated", description: "Quote request updated successfully." });
+      setShowEditDialog(false);
+      setEditingRequest(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update quote request.", variant: "destructive" });
+    },
+  });
+
+  const deleteQuoteRequestMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/quote-requests/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete quote request");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quoteRequests"] });
+      toast({ title: "Deleted", description: "Quote request has been deleted." });
+      if (expandedId) setExpandedId(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete quote request.", variant: "destructive" });
+    },
+  });
+
   const handleGenerateInvoice = (request: QuoteRequest) => {
     setSelectedRequest(request);
     generateInvoiceMutation.mutate(request.id);
@@ -140,6 +209,31 @@ export default function QuoteRequestsPage() {
     } finally {
       setIsLoadingMessages(false);
     }
+  };
+
+  const handleEditRequest = (request: QuoteRequest) => {
+    setEditingRequest(request);
+    setEditFormData({
+      firstName: request.firstName || "",
+      lastName: request.lastName || "",
+      email: request.email || "",
+      organizationName: request.organizationName || "",
+      organizationType: request.organizationType || "",
+      orderQuantity: request.orderQuantity || "",
+      shippingCountry: request.shippingCountry || "",
+      productName: request.productName || "",
+      status: request.status || "active",
+      decisionTimeline: request.decisionTimeline || "",
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingRequest) return;
+    updateQuoteRequestMutation.mutate({
+      id: editingRequest.id,
+      data: editFormData,
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -193,7 +287,7 @@ export default function QuoteRequestsPage() {
                     className="w-full p-4 flex items-center justify-between text-left"
                     data-testid={`quote-request-row-${request.id}`}
                   >
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-4">
                       <div>
                         <div className="font-semibold text-sm">{request.firstName} {request.lastName}</div>
                         <div className="text-xs text-muted-foreground">{request.organizationName}</div>
@@ -209,6 +303,20 @@ export default function QuoteRequestsPage() {
                       <div>
                         <div className="text-sm text-muted-foreground">Date</div>
                         <div className="font-medium text-sm">{formatDate(request.createdAt)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Status</div>
+                        <Badge 
+                          variant={
+                            request.status === 'converted' ? 'default' :
+                            request.status === 'responded' ? 'secondary' :
+                            request.status === 'closed' ? 'outline' :
+                            'default'
+                          }
+                          data-testid={`badge-status-${request.id}`}
+                        >
+                          {request.status || 'active'}
+                        </Badge>
                       </div>
                     </div>
                     <ChevronDown
@@ -256,12 +364,11 @@ export default function QuoteRequestsPage() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => handleViewConversation(request)}
-                          className="flex-1"
                           data-testid={`button-view-conversation-${request.id}`}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
@@ -271,12 +378,50 @@ export default function QuoteRequestsPage() {
                           size="sm"
                           onClick={() => handleGenerateInvoice(request)}
                           disabled={generateInvoiceMutation.isPending}
-                          className="flex-1"
                           data-testid={`button-generate-invoice-${request.id}`}
                         >
                           <FileText className="h-4 w-4 mr-2" />
                           {generateInvoiceMutation.isPending ? "Generating..." : "Generate Invoice"}
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditRequest(request)}
+                          data-testid={`button-edit-quote-${request.id}`}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              data-testid={`button-delete-quote-${request.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Quote Request</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this quote request from {request.firstName} {request.lastName}? This will also delete all associated conversation messages and invoices. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteQuoteRequestMutation.mutate(request.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                data-testid={`button-confirm-delete-quote-${request.id}`}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   )}
@@ -350,6 +495,134 @@ export default function QuoteRequestsPage() {
               editable={true}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Quote Request Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Quote Request</DialogTitle>
+            <DialogDescription>Update the details of this quote request</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-firstName">First Name</Label>
+                <Input
+                  id="edit-firstName"
+                  value={editFormData.firstName}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                  data-testid="input-edit-firstName"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-lastName">Last Name</Label>
+                <Input
+                  id="edit-lastName"
+                  value={editFormData.lastName}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                  data-testid="input-edit-lastName"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                data-testid="input-edit-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-organizationName">Organization</Label>
+              <Input
+                id="edit-organizationName"
+                value={editFormData.organizationName}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, organizationName: e.target.value }))}
+                data-testid="input-edit-organizationName"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Organization Type</Label>
+                <div className="flex h-10 items-center rounded-md border bg-muted/50 px-3 text-sm text-muted-foreground">
+                  {editFormData.organizationType || "N/A"}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editFormData.status}
+                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger data-testid="select-edit-status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="responded">Responded</SelectItem>
+                    <SelectItem value="converted">Converted</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-productName">Product</Label>
+                <Input
+                  id="edit-productName"
+                  value={editFormData.productName}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, productName: e.target.value }))}
+                  data-testid="input-edit-productName"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-orderQuantity">Quantity</Label>
+                <Input
+                  id="edit-orderQuantity"
+                  value={editFormData.orderQuantity}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, orderQuantity: e.target.value }))}
+                  data-testid="input-edit-orderQuantity"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-shippingCountry">Shipping Country</Label>
+                <Input
+                  id="edit-shippingCountry"
+                  value={editFormData.shippingCountry}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, shippingCountry: e.target.value }))}
+                  data-testid="input-edit-shippingCountry"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-decisionTimeline">Timeline</Label>
+                <Input
+                  id="edit-decisionTimeline"
+                  value={editFormData.decisionTimeline}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, decisionTimeline: e.target.value }))}
+                  data-testid="input-edit-decisionTimeline"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)} data-testid="button-cancel-edit">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateQuoteRequestMutation.isPending}
+              data-testid="button-save-edit"
+            >
+              {updateQuoteRequestMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

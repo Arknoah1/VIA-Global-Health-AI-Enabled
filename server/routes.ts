@@ -302,6 +302,51 @@ export async function registerRoutes(
     }
   });
 
+  // Update a quote request (admin)
+  app.patch("/api/quote-requests/:id", requireAdmin, async (req, res) => {
+    try {
+      const existing = await storage.getQuoteRequestById(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Quote request not found" });
+      }
+      const allowedFields = [
+        "firstName", "lastName", "email", "organizationName",
+        "orderQuantity", "shippingCountry", "shippingCity", "shippingPreference",
+        "importAssistance", "initialIntent", "decisionTimeline", "productName",
+        "productSku", "status"
+      ];
+      const updateData: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+      const updated = await storage.updateQuoteRequest(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating quote request:", error);
+      res.status(500).json({ error: "Failed to update quote request" });
+    }
+  });
+
+  // Delete a quote request (admin) - cascades to messages and invoices
+  app.delete("/api/quote-requests/:id", requireAdmin, async (req, res) => {
+    try {
+      const existing = await storage.getQuoteRequestById(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Quote request not found" });
+      }
+      await storage.deleteQuoteRequest(req.params.id);
+      res.json({ message: "Quote request deleted" });
+    } catch (error) {
+      console.error("Error deleting quote request:", error);
+      res.status(500).json({ error: "Failed to delete quote request" });
+    }
+  });
+
   // Get messages for a quote request
   app.get("/api/quote-requests/:id/messages", async (req, res) => {
     try {

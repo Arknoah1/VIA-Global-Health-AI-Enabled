@@ -22,10 +22,12 @@ export interface IStorage {
   createQuoteRequest(quoteRequest: InsertQuoteRequest): Promise<QuoteRequest>;
   getQuoteRequestById(id: string): Promise<QuoteRequest | undefined>;
   updateQuoteRequest(id: string, data: Partial<InsertQuoteRequest>): Promise<QuoteRequest>;
+  deleteQuoteRequest(id: string): Promise<void>;
   getAllQuoteRequests(): Promise<QuoteRequest[]>;
   getQuoteRequestsByEmail(email: string): Promise<QuoteRequest[]>;
   createQuoteRequestMessage(message: InsertQuoteRequestMessage): Promise<QuoteRequestMessage>;
   getQuoteRequestMessages(quoteRequestId: string): Promise<QuoteRequestMessage[]>;
+  deleteQuoteRequestMessages(quoteRequestId: string): Promise<void>;
   getProductPricingTiers(productId: string): Promise<ProductPricingTier[]>;
   createProductPricingTier(tier: InsertProductPricingTier): Promise<ProductPricingTier>;
   createProductPricingTiersBulk(tiers: InsertProductPricingTier[]): Promise<ProductPricingTier[]>;
@@ -140,6 +142,12 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async deleteQuoteRequest(id: string): Promise<void> {
+    await db.delete(quoteRequestMessages).where(eq(quoteRequestMessages.quoteRequestId, id));
+    await db.delete(proformaInvoices).where(eq(proformaInvoices.quoteRequestId, id));
+    await db.delete(quoteRequests).where(eq(quoteRequests.id, id));
+  }
+
   async getAllQuoteRequests(): Promise<QuoteRequest[]> {
     return await db.select().from(quoteRequests).orderBy(desc(quoteRequests.createdAt));
   }
@@ -163,6 +171,10 @@ export class DatabaseStorage implements IStorage {
       .from(quoteRequestMessages)
       .where(eq(quoteRequestMessages.quoteRequestId, quoteRequestId))
       .orderBy(quoteRequestMessages.createdAt);
+  }
+
+  async deleteQuoteRequestMessages(quoteRequestId: string): Promise<void> {
+    await db.delete(quoteRequestMessages).where(eq(quoteRequestMessages.quoteRequestId, quoteRequestId));
   }
 
   async getProductPricingTiers(productId: string): Promise<ProductPricingTier[]> {
