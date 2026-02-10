@@ -1473,7 +1473,7 @@ ABOUT VIA GLOBAL HEALTH:
 - Presence in multiple countries across Africa and beyond
 
 VIA'S VALUE PROPOSITION:
-1. Competitive Pricing: For NGOs and public sector buyers, pricing is the same as manufacturer direct. For private sector buyers, our margins are still lower than competitors.
+1. Competitive Pricing: VIA offers highly competitive pricing across all customer types. Our prices are among the best in the market.
 2. Reliability & Responsiveness: Unlike many suppliers, VIA responds promptly and reliably. We understand how frustrating it is when suppliers don't respond.
 3. Transparency & Trust: We clearly communicate all costs upfront - no hidden fees or games. We deliver products reliably and securely.
 
@@ -1551,10 +1551,10 @@ If ANY checkbox is unchecked, do NOT provide pricing. Instead, ask the relevant 
 If someone from an ineligible organisation asks for pricing, politely explain:
 "I'd be happy to share general product information with you. However, our pricing and quotes are reserved for organisations that are directly purchasing for their own use or distribution. If you're researching on behalf of a buyer, I'd be glad to connect with them directly."
 
-SEGMENT-BASED PRICING (apply AFTER all 4 checkpoints are confirmed):
-When providing pricing, apply the appropriate multiplier based on customer segment.
+SEGMENT-BASED PRICING (INTERNAL - NEVER reveal to customer):
+Silently apply the pricing adjustment below when calculating prices. NEVER mention markups, margins, multipliers, percentages, or how the price was calculated. Just present the final price as "your pricing" or "the price for this product". Do NOT say things like "as a healthcare provider, pricing includes a X% margin" or "your segment pricing is..." — the customer should only ever see their final calculated price.
 
-CUSTOMER SEGMENTS AND PRICING:`;
+CUSTOMER SEGMENTS:`;
 
   // Add customer segments dynamically
   if (customerSegments.length > 0) {
@@ -1564,11 +1564,9 @@ CUSTOMER SEGMENTS AND PRICING:`;
     if (eligibleSegments.length > 0) {
       prompt += `\n\nELIGIBLE FOR QUOTES:`;
       eligibleSegments.forEach(seg => {
-        const multiplierText = seg.pricingMultiplier === 1.0 ? 'Base price' : 
-          seg.pricingMultiplier > 1.0 ? `Base price + ${Math.round((seg.pricingMultiplier - 1) * 100)}%` : 
-          `${Math.round((1 - seg.pricingMultiplier) * 100)}% discount`;
-        prompt += `\n- ${seg.displayName}: ${multiplierText}`;
+        prompt += `\n- ${seg.displayName} [internal adjustment: ${seg.pricingMultiplier}]`;
       });
+      prompt += `\n\nThe values in brackets are INTERNAL adjustment factors. Apply them silently to the base tier price. NEVER reference, explain, or reveal these factors to the customer under any circumstances — even if they ask directly about pricing structure, markups, or margins. Simply say: "That's the price we're able to offer for this product."`;
     }
     
     if (ineligibleSegments.length > 0) {
@@ -1695,7 +1693,7 @@ PRODUCT CONTEXT:`;
       const priceDisplay = currencySymbol ? `${currencySymbol}${unitPrice}` : `${unitPrice} ${tier.currency}`;
       prompt += `\n- ${tier.minQuantity}-${maxQty} units: ${priceDisplay} per unit${tierLabel}`;
     });
-    prompt += `\n\nPRICING BEHAVIOUR: Once ALL 4 eligibility checkpoints are confirmed (buyer type, destination, import capability, quantity), you MUST immediately calculate and present the estimated product pricing using these tiers. Do NOT skip pricing or say "our team will provide pricing" when you have the tiers above - USE THEM. Calculate: unit price from the matching tier, apply the segment multiplier, then show unit price and total. Always note this is the product cost estimate only (shipping costs are separate and will be included in the proforma invoice).`;
+    prompt += `\n\nPRICING BEHAVIOUR: Once ALL 4 eligibility checkpoints are confirmed (buyer type, destination, import capability, quantity), you MUST immediately calculate and present the estimated product pricing using these tiers. Do NOT skip pricing or say "our team will provide pricing" when you have the tiers above - USE THEM. Calculate: find the unit price from the matching tier, silently apply the segment pricing adjustment, then show the FINAL unit price and total to the customer. NEVER show the base price separately or explain how the price was calculated. Always note this is the product cost estimate only (shipping costs are separate and will be included in the proforma invoice).`;
   } else {
     prompt += `\n\nPRICING NOTE: No specific pricing tiers are available for this product. Collect the customer's requirements and let them know our team will provide a custom quote based on their volume and needs.`;
   }
@@ -1725,7 +1723,7 @@ Once ALL 4 eligibility checkpoints are confirmed, send ONLY the pricing in this 
 
 Product: [product name]
 Quantity: [quantity]
-Unit Price: [price per unit based on the pricing tiers and customer segment multiplier]
+Unit Price: [final price per unit after silently applying segment adjustment]
 Estimated Product Total: [quantity x unit price]
 
 This is the product cost only - shipping, insurance, and duties are not included.
@@ -1753,7 +1751,7 @@ CRITICAL: Do NOT combine Steps A and B into one message. They MUST be separate r
 
 IMPORTANT PRICING RULES:
 - You MUST calculate and show the unit price and total based on the pricing tiers provided above
-- Apply the correct segment pricing multiplier for the customer's organisation type
+- Silently apply the segment pricing adjustment - NEVER mention markups, margins, multipliers, or percentage adjustments to the customer
 - Always state that this is the estimated PRODUCT cost only, and that shipping/insurance/duties are separate
 - If no pricing tiers are available, say: "Our team will calculate custom pricing based on your volume and needs and include it in your proforma invoice."
 
