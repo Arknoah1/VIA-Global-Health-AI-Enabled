@@ -43,6 +43,7 @@ export const quoteRequests = pgTable("quote_requests", {
   orderQuantity: text("order_quantity"),
   shippingCountry: text("shipping_country"),
   shippingCity: text("shipping_city"),
+  shippingAddress: text("shipping_address"),
   shippingPreference: text("shipping_preference"),
   importAssistance: text("import_assistance"),
   initialIntent: text("initial_intent"),

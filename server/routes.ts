@@ -311,9 +311,9 @@ export async function registerRoutes(
       }
       const allowedFields = [
         "firstName", "lastName", "email", "organizationName",
-        "orderQuantity", "shippingCountry", "shippingCity", "shippingPreference",
-        "importAssistance", "initialIntent", "decisionTimeline", "productName",
-        "productSku", "status"
+        "orderQuantity", "shippingCountry", "shippingCity", "shippingAddress",
+        "shippingPreference", "importAssistance", "initialIntent", "decisionTimeline",
+        "productName", "productSku", "status"
       ];
       const updateData: Record<string, any> = {};
       for (const field of allowedFields) {
@@ -803,6 +803,7 @@ export async function registerRoutes(
         customerName,
         customerEmail: quoteRequest.email,
         customerOrganization: quoteRequest.organizationName,
+        deliveryAddress: quoteRequest.shippingAddress,
         deliveryCountry: quoteRequest.shippingCountry,
         deliveryCity: quoteRequest.shippingCity,
         shippingMethod: quoteRequest.shippingPreference,

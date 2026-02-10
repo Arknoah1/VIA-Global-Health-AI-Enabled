@@ -53,6 +53,7 @@ interface QuoteRequest {
   organizationType: string;
   orderQuantity: string;
   shippingCountry: string;
+  shippingAddress: string;
   importAssistance: string;
   initialIntent: string;
   decisionTimeline: string;
@@ -81,6 +82,7 @@ export default function QuoteRequestsPage() {
     organizationType: "",
     orderQuantity: "",
     shippingCountry: "",
+    shippingAddress: "",
     productName: "",
     status: "",
     decisionTimeline: "",
@@ -221,6 +223,7 @@ export default function QuoteRequestsPage() {
       organizationType: request.organizationType || "",
       orderQuantity: request.orderQuantity || "",
       shippingCountry: request.shippingCountry || "",
+      shippingAddress: request.shippingAddress || "",
       productName: request.productName || "",
       status: request.status || "active",
       decisionTimeline: request.decisionTimeline || "",
@@ -609,6 +612,16 @@ export default function QuoteRequestsPage() {
                   data-testid="input-edit-decisionTimeline"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-shippingAddress">Shipping Address</Label>
+              <Input
+                id="edit-shippingAddress"
+                value={editFormData.shippingAddress}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, shippingAddress: e.target.value }))}
+                placeholder="Full shipping address"
+                data-testid="input-edit-shippingAddress"
+              />
             </div>
           </div>
           <div className="flex justify-end gap-2">
