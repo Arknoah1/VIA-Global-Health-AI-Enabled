@@ -94,10 +94,11 @@ export default function PublicCatalog() {
               <Button 
                 size="lg" 
                 onClick={() => setShowQuoteFlow(true)}
+                className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
                 data-testid="button-request-quote"
               >
                 <MessageSquare className="h-5 w-5 mr-2" />
-                {t("catalog.requestQuote")}
+                Check Bulk Pricing & Availability
               </Button>
             </div>
           </div>

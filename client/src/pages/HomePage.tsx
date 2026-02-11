@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { useTranslation } from "@/i18n/LanguageProvider";
 import { 
   ArrowRight, Building2, Heart, HandshakeIcon, Globe, Zap, Users, Award, 
   ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package,
-  MessageSquare
+  MessageSquare, Stethoscope
 } from "lucide-react";
 
 import africanHealthcareHero from "@/assets/images/african-healthcare-hero.png";
@@ -18,6 +18,19 @@ import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
 export default function HomePage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"distributors" | "providers" | "ngos">("distributors");
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [showStickyCta, setShowStickyCta] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (heroRef.current) {
+        const heroBottom = heroRef.current.getBoundingClientRect().bottom;
+        setShowStickyCta(heroBottom < 0);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const audienceData = useMemo(() => ({
     distributors: {
@@ -127,7 +140,7 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section - Responsiveness Focused */}
-      <section className="container mx-auto px-4 py-16 md:py-20">
+      <section ref={heroRef} className="container mx-auto px-4 py-16 md:py-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="text-center lg:text-left">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
@@ -145,12 +158,15 @@ export default function HomePage() {
                 </Button>
               </Link>
               <Link href="/catalog">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-get-quote">
+                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-teal-600 hover:bg-teal-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" data-testid="button-get-quote">
                   <MessageSquare className="mr-2 h-5 w-5" />
-                  {t("hero.getQuote")}
+                  Check Bulk Pricing & Availability
                 </Button>
               </Link>
             </div>
+            <p className="text-sm text-slate-500 mt-4 text-center lg:text-left">
+              Join 500+ global clinics sourcing through VIA. Response time &lt; 2 mins.
+            </p>
           </div>
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 to-blue-200/30 rounded-3xl transform rotate-3"></div>
@@ -424,6 +440,21 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Sticky CTA */}
+      {showStickyCta && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <Link href="/catalog">
+            <button 
+              className="flex items-center gap-2 px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-full shadow-2xl hover:shadow-teal-500/25 hover:scale-105 transition-all duration-300 text-sm"
+              data-testid="button-get-quote-sticky"
+            >
+              <Stethoscope className="h-4 w-4" />
+              Check Bulk Pricing
+            </button>
+          </Link>
+        </div>
+      )}
 
       <Footer />
     </div>
