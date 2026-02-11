@@ -10,7 +10,7 @@ import {
   Zap, Shield, Leaf, Settings, Package, Award, TrendingUp, Headphones, 
   ChevronDown, ChevronUp, Search, Phone, Mail, Eye, Sparkles,
   Stethoscope, Activity, Heart, Thermometer, FlaskConical, ClipboardCheck,
-  Microscope, Syringe, Briefcase, Pill, Building2
+  Microscope, Syringe, Briefcase, Pill, Building2, ExternalLink
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -874,14 +874,20 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   <p className="text-xs text-muted-foreground mb-2">You might also be interested in:</p>
                   <div className="space-y-2">
                     {recommendedProducts.map((prod) => (
-                      <div 
+                      <a 
                         key={prod.id}
-                        className="p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                        href={`/catalog?search=${encodeURIComponent(prod.name)}&autoOpen=true`}
+                        className="block p-3 rounded-xl border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer group"
                         data-testid={`recommended-product-${prod.id}`}
                       >
-                        <p className="text-sm font-medium">{prod.name}</p>
-                        <p className="text-xs text-muted-foreground">SKU: {prod.sku}</p>
-                      </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium group-hover:text-primary transition-colors">{prod.name}</p>
+                            <p className="text-xs text-muted-foreground">{prod.sku}</p>
+                          </div>
+                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-2" />
+                        </div>
+                      </a>
                     ))}
                   </div>
                 </div>
