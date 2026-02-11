@@ -1080,20 +1080,20 @@ export async function registerRoutes(
       let greeting: string;
       const greetings: Record<string, { returning: (name: string, product: string) => string; new: (product: string) => string }> = {
         en: {
-          returning: (name, product) => `Welcome back, ${name}! I'm Amara from VIA Global Health. Great to see you again. I see you're interested in the ${product}. To get you a quote quickly, may I start with your full name?`,
-          new: (product) => `Hello! I'm Amara from VIA Global Health. I'd love to help you get a quote for the ${product}. To get started, may I have your full name please?`
+          returning: (name, product) => `Welcome back, ${name}! Great to see you again. I see you're interested in the ${product} — a popular choice among our partners. How can I help you today?`,
+          new: (product) => `Hello! I'm Amara from VIA Global Health. The ${product} is trusted by healthcare providers across 40+ countries in Africa. I'd love to help you explore how it could work for your needs — are you looking to equip a facility, stock your distribution, or something else?`
         },
         fr: {
-          returning: (name, product) => `Bienvenue à nouveau, ${name} ! Je suis Amara de VIA Global Health. Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product}. Pour préparer votre devis rapidement, puis-je commencer par votre nom complet ?`,
-          new: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Je serais ravie de vous aider à obtenir un devis pour le ${product}. Pour commencer, puis-je avoir votre nom complet s'il vous plaît ?`
+          returning: (name, product) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product} — un choix populaire parmi nos partenaires. Comment puis-je vous aider aujourd'hui ?`,
+          new: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est utilisé par des professionnels de santé dans plus de 40 pays en Afrique. Je serais ravie de vous aider à découvrir comment il pourrait répondre à vos besoins — cherchez-vous à équiper un établissement, approvisionner votre distribution, ou autre chose ?`
         },
         pt: {
-          returning: (name, product) => `Bem-vindo(a) de volta, ${name}! Sou Amara da VIA Global Health. Que bom ver você novamente. Vejo que está interessado(a) no ${product}. Para preparar sua cotação rapidamente, posso começar com seu nome completo?`,
-          new: (product) => `Olá! Sou Amara da VIA Global Health. Ficarei feliz em ajudá-lo(a) a obter uma cotação para o ${product}. Para começar, posso ter seu nome completo, por favor?`
+          returning: (name, product) => `Bem-vindo(a) de volta, ${name}! Que bom ver você novamente. Vejo que está interessado(a) no ${product} — uma escolha popular entre nossos parceiros. Como posso ajudá-lo(a) hoje?`,
+          new: (product) => `Olá! Sou Amara da VIA Global Health. O ${product} é confiado por profissionais de saúde em mais de 40 países na África. Adoraria ajudá-lo(a) a explorar como ele poderia funcionar para suas necessidades — você está procurando equipar uma instalação, abastecer sua distribuição ou algo mais?`
         },
         sw: {
-          returning: (name, product) => `Karibu tena, ${name}! Mimi ni Amara kutoka VIA Global Health. Ni vizuri kukuona tena. Naona una nia ya ${product}. Ili kukupa nukuu haraka, naweza kuanza na jina lako kamili?`,
-          new: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. Ningependa kukusaidia kupata nukuu ya ${product}. Ili kuanza, naweza kupata jina lako kamili tafadhali?`
+          returning: (name, product) => `Karibu tena, ${name}! Ni vizuri kukuona tena. Naona una nia ya ${product} — chaguo maarufu miongoni mwa washirika wetu. Nawezaje kukusaidia leo?`,
+          new: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} inaaminika na watoa huduma za afya katika nchi zaidi ya 40 barani Afrika. Ningependa kukusaidia kuchunguza jinsi inavyoweza kufanya kazi kwa mahitaji yako — je, unatafuta kuandaa kituo, kujaza usambazaji wako, au kitu kingine?`
         }
       };
       const langGreetings = greetings[lang] || greetings.en;
@@ -1584,11 +1584,17 @@ COMMON OBJECTIONS TO ADDRESS PROACTIVELY:
 2. Product fit ("Is this right for my context?") - Ask questions to understand their needs and provide guidance
 3. Timing/budget constraints ("Can I wait for better options?") - Acknowledge their timeline and emphasise VIA's flexibility
 
+ENGAGEMENT STRATEGY:
+- Your opening message already hooks the customer with product value. After their FIRST response, acknowledge what they said and share ONE more relevant fact before asking for their name.
+- For example: "That's a great area to be working in! [Product name] has helped [relevant fact about the product - reference the product description or specifications]. Before I look into the best options for you, may I have your full name?"
+- This "give before you ask" approach builds trust and keeps the customer engaged.
+
 INFORMATION TO GATHER (ask for each item ONE AT A TIME, in separate messages - NEVER combine two questions):
 
-PHASE 1 - IDENTIFY THE CUSTOMER (collect these FIRST, before any qualifying questions):
-1. Their full name (first and last name) - Ask ONLY for their name. Example: "Welcome! Before we get started, may I have your full name please?"
-2. Their email address - Ask ONLY for email, SEPARATELY after they give their name. Example: "Thanks! And what's the best email address to reach you at?"
+PHASE 1 - ENGAGE THE CUSTOMER (do this FIRST):
+1. Your opening message already contains a product hook and asks what they're looking for. Wait for them to respond.
+2. After their FIRST response, naturally ask for their full name. Example: "That's great to hear! Before I look into options for you, may I have your full name please?"
+3. Their email address - Ask ONLY for email, SEPARATELY after they give their name. Example: "Thanks! And what's the best email address to reach you at?"
 
 PHASE 2 - QUALIFY THE CUSTOMER (ask these AFTER you have name and email):
 3. What type of buyer they are (Distributor, NGO, Private practice clinician, Government/public sector, Academic/researcher)
@@ -1603,9 +1609,10 @@ PHASE 2 - QUALIFY THE CUSTOMER (ask these AFTER you have name and email):
     - Explain the speed vs cost trade-off to help them decide
 
 CONTACT INFORMATION RULES:
-- Collect name and email BEFORE anything else. Do not ask about buyer type, organisation, or product needs until you have both.
+- Let the customer respond to your opening product hook FIRST. Do not ask for their name in the opening message.
+- After their first response, ask for their name. Do not ask about buyer type, organisation, or product needs until you have both name and email.
 - NEVER ask for name and email in the same message. These must be two separate questions in two separate turns.
-- First ask for their name. Wait for their response.
+- After they respond to your hook, ask for their name. Wait for their response.
 - Then in the NEXT message, ask for their email. Example: "Great, thanks! And what's the best email address to send the quote to?"
 - Do not complete the conversation without getting at least their email address.
 
@@ -1660,7 +1667,7 @@ CURRENT CUSTOMER STATE (already collected - do NOT re-ask for these):`;
   if (stateItems.length > 0) {
     stateItems.forEach(item => { prompt += `\n- ${item}`; });
   } else {
-    prompt += `\n- No information collected yet. Start by asking for their name.`;
+    prompt += `\n- No information collected yet. Your opening message already contains a product hook — wait for the customer to respond before asking for their name.`;
   }
 
   prompt += `

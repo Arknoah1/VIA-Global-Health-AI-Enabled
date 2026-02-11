@@ -121,11 +121,21 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
   const [showSupportChat, setShowSupportChat] = useState(false);
   const [autoOpenDismissed, setAutoOpenDismissed] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const chatProgress = useMemo(() => {
+    const userMessages = messages.filter(m => m.role === 'user').length;
+    if (userMessages === 0) return { step: 1, label: "Getting started", total: 4 };
+    if (userMessages <= 2) return { step: 1, label: "Getting to know you", total: 4 };
+    if (userMessages <= 4) return { step: 2, label: "Understanding your needs", total: 4 };
+    if (userMessages <= 7) return { step: 3, label: "Building your quote", total: 4 };
+    return { step: 4, label: "Finalizing details", total: 4 };
+  }, [messages]);
 
   const filteredFaqs = useMemo(() => {
     if (!product?.faqs || !faqSearchQuery.trim()) return product?.faqs || [];
@@ -175,10 +185,22 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   };
 
   useEffect(() => {
-    if (showQuoteDialog && messages.length === 0 && product) {
+    if (showQuoteDialog && messages.length === 0 && product && !quoteRequestId) {
       startQuoteSession();
     }
   }, [showQuoteDialog, product]);
+
+  useEffect(() => {
+    if (product) {
+      setMessages([]);
+      setQuoteRequestId(null);
+      setShowQuickReplies(true);
+      setSpecialPricingEligible(false);
+      setRecommendedProducts([]);
+      setIsConversationComplete(false);
+      setInitError(null);
+    }
+  }, [product?.id]);
 
   useEffect(() => {
     scrollToBottom();
@@ -202,12 +224,52 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
   const handleCloseQuoteDialogWithDismiss = () => {
     setAutoOpenDismissed(true);
-    handleCloseQuoteDialog();
+    setShowQuoteDialog(false);
+  };
+
+  const handleQuickReply = async (text: string) => {
+    if (isLoading || !product || isConversationComplete || !quoteRequestId) return;
+    setShowQuickReplies(false);
+    const userMessage: ChatMessage = { role: 'user', content: text };
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          productDetails: {
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            specifications: product.specifications,
+            faqs: product.faqs,
+            unitsPerPack: product.unitsPerPack,
+            packType: product.packType
+          },
+          language
+        })
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      if (data.specialPricingEligible) setSpecialPricingEligible(true);
+      if (data.recommendedProducts?.length > 0) setRecommendedProducts(data.recommendedProducts);
+      if (data.profileUpdate) saveCustomerProfile(data.profileUpdate);
+      if (data.referToAgent) setIsConversationComplete(true);
+    } catch (error) {
+      console.error('Error sending quick reply:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I'm having trouble responding. Please try again." }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
 
+    setShowQuickReplies(false);
     const userInput = inputValue.trim();
     const userMessage: ChatMessage = { role: 'user', content: userInput };
     setMessages(prev => [...prev, userMessage]);
@@ -280,6 +342,10 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
   const handleCloseQuoteDialog = () => {
     setShowQuoteDialog(false);
+  };
+
+  const handleResetQuoteDialog = () => {
+    setShowQuoteDialog(false);
     setMessages([]);
     setInputValue('');
     setQuoteRequestId(null);
@@ -287,6 +353,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setRecommendedProducts([]);
     setIsConversationComplete(false);
     setInitError(null);
+    setShowQuickReplies(true);
   };
 
   const currentImage = product?.images && product.images.length > 0 
@@ -700,7 +767,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 <button
                   onClick={() => {
                     clearCustomerProfile();
-                    handleCloseQuoteDialog();
+                    handleResetQuoteDialog();
                     setTimeout(() => setShowQuoteDialog(true), 100);
                   }}
                   className="text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded min-h-[44px] flex items-center"
@@ -711,6 +778,22 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               )}
             </div>
             <DialogDescription className="sr-only">AI-powered chat assistant to help you get a custom quote for this product</DialogDescription>
+            {messages.length > 0 && (
+              <div className="mt-2 pt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-medium text-muted-foreground">{chatProgress.label}</span>
+                  <span className="text-[10px] text-muted-foreground">Step {chatProgress.step} of {chatProgress.total}</span>
+                </div>
+                <div className="h-1 bg-muted rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-primary rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(chatProgress.step / chatProgress.total) * 100}%` }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            )}
           </DialogHeader>
 
           {/* Special Pricing Banner */}
@@ -758,6 +841,25 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   </div>
                 </motion.div>
               ))}
+              {showQuickReplies && messages.length === 1 && messages[0]?.role === 'assistant' && !isLoading && (
+                <motion.div 
+                  className="flex flex-wrap gap-2 justify-center pt-2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  {["I'm ready to buy", "I have some questions", "Just exploring options"].map((text) => (
+                    <button
+                      key={text}
+                      onClick={() => handleQuickReply(text)}
+                      className="px-3 py-2 text-xs font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all duration-200"
+                      data-testid={`quick-reply-${text.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-muted rounded-2xl px-4 py-2">
