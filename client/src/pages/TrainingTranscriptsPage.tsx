@@ -54,7 +54,9 @@ interface TrainingTranscript {
 function OutcomeBadge({ outcome }: { outcome: string | null }) {
   if (!outcome) return <Badge variant="outline">Not analyzed</Badge>;
   const colors: Record<string, string> = {
+    won: "bg-green-100 text-green-800",
     sale: "bg-green-100 text-green-800",
+    lost: "bg-red-100 text-red-800",
     no_sale: "bg-red-100 text-red-800",
     pending: "bg-yellow-100 text-yellow-800",
     referred: "bg-blue-100 text-blue-800",
@@ -323,6 +325,25 @@ export default function TrainingTranscriptsPage() {
     },
   });
 
+  const updateOutcomeMutation = useMutation({
+    mutationFn: async ({ id, outcome }: { id: string; outcome: string }) => {
+      const res = await fetch(`/api/training-transcripts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome }),
+      });
+      if (!res.ok) throw new Error("Failed to update outcome");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-transcripts"] });
+      toast({ title: "Outcome updated" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update outcome", variant: "destructive" });
+    },
+  });
+
   const filtered = transcripts.filter((t) => {
     const matchesSearch = !searchQuery ||
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -382,9 +403,9 @@ export default function TrainingTranscriptsPage() {
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="unprocessed">Not analyzed</SelectItem>
-                <SelectItem value="sale">Sale</SelectItem>
-                <SelectItem value="no_sale">No Sale</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="won">Won</SelectItem>
+                <SelectItem value="lost">Lost</SelectItem>
                 <SelectItem value="referred">Referred</SelectItem>
               </SelectContent>
             </Select>
@@ -415,7 +436,33 @@ export default function TrainingTranscriptsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-medium truncate">{t.title}</h3>
-                          <OutcomeBadge outcome={t.outcome} />
+                          <Select
+                            value={t.outcome || "__none__"}
+                            onValueChange={(value) => updateOutcomeMutation.mutate({ id: t.id, outcome: value })}
+                          >
+                            <SelectTrigger
+                              className={`h-6 w-auto min-w-[90px] text-xs font-medium border-0 px-2 py-0 gap-1 rounded-full ${
+                                {
+                                  won: "bg-green-100 text-green-800 hover:bg-green-200",
+                                  lost: "bg-red-100 text-red-800 hover:bg-red-200",
+                                  pending: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+                                  referred: "bg-blue-100 text-blue-800 hover:bg-blue-200",
+                                  sale: "bg-green-100 text-green-800 hover:bg-green-200",
+                                  no_sale: "bg-red-100 text-red-800 hover:bg-red-200",
+                                  __none__: "bg-gray-100 text-gray-500 hover:bg-gray-200",
+                                }[t.outcome || "__none__"] || "bg-gray-100 text-gray-800"
+                              }`}
+                              data-testid={`select-outcome-${t.id}`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="won">Won</SelectItem>
+                              <SelectItem value="lost">Lost</SelectItem>
+                              <SelectItem value="referred">Referred</SelectItem>
+                            </SelectContent>
+                          </Select>
                           {t.isProcessed && (
                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                               <Brain className="h-3 w-3 mr-1" />
