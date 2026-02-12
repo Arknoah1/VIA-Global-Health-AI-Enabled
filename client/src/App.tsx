@@ -16,6 +16,7 @@ const QuoteTrackingPage = lazy(() => import("@/pages/QuoteTrackingPage"));
 const ProductPricingPage = lazy(() => import("@/pages/ProductPricingPage"));
 const TrainingTranscriptsPage = lazy(() => import("@/pages/TrainingTranscriptsPage"));
 const AdminLoginPage = lazy(() => import("@/pages/AdminLoginPage"));
+const ProductPage = lazy(() => import("@/pages/ProductPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function PageLoader() {
@@ -60,6 +61,7 @@ function Router() {
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/catalog" component={PublicCatalog} />
+        <Route path="/products/:slug" component={ProductPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/track-quote" component={QuoteTrackingPage} />
         <Route path="/admin">

@@ -15,6 +15,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/browsingHistory";
+import { slugify } from "@/lib/slugify";
 import { getCustomerProfile, saveCustomerProfile, clearCustomerProfile } from "@/lib/customerProfile";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -873,7 +874,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     {recommendedProducts.map((prod) => (
                       <a 
                         key={prod.id}
-                        href={`/catalog?search=${encodeURIComponent(prod.name)}&autoOpen=true`}
+                        href={`/products/${slugify(prod.name)}`}
                         className="block p-3 rounded-xl border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer group"
                         data-testid={`recommended-product-${prod.id}`}
                       >

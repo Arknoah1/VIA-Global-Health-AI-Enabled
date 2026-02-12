@@ -141,6 +141,29 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/products/by-slug/:slug", async (req, res) => {
+    try {
+      const slug = req.params.slug;
+      const allProducts = await storage.getAllProducts();
+      const product = allProducts.find(p => {
+        const productSlug = p.name
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/[\s_]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .replace(/-{2,}/g, '-');
+        return productSlug === slug;
+      });
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      res.json(product);
+    } catch (error) {
+      console.error("Error fetching product by slug:", error);
+      res.status(500).json({ error: "Failed to fetch product" });
+    }
+  });
+
   // Get single product by ID - with cache headers
   app.get("/api/products/:id", async (req, res) => {
     try {
