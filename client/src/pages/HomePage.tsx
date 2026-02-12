@@ -86,21 +86,21 @@ export default function HomePage() {
       description: "Life-saving device for treating obstetric hemorrhage and hypovolemic shock",
       category: "Maternal Health",
       image: "/images/products/nasg.jpg",
-      searchQuery: "NASG"
+      slug: "lifewrap-non-pneumatic-anti-shock-garment-nasg-size-mediumlarge"
     },
     {
       name: "Thermocoagulator",
       description: "Portable device for cervical cancer treatment using thermal ablation",
       category: "Oncology",
       image: "/images/products/thermocoagulator.png",
-      searchQuery: "Thermocoagulator"
+      slug: "thermocoagulator"
     },
     {
       name: "MTTS Beluga CPAP",
       description: "Affordable CPAP system designed for low-resource settings",
       category: "Neonatal Care",
       image: "/images/products/beluga-cpap.jpg",
-      searchQuery: "MTTS Beluga"
+      slug: "mtts-beluga-resuscitator"
     }
   ];
 
@@ -212,7 +212,7 @@ export default function HomePage() {
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {heroProducts.map((product, idx) => (
-            <Link key={idx} href={`/catalog?search=${encodeURIComponent(product.searchQuery)}&autoOpen=true`}>
+            <Link key={idx} href={`/products/${product.slug}`}>
               <Card className="h-full overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 hover:border-primary/30" data-testid={`card-hero-product-${idx}`}>
                 <div className="aspect-[4/3] overflow-hidden bg-slate-100">
                   <img 

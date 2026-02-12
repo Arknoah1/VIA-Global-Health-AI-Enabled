@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Eye, MoreHorizontal } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "@/i18n/LanguageProvider";
+import { useLocation } from "wouter";
+import { slugify } from "@/lib/slugify";
 
 interface ProductCardProps {
   product: Product;
@@ -12,6 +14,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLDivElement>(null);
@@ -37,7 +40,7 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
   return (
     <Card 
       className="overflow-hidden transition-all hover:shadow-md cursor-pointer group"
-      onClick={() => onSelectProduct?.(product)}
+      onClick={() => setLocation(`/products/${slugify(product.name)}`)}
     >
       <div ref={imgRef} className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
         {!imageLoaded && (
