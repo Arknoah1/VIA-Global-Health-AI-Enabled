@@ -9,6 +9,8 @@ import { useTranslation } from "@/i18n/LanguageProvider";
 import { Product } from "@/lib/types";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { useEffect } from "react";
+import { trackProductView } from "@/lib/analytics";
+import { slugify } from "@/lib/slugify";
 
 export default function ProductPage() {
   const { t } = useTranslation();
@@ -28,6 +30,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (product) {
+      trackProductView({ name: product.name, category: product.category, sku: product.sku, slug });
       document.title = `${product.name} | VIA Global Health`;
       const metaDesc = document.querySelector('meta[name="description"]');
       if (metaDesc) {

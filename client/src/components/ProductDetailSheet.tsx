@@ -17,6 +17,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/browsingHistory";
 import { slugify } from "@/lib/slugify";
 import { getCustomerProfile, saveCustomerProfile, clearCustomerProfile } from "@/lib/customerProfile";
+import { trackCtaClick, trackQuoteStarted, trackQuoteSubmitted, trackChatMessage } from "@/lib/analytics";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
@@ -173,6 +174,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       const data = await response.json();
       setQuoteRequestId(data.quoteRequestId);
       setMessages([{ role: 'assistant', content: data.message }]);
+      trackQuoteStarted(product.name);
     } catch (error) {
       console.error('Error starting quote session:', error);
       setInitError(t("productDetail.connectionError"));
@@ -234,6 +236,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     const userMessage: ChatMessage = { role: 'user', content: text };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    trackChatMessage(messages.length);
     try {
       const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
         method: 'POST',
@@ -258,7 +261,10 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       if (data.specialPricingEligible) setSpecialPricingEligible(true);
       if (data.recommendedProducts?.length > 0) setRecommendedProducts(data.recommendedProducts);
       if (data.profileUpdate) saveCustomerProfile(data.profileUpdate);
-      if (data.referToAgent) setIsConversationComplete(true);
+      if (data.referToAgent) {
+        setIsConversationComplete(true);
+        trackQuoteSubmitted(quoteRequestId, 1);
+      }
     } catch (error) {
       console.error('Error sending quick reply:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I'm having trouble responding. Please try again." }]);
@@ -276,6 +282,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
+    trackChatMessage(messages.length);
 
     try {
       if (!quoteRequestId) {
@@ -329,6 +336,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       
       if (data.referToAgent) {
         setIsConversationComplete(true);
+        if (quoteRequestId) trackQuoteSubmitted(quoteRequestId, 1);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -736,7 +744,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           <Button 
             className="w-full h-12 sm:h-12 text-sm sm:text-base font-semibold bg-teal-600 hover:bg-teal-700 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
             data-testid="button-request-quote-unified"
-            onClick={() => setShowQuoteDialog(true)}
+            onClick={() => { trackCtaClick("product_detail", product?.name); setShowQuoteDialog(true); }}
           >
             <Stethoscope className="mr-2 h-5 w-5" />
             Check Bulk Pricing & Availability

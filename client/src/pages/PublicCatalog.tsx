@@ -13,6 +13,7 @@ import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 import { SmartQuoteFlow } from "@/components/SmartQuoteFlow";
 import { RecommendedProducts } from "@/components/RecommendedProducts";
 import { useTranslation } from "@/i18n/LanguageProvider";
+import { trackCatalogView, trackCtaClick } from "@/lib/analytics";
 
 export default function PublicCatalog() {
   const { t } = useTranslation();
@@ -34,6 +35,10 @@ export default function PublicCatalog() {
       return response.json();
     },
   });
+
+  useEffect(() => {
+    trackCatalogView(initialSearch || undefined, undefined);
+  }, []);
 
   useEffect(() => {
     if (autoOpen && !isLoading && products.length > 0 && initialSearch) {
@@ -93,7 +98,7 @@ export default function PublicCatalog() {
               </div>
               <Button 
                 size="lg" 
-                onClick={() => setShowQuoteFlow(true)}
+                onClick={() => { trackCtaClick("catalog_header"); setShowQuoteFlow(true); }}
                 className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
                 data-testid="button-request-quote"
               >

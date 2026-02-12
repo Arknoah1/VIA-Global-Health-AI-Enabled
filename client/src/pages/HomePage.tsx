@@ -10,6 +10,7 @@ import {
   ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package,
   MessageSquare, Stethoscope
 } from "lucide-react";
+import { trackCtaClick } from "@/lib/analytics";
 
 import africanHealthcareHero from "@/assets/images/african-healthcare-hero.png";
 import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
@@ -158,7 +159,7 @@ export default function HomePage() {
                 </Button>
               </Link>
               <Link href="/catalog">
-                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-teal-600 hover:bg-teal-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" data-testid="button-get-quote">
+                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-teal-600 hover:bg-teal-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" data-testid="button-get-quote" onClick={() => trackCtaClick("hero_section")}>
                   <MessageSquare className="mr-2 h-5 w-5" />
                   Check Bulk Pricing & Availability
                 </Button>
@@ -448,6 +449,7 @@ export default function HomePage() {
             <button 
               className="flex items-center gap-2 px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-full shadow-2xl hover:shadow-teal-500/25 hover:scale-105 transition-all duration-300 text-sm"
               data-testid="button-get-quote-sticky"
+              onClick={() => trackCtaClick("sticky_footer")}
             >
               <Stethoscope className="h-4 w-4" />
               Check Bulk Pricing
