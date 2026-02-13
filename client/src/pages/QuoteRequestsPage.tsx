@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,9 @@ import {
   Pencil,
   Trash2,
   X,
-  Check
+  Check,
+  Brain,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -62,6 +64,7 @@ interface QuoteRequest {
   conversation: ChatMessage[];
   status: string;
   createdAt: string;
+  aiReview?: any;
 }
 
 export default function QuoteRequestsPage() {
@@ -87,6 +90,8 @@ export default function QuoteRequestsPage() {
     status: "",
     decisionTimeline: "",
   });
+  const [aiReviews, setAiReviews] = useState<Record<string, any>>({});
+  const [loadingAiReviews, setLoadingAiReviews] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -186,6 +191,72 @@ export default function QuoteRequestsPage() {
       toast({ title: "Error", description: "Failed to delete quote request.", variant: "destructive" });
     },
   });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await fetch(`/api/quote-requests/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) throw new Error("Failed to update status");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quoteRequests"] });
+      toast({ title: "Status Updated", description: "Quote request status has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
+    },
+  });
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case "in_progress": return "bg-yellow-100 text-yellow-800";
+      case "closed_won": return "bg-green-100 text-green-800";
+      case "closed_lost": return "bg-red-100 text-red-800";
+      case "active":
+      default: return "bg-blue-100 text-blue-800";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "in_progress": return "In Progress";
+      case "closed_won": return "Closed Won";
+      case "closed_lost": return "Closed Lost";
+      case "active":
+      default: return "Active";
+    }
+  };
+
+  const fetchAiReview = async (requestId: string) => {
+    if (aiReviews[requestId] || loadingAiReviews[requestId]) return;
+    setLoadingAiReviews(prev => ({ ...prev, [requestId]: true }));
+    try {
+      const response = await fetch(`/api/quote-requests/${requestId}/ai-review`);
+      if (response.ok) {
+        const data = await response.json();
+        setAiReviews(prev => ({ ...prev, [requestId]: data.aiReview || null }));
+      } else {
+        setAiReviews(prev => ({ ...prev, [requestId]: null }));
+      }
+    } catch {
+      setAiReviews(prev => ({ ...prev, [requestId]: null }));
+    } finally {
+      setLoadingAiReviews(prev => ({ ...prev, [requestId]: false }));
+    }
+  };
+
+  useEffect(() => {
+    if (expandedId) {
+      const request = requests.find(r => r.id === expandedId);
+      if (request && (request.status === "closed_won" || request.status === "closed_lost")) {
+        fetchAiReview(expandedId);
+      }
+    }
+  }, [expandedId, requests]);
 
   const handleGenerateInvoice = (request: QuoteRequest) => {
     setSelectedRequest(request);
@@ -310,15 +381,10 @@ export default function QuoteRequestsPage() {
                       <div>
                         <div className="text-sm text-muted-foreground">Status</div>
                         <Badge 
-                          variant={
-                            request.status === 'converted' ? 'default' :
-                            request.status === 'responded' ? 'secondary' :
-                            request.status === 'closed' ? 'outline' :
-                            'default'
-                          }
+                          className={getStatusBadgeClass(request.status || 'active')}
                           data-testid={`badge-status-${request.id}`}
                         >
-                          {request.status || 'active'}
+                          {getStatusLabel(request.status || 'active')}
                         </Badge>
                       </div>
                     </div>
@@ -344,7 +410,40 @@ export default function QuoteRequestsPage() {
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Status</div>
-                          <Badge variant={request.status === 'active' ? 'default' : 'outline'}>{request.status || 'active'}</Badge>
+                          <Select
+                            value={request.status || 'active'}
+                            onValueChange={(value) => updateStatusMutation.mutate({ id: request.id, status: value })}
+                          >
+                            <SelectTrigger className="w-[160px] h-8" data-testid={`select-status-${request.id}`}>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active" data-testid={`select-status-option-active-${request.id}`}>
+                                <span className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                  Active
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="in_progress" data-testid={`select-status-option-in_progress-${request.id}`}>
+                                <span className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                                  In Progress
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="closed_won" data-testid={`select-status-option-closed_won-${request.id}`}>
+                                <span className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                                  Closed Won
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="closed_lost" data-testid={`select-status-option-closed_lost-${request.id}`}>
+                                <span className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                                  Closed Lost
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Shipping Country</div>
@@ -421,6 +520,78 @@ export default function QuoteRequestsPage() {
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
+
+                      {(request.status === "closed_won" || request.status === "closed_lost") && (
+                        <div className="border-t pt-4 mt-4" data-testid={`ai-review-section-${request.id}`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Brain className="h-5 w-5 text-purple-600" />
+                            <h3 className="font-semibold text-sm">AI Review</h3>
+                          </div>
+                          {loadingAiReviews[request.id] ? (
+                            <div className="flex items-center gap-2 text-muted-foreground" data-testid={`ai-review-loading-${request.id}`}>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span className="text-sm">Loading AI review...</span>
+                            </div>
+                          ) : aiReviews[request.id] ? (
+                            <div className="space-y-3" data-testid={`ai-review-content-${request.id}`}>
+                              {aiReviews[request.id].summary && (
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Summary</div>
+                                  <p className="text-sm" data-testid={`ai-review-summary-${request.id}`}>{aiReviews[request.id].summary}</p>
+                                </div>
+                              )}
+                              {aiReviews[request.id].customerSentiment && (
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Customer Sentiment</div>
+                                  <Badge className="bg-purple-100 text-purple-800" data-testid={`ai-review-sentiment-${request.id}`}>
+                                    {aiReviews[request.id].customerSentiment}
+                                  </Badge>
+                                </div>
+                              )}
+                              {aiReviews[request.id].keyFactors && aiReviews[request.id].keyFactors.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Key Factors</div>
+                                  <div className="flex flex-wrap gap-1" data-testid={`ai-review-factors-${request.id}`}>
+                                    {aiReviews[request.id].keyFactors.map((factor: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-xs" data-testid={`ai-review-factor-${request.id}-${idx}`}>
+                                        {factor}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {aiReviews[request.id].whatWorked && aiReviews[request.id].whatWorked.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">What Worked</div>
+                                  <div className="flex flex-wrap gap-1" data-testid={`ai-review-worked-${request.id}`}>
+                                    {aiReviews[request.id].whatWorked.map((item: string, idx: number) => (
+                                      <Badge key={idx} className="bg-green-100 text-green-800 text-xs" data-testid={`ai-review-worked-item-${request.id}-${idx}`}>
+                                        {item}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {aiReviews[request.id].whatCouldImprove && aiReviews[request.id].whatCouldImprove.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">What Could Improve</div>
+                                  <div className="flex flex-wrap gap-1" data-testid={`ai-review-improve-${request.id}`}>
+                                    {aiReviews[request.id].whatCouldImprove.map((item: string, idx: number) => (
+                                      <Badge key={idx} className="bg-orange-100 text-orange-800 text-xs" data-testid={`ai-review-improve-item-${request.id}-${idx}`}>
+                                        {item}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic" data-testid={`ai-review-pending-${request.id}`}>
+                              AI review pending...
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

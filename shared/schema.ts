@@ -57,6 +57,7 @@ export const quoteRequests = pgTable("quote_requests", {
   referredToAgent: boolean("referred_to_agent").default(false),
   referralReason: text("referral_reason"),
   conversation: jsonb("conversation").notNull().default(sql`'[]'::jsonb`),
+  aiReview: jsonb("ai_review"),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -232,3 +233,23 @@ export const insertTrainingTranscriptSchema = createInsertSchema(trainingTranscr
 
 export type InsertTrainingTranscript = z.infer<typeof insertTrainingTranscriptSchema>;
 export type TrainingTranscript = typeof trainingTranscripts.$inferSelect;
+
+export const salesInsights = pgTable("sales_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteRequestId: varchar("quote_request_id").references(() => quoteRequests.id),
+  insightType: varchar("insight_type", { length: 30 }).notNull(),
+  insight: text("insight").notNull(),
+  category: text("category"),
+  region: text("region"),
+  customerType: text("customer_type"),
+  productCategory: text("product_category"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertSalesInsightSchema = createInsertSchema(salesInsights).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSalesInsight = z.infer<typeof insertSalesInsightSchema>;
+export type SalesInsight = typeof salesInsights.$inferSelect;

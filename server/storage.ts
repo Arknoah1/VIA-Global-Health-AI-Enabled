@@ -6,7 +6,8 @@ import {
   type ProductRestrictedCountry, type InsertProductRestrictedCountry, productRestrictedCountries,
   type CustomerSegment, type InsertCustomerSegment, customerSegments,
   type ProformaInvoice, type InsertProformaInvoice, proformaInvoices,
-  type TrainingTranscript, type InsertTrainingTranscript, trainingTranscripts
+  type TrainingTranscript, type InsertTrainingTranscript, trainingTranscripts,
+  type SalesInsight, type InsertSalesInsight, salesInsights
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
@@ -61,6 +62,11 @@ export interface IStorage {
   deleteTrainingTranscript(id: string): Promise<void>;
   getAllTrainingTranscripts(): Promise<TrainingTranscript[]>;
   getProcessedTrainingTranscripts(): Promise<TrainingTranscript[]>;
+
+  createSalesInsight(insight: InsertSalesInsight): Promise<SalesInsight>;
+  createSalesInsightsBulk(insights: InsertSalesInsight[]): Promise<SalesInsight[]>;
+  getSalesInsights(filters?: { customerType?: string; region?: string; productCategory?: string }): Promise<SalesInsight[]>;
+  getSalesInsightsByQuoteRequest(quoteRequestId: string): Promise<SalesInsight[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -343,6 +349,30 @@ export class DatabaseStorage implements IStorage {
       .from(trainingTranscripts)
       .where(eq(trainingTranscripts.isProcessed, true))
       .orderBy(desc(trainingTranscripts.createdAt));
+  }
+
+  async createSalesInsight(insight: InsertSalesInsight): Promise<SalesInsight> {
+    const result = await db.insert(salesInsights).values(insight).returning();
+    return result[0];
+  }
+
+  async createSalesInsightsBulk(insights: InsertSalesInsight[]): Promise<SalesInsight[]> {
+    if (insights.length === 0) return [];
+    const result = await db.insert(salesInsights).values(insights).returning();
+    return result;
+  }
+
+  async getSalesInsights(filters?: { customerType?: string; region?: string; productCategory?: string }): Promise<SalesInsight[]> {
+    let query = db.select().from(salesInsights).orderBy(desc(salesInsights.createdAt));
+    return await query.limit(50);
+  }
+
+  async getSalesInsightsByQuoteRequest(quoteRequestId: string): Promise<SalesInsight[]> {
+    return await db
+      .select()
+      .from(salesInsights)
+      .where(eq(salesInsights.quoteRequestId, quoteRequestId))
+      .orderBy(desc(salesInsights.createdAt));
   }
 }
 
