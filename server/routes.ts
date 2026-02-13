@@ -348,10 +348,38 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No valid fields to update" });
       }
       const updated = await storage.updateQuoteRequest(req.params.id, updateData);
+
+      if (updateData.status && (updateData.status === "closed_won" || updateData.status === "closed_lost")) {
+        generateAIReview(req.params.id, updateData.status).catch(err => {
+          console.error("[AI Review] Error generating review from edit:", err);
+        });
+      }
+
       res.json(updated);
     } catch (error) {
       console.error("Error updating quote request:", error);
       res.status(500).json({ error: "Failed to update quote request" });
+    }
+  });
+
+  app.post("/api/quote-requests/:id/generate-review", requireAdmin, async (req, res) => {
+    try {
+      const quoteRequest = await storage.getQuoteRequestById(req.params.id);
+      if (!quoteRequest) {
+        return res.status(404).json({ error: "Quote request not found" });
+      }
+      if (quoteRequest.status !== "closed_won" && quoteRequest.status !== "closed_lost") {
+        return res.status(400).json({ error: "Can only generate reviews for closed quote requests" });
+      }
+
+      generateAIReview(req.params.id, quoteRequest.status).catch(err => {
+        console.error("[AI Review] Error generating review (manual):", err);
+      });
+
+      res.json({ message: "AI review generation started" });
+    } catch (error) {
+      console.error("Error triggering AI review:", error);
+      res.status(500).json({ error: "Failed to trigger AI review" });
     }
   });
 
@@ -2242,15 +2270,35 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
 }
 
 async function generateAIReview(quoteRequestId: string, outcome: string) {
+  console.log(`[AI Review] Starting review for ${quoteRequestId} (${outcome})`);
+  
   const quoteRequest = await storage.getQuoteRequestById(quoteRequestId);
-  if (!quoteRequest) return;
+  if (!quoteRequest) {
+    console.log(`[AI Review] Quote request ${quoteRequestId} not found, skipping`);
+    return;
+  }
 
   const messages = await storage.getQuoteRequestMessages(quoteRequestId);
-  if (messages.length === 0) return;
+  
+  const inlineConversation = Array.isArray(quoteRequest.conversation) ? quoteRequest.conversation as any[] : [];
+  
+  if (messages.length === 0 && inlineConversation.length === 0) {
+    console.log(`[AI Review] No messages found for ${quoteRequestId}, skipping`);
+    return;
+  }
 
-  const conversationText = messages
-    .map(m => `${m.role === "user" ? "Customer" : "Amara"}: ${m.content}`)
-    .join("\n");
+  let conversationText: string;
+  if (messages.length > 0) {
+    conversationText = messages
+      .map(m => `${m.role === "user" ? "Customer" : "Amara"}: ${m.content}`)
+      .join("\n");
+  } else {
+    conversationText = inlineConversation
+      .map((m: any) => `${m.role === "user" ? "Customer" : "Amara"}: ${m.content}`)
+      .join("\n");
+  }
+
+  console.log(`[AI Review] Conversation has ${messages.length} messages (${inlineConversation.length} inline). Calling OpenAI...`);
 
   const prompt = `You are an expert sales analyst for VIA Global Health, a medical equipment supplier serving Africa.
 

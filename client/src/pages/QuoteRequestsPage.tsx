@@ -211,6 +211,27 @@ export default function QuoteRequestsPage() {
     },
   });
 
+  const regenerateReviewMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/quote-requests/${id}/generate-review`, {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Failed to trigger AI review");
+      return response.json();
+    },
+    onSuccess: (_, id) => {
+      toast({ title: "AI Review Started", description: "The review is being generated. Refresh in a few seconds to see results." });
+      setAiReviews(prev => ({ ...prev, [id]: undefined }));
+      setLoadingAiReviews(prev => ({ ...prev, [id]: false }));
+      setTimeout(() => {
+        fetchAiReview(id);
+      }, 10000);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to start AI review.", variant: "destructive" });
+    },
+  });
+
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "in_progress": return "bg-yellow-100 text-yellow-800";
@@ -586,9 +607,25 @@ export default function QuoteRequestsPage() {
                               )}
                             </div>
                           ) : (
-                            <p className="text-sm text-muted-foreground italic" data-testid={`ai-review-pending-${request.id}`}>
-                              AI review pending...
-                            </p>
+                            <div className="flex items-center gap-3" data-testid={`ai-review-pending-${request.id}`}>
+                              <p className="text-sm text-muted-foreground italic">
+                                AI review pending...
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => regenerateReviewMutation.mutate(request.id)}
+                                disabled={regenerateReviewMutation.isPending}
+                                data-testid={`button-regenerate-review-${request.id}`}
+                              >
+                                {regenerateReviewMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Brain className="h-3 w-3 mr-1" />
+                                )}
+                                Generate Review
+                              </Button>
+                            </div>
                           )}
                         </div>
                       )}
