@@ -139,9 +139,9 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link href="/catalog">
-                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-view-products">
-                  {t("hero.viewProducts")}
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                <Button size="lg" className="w-full sm:w-auto text-xl px-10 py-7 bg-teal-600 hover:bg-teal-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 font-semibold" data-testid="button-view-products">
+                  Explore Our Catalog
+                  <ArrowRight className="ml-2 h-6 w-6" />
                 </Button>
               </Link>
             </div>
