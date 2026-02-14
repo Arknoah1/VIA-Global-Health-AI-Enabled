@@ -739,6 +739,20 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
           </div>
         </div>
 
+        {/* Sticky Action Footer with Unified CTA */}
+        <div className="sticky bottom-0 p-3 sm:p-6 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm border-t space-y-1.5 sm:space-y-2">
+          <Button 
+            className="w-full h-12 sm:h-12 text-sm sm:text-base font-semibold bg-teal-600 hover:bg-teal-700 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
+            data-testid="button-request-quote-unified"
+            onClick={() => { trackCtaClick("product_detail", product?.name); setShowQuoteDialog(true); }}
+          >
+            <Stethoscope className="mr-2 h-5 w-5" />
+            Check Bulk Pricing & Availability
+          </Button>
+          <p className="text-[11px] sm:text-xs text-center text-muted-foreground">
+            Join 500+ global clinics sourcing through VIA. Response time &lt; 2 mins.
+          </p>
+        </div>
       </SheetContent>
 
       {/* AI Quote Assistant Dialog - Chat with Amara */}

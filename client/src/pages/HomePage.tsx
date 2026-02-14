@@ -7,8 +7,11 @@ import { Footer } from "@/components/Footer";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { 
   ArrowRight, Building2, Heart, HandshakeIcon, Globe, Zap, Users, Award, 
-  ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package
+  ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package,
+  MessageSquare, Stethoscope
 } from "lucide-react";
+import { trackCtaClick } from "@/lib/analytics";
+import { AmaraChatDialog } from "@/components/AmaraChatDialog";
 
 import africanHealthcareHero from "@/assets/images/african-healthcare-hero.png";
 import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
@@ -19,6 +22,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"distributors" | "providers" | "ngos">("distributors");
   const heroRef = useRef<HTMLDivElement>(null);
   const [showStickyCta, setShowStickyCta] = useState(false);
+  const [showAmaraChat, setShowAmaraChat] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -151,11 +155,15 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link href="/catalog">
-                <Button size="lg" className="w-full sm:w-auto text-xl px-10 py-7 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" data-testid="button-view-products">
+                <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6" data-testid="button-view-products">
                   {t("hero.viewProducts")}
-                  <ArrowRight className="ml-2 h-6 w-6" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
+              <Button size="lg" className="w-full sm:w-auto text-lg px-8 py-6 bg-teal-600 hover:bg-teal-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300" data-testid="button-get-quote" onClick={() => { trackCtaClick("hero_section"); setShowAmaraChat(true); }}>
+                <MessageSquare className="mr-2 h-5 w-5" />
+                Check Bulk Pricing & Availability
+              </Button>
             </div>
             <p className="text-sm text-slate-500 mt-4 text-center lg:text-left">
               Join 500+ global clinics sourcing through VIA. Response time &lt; 2 mins.
@@ -433,6 +441,22 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Sticky CTA */}
+      {showStickyCta && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
+          <button 
+            className="flex items-center gap-2 px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-full shadow-2xl hover:shadow-teal-500/25 hover:scale-105 transition-all duration-300 text-sm"
+            data-testid="button-get-quote-sticky"
+            onClick={() => { trackCtaClick("sticky_footer"); setShowAmaraChat(true); }}
+          >
+            <Stethoscope className="h-4 w-4" />
+            Check Bulk Pricing
+          </button>
+        </div>
+      )}
+
+      <AmaraChatDialog isOpen={showAmaraChat} onClose={() => setShowAmaraChat(false)} />
 
       <Footer />
     </div>
