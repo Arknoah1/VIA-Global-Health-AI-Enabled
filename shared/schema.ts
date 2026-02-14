@@ -35,7 +35,7 @@ export type Product = typeof products.$inferSelect;
 export const quoteRequests = pgTable("quote_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").references(() => products.id),
-  productName: text("product_name").notNull(),
+  productName: text("product_name"),
   productSku: text("product_sku"),
   firstName: text("first_name"),
   lastName: text("last_name"),
