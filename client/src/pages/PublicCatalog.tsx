@@ -5,15 +5,14 @@ import { Product } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { Search, MessageSquare } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailSheet } from "@/components/ProductDetailSheet";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
-import { AmaraChatDialog } from "@/components/AmaraChatDialog";
 import { RecommendedProducts } from "@/components/RecommendedProducts";
 import { useTranslation } from "@/i18n/LanguageProvider";
-import { trackCatalogView, trackCtaClick } from "@/lib/analytics";
+import { trackCatalogView } from "@/lib/analytics";
 
 export default function PublicCatalog() {
   const { t } = useTranslation();
@@ -25,7 +24,6 @@ export default function PublicCatalog() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [showQuoteFlow, setShowQuoteFlow] = useState(false);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products"],
@@ -96,15 +94,6 @@ export default function PublicCatalog() {
                 <h1 className="text-3xl font-bold text-primary mb-2">{t("catalog.title")}</h1>
                 <p className="text-muted-foreground">{t("catalog.subtitle")}</p>
               </div>
-              <Button 
-                size="lg" 
-                onClick={() => { trackCtaClick("catalog_header"); setShowQuoteFlow(true); }}
-                className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-                data-testid="button-request-quote"
-              >
-                <MessageSquare className="h-5 w-5 mr-2" />
-                Check Bulk Pricing & Availability
-              </Button>
             </div>
           </div>
         </header>
@@ -173,11 +162,6 @@ export default function PublicCatalog() {
           onClose={() => setSelectedProduct(null)}
         />
 
-        {/* Amara Chat Dialog */}
-        <AmaraChatDialog
-          isOpen={showQuoteFlow}
-          onClose={() => setShowQuoteFlow(false)}
-        />
       </main>
 
       <Footer />
