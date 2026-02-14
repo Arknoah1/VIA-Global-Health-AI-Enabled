@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailSheet } from "@/components/ProductDetailSheet";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
-import { SmartQuoteFlow } from "@/components/SmartQuoteFlow";
+import { AmaraChatDialog } from "@/components/AmaraChatDialog";
 import { RecommendedProducts } from "@/components/RecommendedProducts";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { trackCatalogView, trackCtaClick } from "@/lib/analytics";
@@ -173,8 +173,8 @@ export default function PublicCatalog() {
           onClose={() => setSelectedProduct(null)}
         />
 
-        {/* Smart Quote Flow */}
-        <SmartQuoteFlow
+        {/* Amara Chat Dialog */}
+        <AmaraChatDialog
           isOpen={showQuoteFlow}
           onClose={() => setShowQuoteFlow(false)}
         />

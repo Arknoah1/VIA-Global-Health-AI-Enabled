@@ -1150,21 +1150,17 @@ export async function registerRoutes(
   app.post("/api/quote-requests/start", async (req, res) => {
     try {
       const { productId, productName, productSku, customerProfile, language } = req.body;
-      
-      if (!productId || !productName) {
-        return res.status(400).json({ error: "productId and productName are required" });
-      }
 
       const lang = language || "en";
 
       // Pre-populate from returning customer profile if available
       const initialData: Record<string, unknown> = {
-        productId,
-        productName,
-        productSku,
         conversation: [],
         status: "active"
       };
+      if (productId) initialData.productId = productId;
+      if (productName) initialData.productName = productName;
+      if (productSku) initialData.productSku = productSku;
 
       if (customerProfile) {
         if (customerProfile.firstName) initialData.firstName = customerProfile.firstName;
@@ -1200,7 +1196,30 @@ export async function registerRoutes(
         }
       };
       const langGreetings = greetings[lang] || greetings.en;
-      if (customerProfile?.firstName) {
+      if (!productName) {
+        const generalGreetings: Record<string, { returning: (name: string) => string; new: () => string }> = {
+          en: {
+            returning: (name) => `Welcome back, ${name}! Great to see you again. I'm Amara from VIA Global Health. How can I help you today? Whether you need medical equipment, pharmaceuticals, or want to check pricing on any of our products — I'm here to assist.`,
+            new: () => `Hello! I'm Amara from VIA Global Health. We supply medical equipment and pharmaceuticals to healthcare providers, distributors, and NGOs across Africa. What are you looking for today? I can help with product information, bulk pricing, or anything else you need.`
+          },
+          fr: {
+            returning: (name) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je suis Amara de VIA Global Health. Comment puis-je vous aider aujourd'hui ? Que vous ayez besoin d'équipements médicaux, de produits pharmaceutiques ou de vérifier les prix — je suis là pour vous aider.`,
+            new: () => `Bonjour ! Je suis Amara de VIA Global Health. Nous fournissons des équipements médicaux et des produits pharmaceutiques aux prestataires de soins de santé, distributeurs et ONG à travers l'Afrique. Que recherchez-vous aujourd'hui ?`
+          },
+          pt: {
+            returning: (name) => `Bem-vindo(a) de volta, ${name}! Sou Amara da VIA Global Health. Como posso ajudá-lo(a) hoje? Seja equipamento médico, produtos farmacêuticos ou verificação de preços — estou aqui para ajudar.`,
+            new: () => `Olá! Sou Amara da VIA Global Health. Fornecemos equipamentos médicos e produtos farmacêuticos para profissionais de saúde, distribuidores e ONGs em toda a África. O que você está procurando hoje?`
+          },
+          sw: {
+            returning: (name) => `Karibu tena, ${name}! Mimi ni Amara kutoka VIA Global Health. Nawezaje kukusaidia leo? Iwe unahitaji vifaa vya matibabu, dawa, au kuangalia bei — niko hapa kukusaidia.`,
+            new: () => `Habari! Mimi ni Amara kutoka VIA Global Health. Tunasambaza vifaa vya matibabu na dawa kwa watoa huduma za afya, wasambazaji na mashirika yasiyo ya kiserikali kote barani Afrika. Unatafuta nini leo?`
+          }
+        };
+        const generalLangGreetings = generalGreetings[lang] || generalGreetings.en;
+        greeting = customerProfile?.firstName
+          ? generalLangGreetings.returning(customerProfile.firstName)
+          : generalLangGreetings.new();
+      } else if (customerProfile?.firstName) {
         greeting = langGreetings.returning(customerProfile.firstName, productName);
       } else {
         greeting = langGreetings.new(productName);
