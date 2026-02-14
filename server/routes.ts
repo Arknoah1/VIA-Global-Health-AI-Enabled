@@ -1376,10 +1376,10 @@ export async function registerRoutes(
       if (flags.organizationName) {
         updates.organizationName = flags.organizationName;
       }
-      if (flags.firstName && !quoteRequest.firstName) {
+      if (flags.firstName) {
         updates.firstName = flags.firstName;
       }
-      if (flags.lastName && !quoteRequest.lastName) {
+      if (flags.lastName) {
         updates.lastName = flags.lastName;
       }
       if (flags.email && !quoteRequest.email) {
@@ -2050,6 +2050,7 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     "private practice", "private hospital", "private clinic",
     "healthcare provider", "faith based", "faith-based",
     "sea freight", "air freight",
+    "ready to", "ready to buy", "ready to order", "ready to purchase", "ready to proceed",
     "buy it", "buy now", "buy this", "buy one", "buy some", "buy them",
     "get it", "get one", "get some", "get this", "get them",
     "want it", "want one", "want some", "want this", "want them",
@@ -2071,7 +2072,7 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
   ]);
 
   const nonNameWords = new Set([
-    "buy", "get", "want", "need", "order", "send", "ship", "take", "make", "give",
+    "buy", "get", "want", "need", "order", "send", "ship", "take", "make", "give", "ready",
     "yes", "no", "ok", "okay", "sure", "thanks", "thank", "please", "hello", "hi",
     "hey", "good", "great", "fine", "right", "well", "just", "also", "very", "much",
     "the", "and", "but", "for", "not", "you", "all", "can", "had", "her", "was",
