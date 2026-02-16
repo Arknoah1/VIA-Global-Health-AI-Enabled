@@ -220,12 +220,12 @@ export default function QuoteRequestsPage() {
       return response.json();
     },
     onSuccess: (_, id) => {
-      toast({ title: "AI Review Started", description: "The review is being generated. Refresh in a few seconds to see results." });
+      toast({ title: "AI Review Started", description: "The review is being generated. It will appear shortly." });
       setAiReviews(prev => ({ ...prev, [id]: undefined }));
       setLoadingAiReviews(prev => ({ ...prev, [id]: false }));
       setTimeout(() => {
-        fetchAiReview(id);
-      }, 10000);
+        fetchAiReview(id, 1);
+      }, 5000);
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to start AI review.", variant: "destructive" });
@@ -252,14 +252,22 @@ export default function QuoteRequestsPage() {
     }
   };
 
-  const fetchAiReview = async (requestId: string) => {
-    if (aiReviews[requestId] || loadingAiReviews[requestId]) return;
+  const fetchAiReview = async (requestId: string, retries = 0) => {
+    if (loadingAiReviews[requestId]) return;
+    if (aiReviews[requestId] && retries === 0) return;
     setLoadingAiReviews(prev => ({ ...prev, [requestId]: true }));
     try {
       const response = await fetch(`/api/quote-requests/${requestId}/ai-review`);
       if (response.ok) {
         const data = await response.json();
-        setAiReviews(prev => ({ ...prev, [requestId]: data.aiReview || null }));
+        if (data.aiReview) {
+          setAiReviews(prev => ({ ...prev, [requestId]: data.aiReview }));
+        } else if (retries < 3) {
+          setTimeout(() => fetchAiReview(requestId, retries + 1), 5000);
+          return;
+        } else {
+          setAiReviews(prev => ({ ...prev, [requestId]: null }));
+        }
       } else {
         setAiReviews(prev => ({ ...prev, [requestId]: null }));
       }
