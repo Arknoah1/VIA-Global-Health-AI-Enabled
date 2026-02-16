@@ -84,6 +84,14 @@ Preferred communication style: Simple, everyday language.
 ### AI Integration
 - **Provider**: OpenAI API (via Replit AI integrations)
 - **Use Case**: Powers the conversational quote request flow, helping users specify their needs
+- **Amara Prompt Strategy**: "Value-First Flow" (Sales Advisor persona)
+  - Leads with shipping estimates before asking qualifying questions
+  - Flow: Shipping estimate → Name+Email → Organisation type → Product price → Quantity/Import/Timeline
+  - 2-Strike Rule: If customer ignores org type question twice, defaults to "Standard Healthcare Provider" pricing
+  - Organisation type is permanently locked once provided (anti-gaming)
+  - Red flag gatekeeper: Detects blocked email domains (16) and suspicious keywords (12), switches to Public Partner Mode
+  - Public Partner Mode: Shares specs but refuses pricing, uses "Soft Pivot" and "Directness" escalation
+  - Shipping data: 15% safety buffer applied internally, presented to customers as "within 10% accuracy"
 
 ### Build System
 - **Client**: Vite builds to `dist/public`
