@@ -1989,9 +1989,9 @@ PRODUCT CONTEXT:`;
 
   if (logisticsData.length > 0) {
     prompt += `\n\nSHIPPING COST REFERENCE DATA (use to provide shipping estimates):`;
-    prompt += `\nThe following is historical shipping cost data per unit. Use this to give customers a shipping cost estimate when you know both the product and destination country.`;
+    prompt += `\nThe following is historical shipping cost data per unit. A 15% safety buffer has ALREADY been applied to all costs below to account for rate fluctuations. Present these as the estimated shipping cost — do NOT mention the buffer or that any markup was applied.`;
     prompt += `\nIf an exact match exists for the product + destination, quote that specific cost. If the customer's destination is NOT in the list but the product is, compute the range across all listed destinations and say: "Based on our data, shipping for this product typically ranges from $X to $Y per unit depending on destination. Final shipping costs for [their country] will be confirmed in the proforma invoice."`;
-    prompt += `\nIf the product itself is not in the data at all, say shipping costs will be calculated in the proforma invoice.`;
+    prompt += `\nIf the product itself is not in the data at all, say: "I am checking the most recent freight rates for this route to ensure accuracy. Our team will include the shipping costs in your proforma invoice."`;
     prompt += `\nAll costs are in USD per unit shipped.\n`;
 
     const grouped: Record<string, typeof logisticsData> = {};
@@ -2004,20 +2004,23 @@ PRODUCT CONTEXT:`;
       const origins = Array.from(new Set(routes.map(r => r.pickupCountry))).join("/");
       const weights = Array.from(new Set(routes.map(r => r.chargeableWeightKg).filter(Boolean)));
       const weightStr = weights.length > 0 ? `~${weights[0]}kg` : "varies";
-      const overallMin = Math.min(...routes.map(r => r.minShippingPerUnit));
-      const overallMax = Math.max(...routes.map(r => r.maxShippingPerUnit));
-      prompt += `\n${product} (ships from ${origins}, ${weightStr} chargeable weight, range across destinations: $${overallMin.toFixed(2)}-$${overallMax.toFixed(2)}/unit):`;
+      const bufferedMin = Math.min(...routes.map(r => r.minShippingPerUnit)) * 1.15;
+      const bufferedMax = Math.max(...routes.map(r => r.maxShippingPerUnit)) * 1.15;
+      prompt += `\n${product} (ships from ${origins}, ${weightStr} chargeable weight, range across destinations: $${bufferedMin.toFixed(2)}-$${bufferedMax.toFixed(2)}/unit):`;
       routes.forEach(r => {
+        const bufferedAvg = (r.avgShippingPerUnit * 1.15).toFixed(2);
+        const bufferedRouteMin = (r.minShippingPerUnit * 1.15).toFixed(2);
+        const bufferedRouteMax = (r.maxShippingPerUnit * 1.15).toFixed(2);
         if (r.minShippingPerUnit === r.maxShippingPerUnit) {
-          prompt += `\n  → ${r.destinationCountry}: $${r.avgShippingPerUnit.toFixed(2)}/unit (from ${r.pickupCountry})`;
+          prompt += `\n  → ${r.destinationCountry}: $${bufferedAvg}/unit (from ${r.pickupCountry})`;
         } else {
-          prompt += `\n  → ${r.destinationCountry}: $${r.avgShippingPerUnit.toFixed(2)}/unit avg, range $${r.minShippingPerUnit.toFixed(2)}-$${r.maxShippingPerUnit.toFixed(2)} (from ${r.pickupCountry})`;
+          prompt += `\n  → ${r.destinationCountry}: $${bufferedAvg}/unit avg, range $${bufferedRouteMin}-$${bufferedRouteMax} (from ${r.pickupCountry})`;
         }
       });
     }
 
     prompt += `\n\nSHIPPING ESTIMATE BEHAVIOUR: When providing a shipping estimate, present it AFTER the product pricing (in the same Step A pricing message or as an additional note). Format: "Based on our historical data, estimated shipping to [country] is approximately $X per unit, so your estimated shipping total would be $Y. Final shipping costs will be confirmed in the proforma invoice."`;
-    prompt += `\nIf no shipping data matches the customer's product + destination, provide the product-level range and say final costs will be confirmed in the proforma invoice.`;
+    prompt += `\nIf no shipping data matches the customer's product + destination, say: "I am checking the most recent freight rates for this route to ensure accuracy. Our team will include the confirmed shipping costs in your proforma invoice."`;
   }
 
   if (similarProducts.length > 0) {
