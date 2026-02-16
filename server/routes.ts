@@ -1458,7 +1458,16 @@ export async function registerRoutes(
         importCapability: quoteRequest.importAssistance,
       };
       const customerLanguage = language || "en";
-      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, relevantLogistics);
+
+      // Red flag gatekeeper — check email domain and message keywords
+      const redFlagResult = checkRedFlags(quoteRequest.email || "", message);
+      let systemPrompt: string;
+
+      if (redFlagResult.isRedFlag) {
+        systemPrompt = buildPublicModePrompt(productDetails, existingState, customerLanguage, redFlagResult.reason);
+      } else {
+        systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, relevantLogistics);
+      }
 
       // Build messages for OpenAI
       const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -1682,6 +1691,86 @@ ${JSON.stringify(candidateSummary, null, 2)}`
   });
 
   return httpServer;
+}
+
+const RED_FLAG_DOMAINS = [
+  'gatesfoundation.org', 'usaid.gov', 'ciff.org', 'unicef.org',
+  'mckinsey.com', 'salientadvisory.com', 'iqvia.com',
+  'who.int', 'worldbank.org', 'bain.com', 'bcg.com', 'deloitte.com',
+  'kpmg.com', 'pwc.com', 'ey.com', 'accenture.com'
+];
+
+const RED_FLAG_KEYWORDS = [
+  'full catalog', 'price list', 'market research', 'funding inquiry',
+  'competitive analysis', 'pricing survey', 'market mapping',
+  'supplier assessment', 'vendor assessment', 'landscape analysis',
+  'all products and prices', 'complete price list', 'catalog with prices'
+];
+
+function checkRedFlags(email: string, message: string): { isRedFlag: boolean; reason: string } {
+  const userDomain = email.includes('@') ? email.split('@').pop()?.toLowerCase() || '' : '';
+  if (userDomain && RED_FLAG_DOMAINS.includes(userDomain)) {
+    return { isRedFlag: true, reason: `email_domain:${userDomain}` };
+  }
+
+  const lowerMessage = message.toLowerCase();
+  for (const keyword of RED_FLAG_KEYWORDS) {
+    if (lowerMessage.includes(keyword)) {
+      return { isRedFlag: true, reason: `keyword:${keyword}` };
+    }
+  }
+
+  return { isRedFlag: false, reason: '' };
+}
+
+function buildPublicModePrompt(
+  productDetails: { name?: string; description?: string } | undefined,
+  existingState: { firstName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null },
+  customerLanguage: string,
+  redFlagReason: string
+): string {
+  const languageInstruction = customerLanguage === "fr"
+    ? "Respond entirely in French."
+    : customerLanguage === "pt"
+    ? "Respond entirely in Portuguese."
+    : customerLanguage === "sw"
+    ? "Respond entirely in Swahili."
+    : "Respond in English.";
+
+  const customerName = existingState.firstName || "there";
+  const orgName = existingState.organizationName || existingState.email?.split('@').pop()?.split('.')[0] || "";
+  const orgAcknowledgement = orgName ? `Acknowledge that you recognise their organisation (${orgName}) and its important work in global health.` : "";
+
+  return `You are Amara Njeri, a Sales Representative at VIA Global Health, operating in PUBLIC PARTNER mode.
+
+${languageInstruction}
+
+CONTEXT: This contact has been identified as a partner organisation, funder, or research entity — not a direct purchasing customer.
+
+YOUR BEHAVIOUR IN THIS MODE:
+- Be warm, professional, and respectful
+- ${orgAcknowledgement}
+- Greet them by name if known: "${customerName}"
+- Do NOT provide wholesale prices, unit costs, pricing tiers, or any specific cost information
+- Do NOT offer to generate a proforma invoice or quote
+- Do NOT share any internal pricing structure, markups, or segment-based pricing
+- If they ask about pricing, say: "For partnership and institutional enquiries, our team would be happy to discuss this directly. I'll connect you with the right person."
+
+WHAT YOU CAN DO:
+- Share general product information, specifications, and features
+- Discuss product availability and categories
+- Direct them to VIA's public resources: website (viaglobalhealth.com), public product catalog, and Impact Report
+- Offer to connect them with VIA's partnerships team for institutional discussions
+- Answer general questions about VIA's mission, reach, and capabilities
+
+REDIRECT RESPONSES:
+- For pricing requests: "Our institutional and partnership pricing is handled directly by our partnerships team. I'd be happy to connect you — could you share what you're looking for so I can brief them?"
+- For catalog/price list requests: "I can share our public product catalog which has detailed specifications. For pricing discussions at an institutional level, our partnerships team would be the best point of contact."
+- For general enquiries: Respond helpfully with product information, but never include pricing
+
+${productDetails?.name ? `PRODUCT CONTEXT: ${productDetails.name}${productDetails.description ? ` — ${productDetails.description.substring(0, 200)}` : ''}` : ''}
+
+Keep responses concise (2-3 sentences). Be genuinely helpful within these boundaries.`;
 }
 
 function buildSystemPrompt(
