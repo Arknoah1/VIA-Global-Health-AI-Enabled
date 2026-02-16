@@ -973,22 +973,58 @@ export async function registerRoutes(
         return res.json(existing);
       }
 
+      const AFRICAN_REGIONS: Record<string, string[]> = {
+        "East Africa": ["kenya", "uganda", "tanzania", "rwanda", "burundi", "ethiopia", "eritrea", "djibouti", "somalia", "south sudan", "sudan", "seychelles", "comoros", "mauritius", "madagascar"],
+        "West Africa": ["nigeria", "ghana", "senegal", "ivory coast", "côte d'ivoire", "cote d'ivoire", "mali", "burkina faso", "niger", "guinea", "guinea-bissau", "sierra leone", "liberia", "togo", "benin", "gambia", "cape verde", "cabo verde", "mauritania"],
+        "Southern Africa": ["south africa", "mozambique", "zimbabwe", "zambia", "malawi", "botswana", "namibia", "lesotho", "eswatini", "swaziland", "angola"],
+        "Central Africa": ["democratic republic of the congo", "drc", "congo", "republic of the congo", "cameroon", "central african republic", "chad", "gabon", "equatorial guinea", "são tomé and príncipe", "sao tome and principe"],
+        "North Africa": ["egypt", "libya", "tunisia", "algeria", "morocco"],
+      };
+
+      const getAfricanRegion = (country: string): string | null => {
+        const countryLower = country.toLowerCase().trim();
+        for (const [region, countries] of Object.entries(AFRICAN_REGIONS)) {
+          if (countries.includes(countryLower)) return region;
+        }
+        return null;
+      };
+
+      const getRegionCountries = (region: string): string[] => {
+        return AFRICAN_REGIONS[region] || [];
+      };
+
       let shippingCents = 0;
       if (quoteRequest.productName && quoteRequest.shippingCountry) {
         try {
           const logisticsResults = await storage.getLogisticsForProduct(quoteRequest.productName);
+          const destLower = quoteRequest.shippingCountry.toLowerCase().trim();
           const exactMatch = logisticsResults.find(
-            (l) => l.destinationCountry.toLowerCase() === quoteRequest.shippingCountry!.toLowerCase()
+            (l) => l.destinationCountry.toLowerCase().trim() === destLower
           );
           if (exactMatch) {
             const shippingPerUnit = exactMatch.avgShippingPerUnit * 1.15;
             shippingCents = Math.round(shippingPerUnit * quantity * 100);
             console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (exact match: ${exactMatch.destinationCountry})`);
           } else if (logisticsResults.length > 0) {
-            const avgAcrossRoutes = logisticsResults.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / logisticsResults.length;
-            const shippingPerUnit = avgAcrossRoutes * 1.15;
-            shippingCents = Math.round(shippingPerUnit * quantity * 100);
-            console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (avg across ${logisticsResults.length} routes)`);
+            const region = getAfricanRegion(quoteRequest.shippingCountry);
+            let regionalMatches: typeof logisticsResults = [];
+            if (region) {
+              const regionCountries = getRegionCountries(region);
+              regionalMatches = logisticsResults.filter(
+                (l) => regionCountries.includes(l.destinationCountry.toLowerCase().trim())
+              );
+            }
+            if (regionalMatches.length > 0) {
+              const avgRegional = regionalMatches.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / regionalMatches.length;
+              const shippingPerUnit = avgRegional * 1.15;
+              shippingCents = Math.round(shippingPerUnit * quantity * 100);
+              console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (${region} avg across ${regionalMatches.length} routes)`);
+            } else {
+              const avgAll = logisticsResults.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / logisticsResults.length;
+              const shippingPerUnit = avgAll * 1.15;
+              shippingCents = Math.round(shippingPerUnit * quantity * 100);
+              console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (all-routes avg across ${logisticsResults.length} routes, no region match)`);
+            }
           } else {
             console.log(`[Invoice] No logistics data found for product "${quoteRequest.productName}" — shipping set to $0`);
           }
