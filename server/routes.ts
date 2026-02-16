@@ -435,6 +435,87 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/quote-requests/export/markdown", requireAdmin, async (req, res) => {
+    try {
+      const allRequests = await storage.getAllQuoteRequests();
+      const lines: string[] = [];
+      lines.push("# VIA Global Health — Quote Request History");
+      lines.push("");
+      lines.push(`**Exported:** ${new Date().toISOString().split("T")[0]}`);
+      lines.push(`**Total Quotes:** ${allRequests.length}`);
+      const won = allRequests.filter(r => r.status === "closed_won").length;
+      const lost = allRequests.filter(r => r.status === "closed_lost").length;
+      lines.push(`**Won:** ${won} | **Lost:** ${lost} | **Active/In Progress:** ${allRequests.length - won - lost}`);
+      lines.push("");
+      lines.push("---");
+      lines.push("");
+
+      for (let i = 0; i < allRequests.length; i++) {
+        const qr = allRequests[i];
+        const statusLabel = qr.status === "closed_won" ? "Closed Won" : qr.status === "closed_lost" ? "Closed Lost" : qr.status === "in_progress" ? "In Progress" : "Active";
+        const customerName = [qr.firstName, qr.lastName].filter(Boolean).join(" ") || "Unknown";
+
+        lines.push(`## Quote #${i + 1} — ${statusLabel}`);
+        lines.push("");
+        lines.push("### Customer Details");
+        lines.push(`- **Name:** ${customerName}`);
+        lines.push(`- **Email:** ${qr.email || "N/A"}`);
+        lines.push(`- **Organization:** ${qr.organizationName || "N/A"} (${qr.organizationType || "N/A"})`);
+        lines.push(`- **Country:** ${qr.shippingCountry || "N/A"}`);
+        lines.push(`- **Product:** ${qr.productName || "General Inquiry"} (SKU: ${qr.productSku || "N/A"})`);
+        lines.push(`- **Quantity:** ${qr.orderQuantity || "N/A"}`);
+        lines.push(`- **Timeline:** ${qr.decisionTimeline || "N/A"}`);
+        lines.push(`- **Shipping Preference:** ${qr.shippingPreference || "N/A"}`);
+        lines.push(`- **Import Assistance:** ${qr.importAssistance || "N/A"}`);
+        lines.push(`- **Date:** ${qr.createdAt ? new Date(qr.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "N/A"}`);
+        lines.push("");
+
+        lines.push("### Conversation");
+        const messages = await storage.getQuoteRequestMessages(qr.id);
+        const inlineConversation = Array.isArray(qr.conversation) ? qr.conversation as any[] : [];
+        const conversationSource = messages.length > 0 ? messages : inlineConversation;
+
+        if (conversationSource.length === 0) {
+          lines.push("*No conversation recorded.*");
+        } else {
+          for (const msg of conversationSource) {
+            const speaker = msg.role === "user" ? "**Customer:**" : "**Amara:**";
+            lines.push(`${speaker} ${msg.content}`);
+            lines.push("");
+          }
+        }
+
+        if (qr.aiReview) {
+          const review = qr.aiReview as any;
+          lines.push("### AI Review");
+          if (review.summary) lines.push(`**Summary:** ${review.summary}`);
+          if (review.customerSentiment) lines.push(`**Customer Sentiment:** ${review.customerSentiment}`);
+          if (review.keyFactors?.length) lines.push(`**Key Factors:** ${review.keyFactors.join(", ")}`);
+          if (review.whatWorked?.length) lines.push(`**What Worked:** ${review.whatWorked.join("; ")}`);
+          if (review.whatCouldImprove?.length) lines.push(`**What Could Improve:** ${review.whatCouldImprove.join("; ")}`);
+          lines.push("");
+        }
+
+        if (qr.aiSummary) {
+          lines.push("### AI Summary");
+          lines.push(qr.aiSummary);
+          lines.push("");
+        }
+
+        lines.push("---");
+        lines.push("");
+      }
+
+      const markdown = lines.join("\n");
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="quote-requests-export-${new Date().toISOString().split("T")[0]}.md"`);
+      res.send(markdown);
+    } catch (error) {
+      console.error("Error exporting quote requests:", error);
+      res.status(500).json({ error: "Failed to export quote requests" });
+    }
+  });
+
   // Delete a quote request (admin) - cascades to messages and invoices
   app.delete("/api/quote-requests/:id", requireAdmin, async (req, res) => {
     try {

@@ -104,18 +104,31 @@ export default function QuoteRequestsPage() {
     },
   });
 
-  const exportData = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(requests, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "quote-requests.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-    toast({
-      title: "Export Started",
-      description: "Downloading quote requests data as JSON...",
-    });
+  const exportData = async () => {
+    try {
+      const response = await fetch("/api/quote-requests/export/markdown");
+      if (!response.ok) throw new Error("Export failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", url);
+      const filename = response.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] || "quote-requests-export.md";
+      downloadAnchorNode.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Export Complete",
+        description: "Quote requests exported as Markdown with full conversation history.",
+      });
+    } catch {
+      toast({
+        title: "Export Failed",
+        description: "Could not export quote requests. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const generateInvoiceMutation = useMutation({
@@ -361,7 +374,7 @@ export default function QuoteRequestsPage() {
           </div>
           <Button variant="outline" size="sm" onClick={exportData}>
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Export for AI Review
           </Button>
         </header>
 
