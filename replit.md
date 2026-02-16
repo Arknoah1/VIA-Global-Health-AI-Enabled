@@ -60,6 +60,9 @@ Preferred communication style: Simple, everyday language.
 - `PATCH /api/quote-requests/:id/status` - Update quote request status (active, in_progress, closed_won, closed_lost); triggers async AI review on close
 - `GET /api/sales-insights` - Retrieve all sales insights extracted from closed deals
 - `GET /api/quote-requests/:id/ai-review` - Fetch AI review and related insights for a specific quote request
+- `GET /api/quote-requests/export/markdown` - Export all quote requests as Markdown with full conversation history
+- `GET /api/logistics` - Retrieve all logistics/shipping lookup data
+- `POST /api/logistics/import` - Import logistics lookup data (replaces existing)
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
@@ -70,6 +73,7 @@ Preferred communication style: Simple, everyday language.
 - `products` - Medical equipment and pharmaceutical products with pricing, images, specifications, FAQs
 - `quote_requests` - Customer quote requests with conversation history and AI review (jsonb `ai_review` column)
 - `sales_insights` - Actionable lessons extracted from closed deals by AI, fed back into Amara's system prompt
+- `logistics_lookup` - Shipping cost reference data by product type, destination, and origin country; used by Amara to provide shipping estimates
 - Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type is locked once set. "Not you?" button allows profile reset.
 
 ### Web Scraping

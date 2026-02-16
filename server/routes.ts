@@ -1117,6 +1117,45 @@ export async function registerRoutes(
     }
   });
 
+  // ===== Logistics Lookup =====
+  app.get("/api/logistics", requireAdmin, async (_req, res) => {
+    try {
+      const data = await storage.getLogisticsLookup();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching logistics data:", error);
+      res.status(500).json({ error: "Failed to fetch logistics data" });
+    }
+  });
+
+  app.post("/api/logistics/import", requireAdmin, async (req, res) => {
+    try {
+      const { data } = req.body;
+      if (!Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ error: "No data provided" });
+      }
+      const { insertLogisticsLookupSchema } = await import("@shared/schema");
+      const validated = [];
+      const errors = [];
+      for (let i = 0; i < data.length; i++) {
+        const result = insertLogisticsLookupSchema.safeParse(data[i]);
+        if (result.success) {
+          validated.push(result.data);
+        } else {
+          errors.push({ row: i + 1, issues: result.error.issues.map(e => e.message) });
+        }
+      }
+      if (errors.length > 0 && validated.length === 0) {
+        return res.status(400).json({ error: "All rows failed validation", errors });
+      }
+      await storage.upsertLogisticsData(validated);
+      res.json({ message: `Imported ${validated.length} logistics records`, errors: errors.length > 0 ? errors : undefined });
+    } catch (error) {
+      console.error("Error importing logistics data:", error);
+      res.status(500).json({ error: "Failed to import logistics data" });
+    }
+  });
+
   // ===== Training Transcripts =====
   app.get("/api/training-transcripts", requireAdmin, async (_req, res) => {
     try {
@@ -1399,6 +1438,15 @@ export async function registerRoutes(
       // Get recent sales insights for feedback loop
       const recentInsights = await storage.getSalesInsights();
 
+      // Get logistics/shipping data for cost estimates - scoped to the product if available
+      let relevantLogistics: Awaited<ReturnType<typeof storage.getLogisticsLookup>> = [];
+      if (productDetails?.name) {
+        relevantLogistics = await storage.getLogisticsForProduct(productDetails.name);
+      }
+      if (relevantLogistics.length === 0) {
+        relevantLogistics = await storage.getLogisticsLookup();
+      }
+
       // Build system prompt with existing customer state
       const existingState = {
         firstName: quoteRequest.firstName,
@@ -1410,7 +1458,7 @@ export async function registerRoutes(
         importCapability: quoteRequest.importAssistance,
       };
       const customerLanguage = language || "en";
-      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights);
+      const systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, relevantLogistics);
 
       // Build messages for OpenAI
       const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -1645,7 +1693,8 @@ function buildSystemPrompt(
   trainingTranscripts: { buyerType: string | null; country: string | null; productsDiscussed: string | null; objections: string | null; outcome: string | null; annotations: string | null; aiExtractedInsights: any }[] = [],
   existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null; shippingCountry?: string | null; importCapability?: string | null } = {},
   customerLanguage: string = "en",
-  salesInsights: { insightType: string; insight: string; category: string | null; region: string | null; customerType: string | null }[] = []
+  salesInsights: { insightType: string; insight: string; category: string | null; region: string | null; customerType: string | null }[] = [],
+  logisticsData: { productType: string; destinationCountry: string; pickupCountry: string; avgShippingPerUnit: number; minShippingPerUnit: number; maxShippingPerUnit: number; chargeableWeightKg: number | null; sampleSize: number | null }[] = []
 ): string {
   const languageInstruction = customerLanguage === "fr"
     ? "LANGUAGE INSTRUCTION: The customer is communicating in French. You MUST respond entirely in French. Use professional, warm French appropriate for African francophone markets. Keep product names and brand names in English but translate everything else."
@@ -1936,6 +1985,39 @@ PRODUCT CONTEXT:`;
       prompt += `\n- ${r.countryName} (${r.countryCode}): ${r.restrictionReason}`;
     });
     prompt += `\n\nIMPORTANT: If the customer mentions shipping to any of these countries, politely explain that unfortunately VIA is unable to ship this particular product to that destination due to the stated reason. Offer to check if alternative products might be available, or ask if they have an alternative destination.`;
+  }
+
+  if (logisticsData.length > 0) {
+    prompt += `\n\nSHIPPING COST REFERENCE DATA (use to provide shipping estimates):`;
+    prompt += `\nThe following is historical shipping cost data per unit. Use this to give customers a shipping cost estimate when you know both the product and destination country.`;
+    prompt += `\nIf an exact match exists for the product + destination, quote that specific cost. If the customer's destination is NOT in the list but the product is, compute the range across all listed destinations and say: "Based on our data, shipping for this product typically ranges from $X to $Y per unit depending on destination. Final shipping costs for [their country] will be confirmed in the proforma invoice."`;
+    prompt += `\nIf the product itself is not in the data at all, say shipping costs will be calculated in the proforma invoice.`;
+    prompt += `\nAll costs are in USD per unit shipped.\n`;
+
+    const grouped: Record<string, typeof logisticsData> = {};
+    logisticsData.forEach(l => {
+      if (!grouped[l.productType]) grouped[l.productType] = [];
+      grouped[l.productType].push(l);
+    });
+
+    for (const [product, routes] of Object.entries(grouped)) {
+      const origins = Array.from(new Set(routes.map(r => r.pickupCountry))).join("/");
+      const weights = Array.from(new Set(routes.map(r => r.chargeableWeightKg).filter(Boolean)));
+      const weightStr = weights.length > 0 ? `~${weights[0]}kg` : "varies";
+      const overallMin = Math.min(...routes.map(r => r.minShippingPerUnit));
+      const overallMax = Math.max(...routes.map(r => r.maxShippingPerUnit));
+      prompt += `\n${product} (ships from ${origins}, ${weightStr} chargeable weight, range across destinations: $${overallMin.toFixed(2)}-$${overallMax.toFixed(2)}/unit):`;
+      routes.forEach(r => {
+        if (r.minShippingPerUnit === r.maxShippingPerUnit) {
+          prompt += `\n  → ${r.destinationCountry}: $${r.avgShippingPerUnit.toFixed(2)}/unit (from ${r.pickupCountry})`;
+        } else {
+          prompt += `\n  → ${r.destinationCountry}: $${r.avgShippingPerUnit.toFixed(2)}/unit avg, range $${r.minShippingPerUnit.toFixed(2)}-$${r.maxShippingPerUnit.toFixed(2)} (from ${r.pickupCountry})`;
+        }
+      });
+    }
+
+    prompt += `\n\nSHIPPING ESTIMATE BEHAVIOUR: When providing a shipping estimate, present it AFTER the product pricing (in the same Step A pricing message or as an additional note). Format: "Based on our historical data, estimated shipping to [country] is approximately $X per unit, so your estimated shipping total would be $Y. Final shipping costs will be confirmed in the proforma invoice."`;
+    prompt += `\nIf no shipping data matches the customer's product + destination, provide the product-level range and say final costs will be confirmed in the proforma invoice.`;
   }
 
   if (similarProducts.length > 0) {

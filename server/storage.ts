@@ -7,7 +7,8 @@ import {
   type CustomerSegment, type InsertCustomerSegment, customerSegments,
   type ProformaInvoice, type InsertProformaInvoice, proformaInvoices,
   type TrainingTranscript, type InsertTrainingTranscript, trainingTranscripts,
-  type SalesInsight, type InsertSalesInsight, salesInsights
+  type SalesInsight, type InsertSalesInsight, salesInsights,
+  type LogisticsLookup, type InsertLogisticsLookup, logisticsLookup
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
@@ -67,6 +68,11 @@ export interface IStorage {
   createSalesInsightsBulk(insights: InsertSalesInsight[]): Promise<SalesInsight[]>;
   getSalesInsights(filters?: { customerType?: string; region?: string; productCategory?: string }): Promise<SalesInsight[]>;
   getSalesInsightsByQuoteRequest(quoteRequestId: string): Promise<SalesInsight[]>;
+
+  getLogisticsLookup(): Promise<LogisticsLookup[]>;
+  getLogisticsForProduct(productType: string): Promise<LogisticsLookup[]>;
+  getLogisticsForRoute(productType: string, destinationCountry: string): Promise<LogisticsLookup[]>;
+  upsertLogisticsData(data: InsertLogisticsLookup[]): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -373,6 +379,39 @@ export class DatabaseStorage implements IStorage {
       .from(salesInsights)
       .where(eq(salesInsights.quoteRequestId, quoteRequestId))
       .orderBy(desc(salesInsights.createdAt));
+  }
+
+  async getLogisticsLookup(): Promise<LogisticsLookup[]> {
+    return await db.select().from(logisticsLookup);
+  }
+
+  async getLogisticsForProduct(productType: string): Promise<LogisticsLookup[]> {
+    return await db
+      .select()
+      .from(logisticsLookup)
+      .where(ilike(logisticsLookup.productType, `%${productType}%`));
+  }
+
+  async getLogisticsForRoute(productType: string, destinationCountry: string): Promise<LogisticsLookup[]> {
+    return await db
+      .select()
+      .from(logisticsLookup)
+      .where(
+        or(
+          // Exact route match (both product AND destination)
+          // Or just product match for range estimates
+          ilike(logisticsLookup.productType, `%${productType}%`)
+        )
+      );
+  }
+
+  async upsertLogisticsData(data: InsertLogisticsLookup[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(logisticsLookup);
+      if (data.length > 0) {
+        await tx.insert(logisticsLookup).values(data);
+      }
+    });
   }
 }
 

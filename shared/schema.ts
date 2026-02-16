@@ -253,3 +253,23 @@ export const insertSalesInsightSchema = createInsertSchema(salesInsights).omit({
 
 export type InsertSalesInsight = z.infer<typeof insertSalesInsightSchema>;
 export type SalesInsight = typeof salesInsights.$inferSelect;
+
+export const logisticsLookup = pgTable("logistics_lookup", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productType: text("product_type").notNull(),
+  destinationCountry: text("destination_country").notNull(),
+  pickupCountry: text("pickup_country").notNull(),
+  avgShippingPerUnit: real("avg_shipping_per_unit").notNull(),
+  minShippingPerUnit: real("min_shipping_per_unit").notNull(),
+  maxShippingPerUnit: real("max_shipping_per_unit").notNull(),
+  chargeableWeightKg: real("chargeable_weight_kg"),
+  sampleSize: integer("sample_size"),
+  sellerName: text("seller_name"),
+});
+
+export const insertLogisticsLookupSchema = createInsertSchema(logisticsLookup).omit({
+  id: true,
+});
+
+export type InsertLogisticsLookup = z.infer<typeof insertLogisticsLookupSchema>;
+export type LogisticsLookup = typeof logisticsLookup.$inferSelect;

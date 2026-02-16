@@ -1,0 +1,28 @@
+Product type,Destination Country,Pickup Country,Avg Shipping/Unit,Min Shipping/Unit,Max Shipping/Unit,Chargeable Weight (kg),Sample Size,Seller Name Simple
+MTTS Firefly Phototherapy Unit,Uganda,Vietnam,590.0,590.0,590.0,40.7208,1,MTTS
+NASG (Medium),Nigeria,China,34.08,34.08,34.08,21.9678,1,LifeWrap
+NASG (Medium/Large),Afghanistan,China,136.0,136.0,136.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Australia,China,96.0,96.0,96.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Democratic Republic of the Congo,China,60.0,60.0,60.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Ethiopia,China,102.5,45.0,160.0,21.9678,2,LifeWrap
+NASG (Medium/Large),Fiji,China,180.0,180.0,180.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Ghana,China,47.33,42.0,58.0,21.9678,3,LifeWrap
+NASG (Medium/Large),Kenya,China,36.26,30.0,45.0,21.9678,5,LifeWrap
+NASG (Medium/Large),Liberia,China,80.0,80.0,80.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Malawi,China,45.0,45.0,45.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Netherlands,China,127.2,127.2,127.2,21.9678,1,LifeWrap
+NASG (Medium/Large),Nigeria,China,46.75,34.0,75.0,21.9678,4,LifeWrap
+NASG (Medium/Large),Pakistan,China,65.0,65.0,65.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Papua New Guinea,China,155.0,155.0,155.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Sierra Leone,China,65.0,65.0,65.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Somalia,China,104.0,104.0,104.0,21.9678,1,LifeWrap
+NASG (Medium/Large),South Sudan,China,70.0,70.0,70.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Tanzania,China,35.0,35.0,35.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Uganda,China,55.0,55.0,55.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Zambia,China,50.0,50.0,50.0,21.9678,1,LifeWrap
+NASG (Medium/Large),Zimbabwe,China,55.0,55.0,55.0,21.9678,1,LifeWrap
+Pumani Bubble CPAPS,Zambia,India,700.0,700.0,700.0,77.76,1,InnAccel
+Thermocoagulator,Nicaragua,USA,115.0,115.0,115.0,15.0,1,Liger
+Thermocoagulators,Australia,USA,77.54,77.54,77.54,15.0,1,Liger
+Thermocoagulators,Kenya,USA,98.35,98.35,98.35,15.0,1,Liger
+Thermocoagulators,Nicaragua,USA,33.0,28.0,46.6,15.0,3,Liger
