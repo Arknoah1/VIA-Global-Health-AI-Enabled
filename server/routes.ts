@@ -973,7 +973,30 @@ export async function registerRoutes(
         return res.json(existing);
       }
 
-      const shippingCents = 0;
+      let shippingCents = 0;
+      if (quoteRequest.productName && quoteRequest.shippingCountry) {
+        try {
+          const logisticsResults = await storage.getLogisticsForProduct(quoteRequest.productName);
+          const exactMatch = logisticsResults.find(
+            (l) => l.destinationCountry.toLowerCase() === quoteRequest.shippingCountry!.toLowerCase()
+          );
+          if (exactMatch) {
+            const shippingPerUnit = exactMatch.avgShippingPerUnit * 1.15;
+            shippingCents = Math.round(shippingPerUnit * quantity * 100);
+            console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (exact match: ${exactMatch.destinationCountry})`);
+          } else if (logisticsResults.length > 0) {
+            const avgAcrossRoutes = logisticsResults.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / logisticsResults.length;
+            const shippingPerUnit = avgAcrossRoutes * 1.15;
+            shippingCents = Math.round(shippingPerUnit * quantity * 100);
+            console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (avg across ${logisticsResults.length} routes)`);
+          } else {
+            console.log(`[Invoice] No logistics data found for product "${quoteRequest.productName}" — shipping set to $0`);
+          }
+        } catch (err) {
+          console.error("[Invoice] Error looking up shipping data:", err);
+        }
+      }
+
       const bankFeeCents = 3000;
       const subtotalCents = lineItemTotal + shippingCents + bankFeeCents;
       const totalCents = subtotalCents;
