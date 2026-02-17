@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -688,12 +690,16 @@ export default function QuoteRequestsPage() {
                     <div
                       className={`max-w-[80%] rounded-lg px-4 py-2 text-sm ${
                         msg.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-foreground'
+                          ? 'bg-primary text-primary-foreground whitespace-pre-line'
+                          : 'bg-muted text-foreground chat-markdown'
                       }`}
                       data-testid={`chat-message-${msg.role}-${idx}`}
                     >
-                      {msg.content}
+                      {msg.role === 'assistant' ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      ) : (
+                        msg.content
+                      )}
                     </div>
                   </div>
                 ))}

@@ -13,6 +13,8 @@ import {
   Microscope, Syringe, Briefcase, Pill, Building2, ExternalLink
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/browsingHistory";
 import { slugify } from "@/lib/slugify";
@@ -836,14 +838,18 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-line ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
                       msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
+                        ? 'bg-primary text-primary-foreground whitespace-pre-line'
+                        : 'bg-muted chat-markdown'
                     }`}
                     data-testid={`chat-message-${msg.role}-${idx}`}
                   >
-                    {msg.content}
+                    {msg.role === 'assistant' ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </motion.div>
               ))}
