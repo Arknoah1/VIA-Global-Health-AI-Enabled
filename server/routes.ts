@@ -1598,10 +1598,10 @@ export async function registerRoutes(
       if (flags.organizationName) {
         updates.organizationName = flags.organizationName;
       }
-      if (flags.firstName) {
+      if (flags.firstName && !quoteRequest.firstName) {
         updates.firstName = flags.firstName;
       }
-      if (flags.lastName) {
+      if (flags.lastName && !quoteRequest.lastName) {
         updates.lastName = flags.lastName;
       }
       if (flags.email && !quoteRequest.email) {
@@ -2408,6 +2408,9 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     "just one", "just checking", "just wondering", "just curious",
     "good morning", "good afternoon", "good evening", "good day",
     "thats ok", "thats okay", "thats it",
+    "that works", "that helps", "that sounds", "works fine", "works great",
+    "works well", "works perfectly", "perfect thanks", "great thanks",
+    "cool thanks", "awesome thanks", "nice thanks",
   ]);
 
   const nonNameWords = new Set([
@@ -2426,6 +2429,11 @@ function parseAIResponseFlags(aiResponse: string, userMessage: string, existingS
     "air", "sea", "freight", "shipping", "import", "export", "customs",
     "medical", "equipment", "supply", "hospital", "clinic",
     "interested", "looking", "checking", "wondering", "curious",
+    "that", "works", "work", "done", "perfect", "awesome", "cool", "nice", "alright",
+    "absolutely", "definitely", "certainly", "exactly", "correct", "incorrect",
+    "agree", "disagree", "understand", "understood", "confirm", "confirmed",
+    "proceed", "continue", "wait", "stop", "start", "help", "try",
+    "maybe", "perhaps", "probably", "still", "already", "enough", "yet",
   ]);
 
   const namePatterns = [
