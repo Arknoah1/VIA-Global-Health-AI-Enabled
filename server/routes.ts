@@ -2198,26 +2198,34 @@ PRODUCT CONTEXT:`;
 You MUST deliver the quote in TWO SEPARATE messages, NOT one. This prevents information from being pushed off screen.
 
 ===== STEP A: PRICING MESSAGE (send this FIRST) =====
-Once you have the organisation type (or have applied the 2-Strike Rule default), send the product pricing. Keep it short. Do NOT include the details confirmation in this same message.
+Once you have the organisation type (or have applied the 2-Strike Rule default), send the product pricing using a markdown table. Keep it short. Do NOT include the details confirmation in this same message.
 ${isKitProductForTemplate ? `
-"Great news! Based on your requirements, here's your estimated product pricing:
+Use this EXACT markdown table format (replace bracketed values with actual data):
 
-Product: [product name]
-Quantity: [number of ${templatePackLabel}s] ${templatePackLabel}s ([total units] units)
-Price per ${templatePackLabel}: [final price per ${templatePackLabel} after silently applying segment adjustment]
-Estimated Product Total: [number of ${templatePackLabel}s x price per ${templatePackLabel}]
+"Great news! Here's your estimated product pricing:
 
-Each ${templatePackLabel} contains ${templateUnitsPerPack} units. This is the product cost only - shipping, insurance, and duties are not included.
+| | Details |
+|---|---|
+| **Product** | [product name] |
+| **Quantity** | [number of ${templatePackLabel}s] ${templatePackLabel}s ([total units] units) |
+| **Price per ${templatePackLabel}** | [final price after silently applying segment adjustment] |
+| **Estimated Total** | [number of ${templatePackLabel}s × price per ${templatePackLabel}] |
+
+Each ${templatePackLabel} contains ${templateUnitsPerPack} units. This is the product cost only — shipping, insurance, and duties are not included.
 
 Does this pricing look good to you?"` : `
-"Great news! Based on your requirements, here's your estimated product pricing:
+Use this EXACT markdown table format (replace bracketed values with actual data):
 
-Product: [product name]
-Quantity: [quantity]
-Unit Price: [final price per unit after silently applying segment adjustment]
-Estimated Product Total: [quantity x unit price]
+"Great news! Here's your estimated product pricing:
 
-This is the product cost only - shipping, insurance, and duties are not included.
+| | Details |
+|---|---|
+| **Product** | [product name] |
+| **Quantity** | [quantity] units |
+| **Unit Price** | [final price per unit after silently applying segment adjustment] |
+| **Estimated Total** | [quantity × unit price] |
+
+This is the product cost only — shipping, insurance, and duties are not included.
 
 Does this pricing work for your budget?"`}
 
@@ -2226,19 +2234,25 @@ STOP HERE. Wait for the customer to respond before continuing to Step B.
 ===== STEP B: CONFIRMATION MESSAGE (send ONLY after completing ALL of Step 5) =====
 You may ONLY send this confirmation after you have asked AND received answers for: quantity, import capability, and timeline (Steps 5a-5d). If ANY of these are missing, go back and ask the missing question first. Do NOT fill in placeholder text or questions in the summary.
 
+Use this EXACT markdown table format (replace bracketed values with actual answers the customer gave):
+
 "Perfect! Let me confirm your details:
 
-Name: [their name]
-Email: [their email]
-Organisation: [their organisation]
-Destination: [country/city] (port delivery)
-Import clearance: [their actual answer — e.g. 'Can handle customs' or 'Needs freight forwarder assistance']
-Timeline: [their actual answer]
-Shipping: [your air/sea freight recommendation]
+| | Details |
+|---|---|
+| **Name** | [their name] |
+| **Email** | [their email] |
+| **Organisation** | [their organisation] |
+| **Destination** | [country/city] (port delivery) |
+| **Import clearance** | [their actual answer — e.g. 'Can handle customs' or 'Needs freight forwarder assistance'] |
+| **Timeline** | [their actual answer] |
+| **Shipping** | [your air/sea freight recommendation] |
 
 Would you like our team to prepare a complete Proforma invoice with final shipping costs, payment terms, and delivery timeline? We'll email it to you within 24 hours."
 
 CRITICAL: Do NOT combine Steps A and B into one message. They MUST be separate responses in separate turns. Do NOT generate Step B until the customer has answered the import capability question.
+
+FORMATTING RULE: You MUST use markdown tables as shown above for both the pricing quote and the confirmation summary. Do NOT use plain text lists with bold labels — always use the table format. The chat supports full markdown including tables, bold, lists, and horizontal rules.
 
 IMPORTANT PRICING RULES:
 - You MUST calculate and show the unit price and total based on the pricing tiers provided above
@@ -2246,8 +2260,6 @@ IMPORTANT PRICING RULES:
 - Always state that this is the estimated PRODUCT cost only, and that shipping/insurance/duties are separate
 - If no pricing tiers are available, say: "Our team will calculate custom pricing based on your volume and needs and include it in your Proforma invoice."
 - If you applied the 2-Strike Rule default, note: "I've applied our standard clinical rate. Your final pricing will be confirmed on the Proforma."
-
-IMPORTANT: Each field MUST be on its own line with a blank line before and after each section for readability. Do NOT put everything on one line.
 
 Only after they confirm should you complete the conversation.
 

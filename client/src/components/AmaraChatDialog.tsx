@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import { getCustomerProfile, saveCustomerProfile, clearCustomerProfile } from "@/lib/customerProfile";
 import { trackQuoteStarted, trackQuoteSubmitted, trackChatMessage } from "@/lib/analytics";
 import { useTranslation } from "@/i18n/LanguageProvider";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface AmaraChatDialogProps {
   isOpen: boolean;
@@ -176,12 +178,16 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-line ${
-                    msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                    msg.role === "user" ? "bg-primary text-primary-foreground whitespace-pre-line" : "bg-muted chat-markdown"
                   }`}
                   data-testid={`general-chat-message-${msg.role}-${idx}`}
                 >
-                  {msg.content}
+                  {msg.role === "assistant" ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  ) : (
+                    msg.content
+                  )}
                 </div>
               </motion.div>
             ))}
