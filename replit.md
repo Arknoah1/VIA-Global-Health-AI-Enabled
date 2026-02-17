@@ -70,10 +70,10 @@ Preferred communication style: Simple, everyday language.
 - **Migrations**: Drizzle Kit with `db:push` command
 
 **Main Tables**:
-- `products` - Medical equipment and pharmaceutical products with pricing, images, specifications, FAQs
+- `products` - Medical equipment and pharmaceutical products with pricing, images, specifications, FAQs, shipping dimensions (length/width/depth cm, weight kg), and pickup country
 - `quote_requests` - Customer quote requests with conversation history and AI review (jsonb `ai_review` column)
 - `sales_insights` - Actionable lessons extracted from closed deals by AI, fed back into Amara's system prompt
-- `logistics_lookup` - Shipping cost reference data by product type, destination, and origin country; used by Amara to provide shipping estimates
+- `logistics_lookup` - Shipping cost reference data by product type, destination, and origin country (72 routes, 135 historical shipments); used by Amara and proforma invoices for shipping estimates. Includes chargeable weight per unit.
 - Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type is locked once set. "Not you?" button allows profile reset.
 
 ### Web Scraping
@@ -92,6 +92,11 @@ Preferred communication style: Simple, everyday language.
   - Red flag gatekeeper: Detects blocked email domains (16) and suspicious keywords (12), switches to Public Partner Mode
   - Public Partner Mode: Shares specs but refuses pricing, uses "Soft Pivot" and "Directness" escalation
   - Shipping data: 15% safety buffer applied internally, presented to customers as "within 10% accuracy"
+  - **Proforma Invoice Shipping Estimation** (4-tier hybrid approach):
+    1. Exact product + destination country match from logistics_lookup
+    2. Regional average (e.g., East Africa) for same product when no exact country match
+    3. All-routes average for the product when destination is outside known regions
+    4. Volumetric weight fallback: computes chargeable weight from product dimensions × $/kg rate by origin country (China $10.65, India $19.29, Vietnam $36.14, USA $50.42) when no logistics data exists for the product at all. Also resolves product by name when productId is missing.
 
 ### Build System
 - **Client**: Vite builds to `dist/public`

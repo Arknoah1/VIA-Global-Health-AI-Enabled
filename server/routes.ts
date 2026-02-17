@@ -993,6 +993,15 @@ export async function registerRoutes(
         return AFRICAN_REGIONS[region] || [];
       };
 
+      const COST_PER_KG_BY_ORIGIN: Record<string, number> = {
+        'china': 10.65,
+        'india': 19.29,
+        'usa': 50.42,
+        'vietnam': 36.14,
+        'south africa': 25.00,
+      };
+      const DEFAULT_COST_PER_KG = 25.00;
+
       let shippingCents = 0;
       if (quoteRequest.productName && quoteRequest.shippingCountry) {
         try {
@@ -1026,7 +1035,23 @@ export async function registerRoutes(
               console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (all-routes avg across ${logisticsResults.length} routes, no region match)`);
             }
           } else {
-            console.log(`[Invoice] No logistics data found for product "${quoteRequest.productName}" — shipping set to $0`);
+            let product = quoteRequest.productId ? await storage.getProductById(quoteRequest.productId) : undefined;
+            if (!product) {
+              const allProducts = await storage.getAllProducts();
+              product = allProducts.find(p => p.name.toLowerCase().includes(quoteRequest.productName!.toLowerCase()) || quoteRequest.productName!.toLowerCase().includes(p.name.toLowerCase()));
+            }
+            if (product?.shippingLengthCm && product.shippingLengthCm > 0 && product?.shippingWidthCm && product.shippingWidthCm > 0 && product?.shippingDepthCm && product.shippingDepthCm > 0) {
+              const volumetricKg = (product.shippingLengthCm * product.shippingWidthCm * product.shippingDepthCm) / 5000;
+              const actualKg = product.shippingWeightKg || 0;
+              const chargeableKg = Math.max(volumetricKg, actualKg);
+              const originKey = (product.pickupCountry || '').toLowerCase().trim();
+              const costPerKg = COST_PER_KG_BY_ORIGIN[originKey] || DEFAULT_COST_PER_KG;
+              const shippingPerUnit = chargeableKg * costPerKg * 1.15;
+              shippingCents = Math.round(shippingPerUnit * quantity * 100);
+              console.log(`[Invoice] Shipping estimate (volumetric fallback): ${chargeableKg.toFixed(1)}kg × $${costPerKg.toFixed(2)}/kg × 1.15 = $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (origin: ${product.pickupCountry})`);
+            } else {
+              console.log(`[Invoice] No logistics data or dimensions for product "${quoteRequest.productName}" — shipping set to $0`);
+            }
           }
         } catch (err) {
           console.error("[Invoice] Error looking up shipping data:", err);

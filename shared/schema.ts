@@ -20,6 +20,11 @@ export const products = pgTable("products", {
   faqs: jsonb("faqs").notNull().default(sql`'[]'::jsonb`),
   unitsPerPack: integer("units_per_pack"),
   packType: text("pack_type"),
+  shippingLengthCm: real("shipping_length_cm"),
+  shippingWidthCm: real("shipping_width_cm"),
+  shippingDepthCm: real("shipping_depth_cm"),
+  shippingWeightKg: real("shipping_weight_kg"),
+  pickupCountry: text("pickup_country"),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   scrapedAt: timestamp("scraped_at").notNull().defaultNow(),
 });
