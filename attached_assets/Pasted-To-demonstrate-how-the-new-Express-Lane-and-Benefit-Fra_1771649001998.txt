@@ -1,0 +1,54 @@
+To demonstrate how the new **Express Lane** and **Benefit-Framing** logic resolves the friction points seen in the previous logs, let’s simulate a conversation with "Tania," a high-intent customer interested in the **IRIS by Liger**.
+
+In this scenario, Tania clicks the **"I'm ready to buy"** button immediately after the opening hook.
+
+---
+
+### **Simulation: Amara Njeri vs. Tania (High-Intent)**
+
+**Amara:** Hello! I'm Amara from VIA Global Health. The IRIS by Liger: Colposcope and Coagulator in One is trusted by healthcare providers across 40+ countries in Africa. I'd love to help you explore how it could work for your needs—are you looking to equip a facility, stock your distribution, or something else?
+
+**Customer (Tania):** *[Clicks Button: "I'm ready to buy"]*
+
+**Amara (Express Lane):** That’s fantastic, Tania, let’s get this moving for you! The standard price for the IRIS by Liger is **$3,850**. To finalise your proforma invoice and see if you qualify for our NGO or Public Sector subsidies, could you please share your full name, email address, and the country you'll need this shipped to?
+
+> *Note: Instead of stalling for a name, Amara provides the price anchor immediately and groups the data request to maintain momentum.*
+
+**Customer (Tania):** Tania Mielnikowicz, tania.m@clinic.com. I'm in Kenya.
+
+**Amara (The Bridge & Hook):** Thank you, Tania! It's a pleasure to connect with a provider in Kenya. For a single unit shipped to the Port of Mombasa, freight is estimated at **$280** (within 10% accuracy). Now, to ensure I apply the correct pricing tier, could you let me know if your clinic is a private facility, an NGO, or a government-affiliated hospital?
+
+> *Note: Amara gives the freight estimate before asking for the organization type, fulfilling the "Value-First" promise.*
+
+**Customer (Tania):** Ok.
+
+> *Note: This is the first "strike" where the customer gives an ambiguous answer, similar to the "Lewis" scenario.*
+
+**Amara (Organization Gate - Strike 2):** I appreciate that! Just to clarify so I can check for any available discounts: are you purchasing on behalf of a private healthcare provider, or an NGO/Public facility?
+
+**Customer (Tania):** Yes.
+
+> *Note: Second strike. In the previous logic, this would have looped. Under the new logic, the 2-Strike Rule triggers.*
+
+**Amara (2-Strike Default):** Thank you, Tania. I’ll proceed with our **Standard Healthcare Provider** pricing for now to keep things moving. Here is the summary for your order:
+
+| Item | Description | Price (USD) |
+| --- | --- | --- |
+| **Product** | IRIS by Liger (Colposcope/Coagulator) | $3,850.00 |
+| **Quantity** | 1 Unit | Included |
+| **Freight** | Estimated to Kenya (Port Delivery) | $280.00 |
+| **Total** | **Estimated Subtotal** | **$4,130.00** |
+
+This estimate covers delivery to the port; your team would handle customs and local transport. Does this look good to you?
+
+**Customer (Tania):** Yes, looks good.
+
+**Amara (The Close):** Wonderful! I'll have our team prepare a complete proforma invoice with the final shipping costs, payment terms, and delivery timeline. You’ll receive it at **tania.m@clinic.com** within 24 hours. Is there anything else I can assist you with today?
+
+---
+
+### **Why this resolved the "Engagement Cliff":**
+
+1. **Immediate Gratification:** By providing the $3,850 price immediately after she said "ready to buy," Amara rewarded her intent rather than putting up a "Name/Email" gate.
+2. **Avoided the Circular Trap:** Instead of asking for her organization type five times (like in Quote #23), Amara moved to a default setting after the second vague answer, preserving the sale.
+3. **Contextual Value:** Shipping data was provided *before* the customer had to commit to further questions, keeping the "Value-First" flow intact.
