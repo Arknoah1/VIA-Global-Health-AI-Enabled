@@ -9,6 +9,7 @@ import { trackQuoteStarted, trackQuoteSubmitted, trackChatMessage } from "@/lib/
 import { useTranslation } from "@/i18n/LanguageProvider";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { ChatContactForm } from "@/components/ChatContactForm";
 
 interface AmaraChatDialogProps {
   isOpen: boolean;
@@ -28,7 +29,12 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
   const [quoteRequestId, setQuoteRequestId] = useState<string | null>(null);
   const [isConversationComplete, setIsConversationComplete] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const laneATriggers = ["i'm ready to buy", "ready to buy", "ready to order", "i need bulk pricing", "buy now", "want to purchase", "want to order", "send me a quote", "send me a proforma", "i want pricing", "i need to order", "place an order"];
+  const isLaneATrigger = (text: string) => laneATriggers.some(trigger => text.toLowerCase().includes(trigger));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -88,6 +94,7 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
     if (!userMessage) return;
 
     setShowQuickReplies(false);
+    const triggeredLaneA = isLaneATrigger(userMessage);
     const updatedMessages: ChatMessage[] = [...messages, { role: "user", content: userMessage }];
     setMessages(updatedMessages);
     setInputValue("");
@@ -103,7 +110,7 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
       if (!response.ok) throw new Error("Failed to send message");
 
       const data = await response.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || data.message }]);
       trackChatMessage(updatedMessages.length + 1);
 
       if (data.profileUpdate) {
@@ -115,12 +122,60 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
         setIsConversationComplete(true);
         trackQuoteSubmitted(quoteRequestId, 1);
       }
+
+      if (triggeredLaneA && !contactFormSubmitted) {
+        const profile = getCustomerProfile();
+        if (!profile?.firstName || !profile?.email) {
+          setShowContactForm(true);
+        }
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "I'm sorry, I had trouble processing that. Could you try again?" },
       ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
+    if (!quoteRequestId) return;
+    setShowContactForm(false);
+    setContactFormSubmitted(true);
+
+    const displayMessage = `${data.fullName}, ${data.email}, ${data.country}`;
+    setMessages(prev => [...prev, { role: 'user', content: displayMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: displayMessage,
+          contactData: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            shippingCountry: data.country
+          },
+          language
+        })
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      const responseData = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: responseData.reply || responseData.message }]);
+      const currentProfile = getCustomerProfile() || {};
+      saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, country: data.country });
+      if (responseData.referToAgent) {
+        setIsConversationComplete(true);
+        trackQuoteSubmitted(quoteRequestId, 1);
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I'm sorry, I had trouble processing that. Could you try again?" }]);
     } finally {
       setIsLoading(false);
     }
@@ -134,6 +189,8 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
       setIsConversationComplete(false);
       setInputValue("");
       setShowQuickReplies(true);
+      setShowContactForm(false);
+      setContactFormSubmitted(false);
     }, 300);
   };
 
@@ -210,6 +267,27 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
                     {text}
                   </Button>
                 ))}
+              </motion.div>
+            )}
+            {showContactForm && !isLoading && (
+              <motion.div
+                className="flex justify-start"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <ChatContactForm
+                  onSubmit={handleContactFormSubmit}
+                  isLoading={isLoading}
+                  defaultValues={{
+                    fullName: (() => {
+                      const p = getCustomerProfile();
+                      return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
+                    })(),
+                    email: getCustomerProfile()?.email || '',
+                    country: getCustomerProfile()?.country || ''
+                  }}
+                />
               </motion.div>
             )}
             {isLoading && (

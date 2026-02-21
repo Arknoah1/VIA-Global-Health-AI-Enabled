@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/i18n/LanguageProvider";
+import { ChatContactForm } from "@/components/ChatContactForm";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -126,6 +127,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [showSupportChat, setShowSupportChat] = useState(false);
   const [autoOpenDismissed, setAutoOpenDismissed] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -204,6 +207,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       setRecommendedProducts([]);
       setIsConversationComplete(false);
       setInitError(null);
+      setShowContactForm(false);
+      setContactFormSubmitted(false);
     }
   }, [product?.id]);
 
@@ -232,6 +237,13 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setShowQuoteDialog(false);
   };
 
+  const laneATriggers = ["i'm ready to buy", "ready to buy", "ready to order", "i need bulk pricing", "buy now", "want to purchase", "want to order", "send me a quote", "send me a proforma", "i want pricing", "i need to order", "place an order"];
+
+  const isLaneATrigger = (text: string) => {
+    const lower = text.toLowerCase();
+    return laneATriggers.some(trigger => lower.includes(trigger));
+  };
+
   const handleQuickReply = async (text: string) => {
     if (isLoading || !product || isConversationComplete || !quoteRequestId) return;
     setShowQuickReplies(false);
@@ -239,6 +251,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     trackChatMessage(messages.length);
+    const triggeredLaneA = isLaneATrigger(text);
     try {
       const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
         method: 'POST',
@@ -267,9 +280,71 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         setIsConversationComplete(true);
         trackQuoteSubmitted(quoteRequestId, 1);
       }
+      if (triggeredLaneA && !contactFormSubmitted) {
+        const profile = getCustomerProfile();
+        if (!profile?.firstName || !profile?.email) {
+          setShowContactForm(true);
+        }
+      }
     } catch (error) {
       console.error('Error sending quick reply:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I'm having trouble responding. Please try again." }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
+    if (!quoteRequestId || !product) return;
+    setShowContactForm(false);
+    setContactFormSubmitted(true);
+
+    const displayMessage = `${data.fullName}, ${data.email}, ${data.country}`;
+    setMessages(prev => [...prev, { role: 'user', content: displayMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: displayMessage,
+          contactData: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            shippingCountry: data.country
+          },
+          productDetails: {
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            specifications: product.specifications,
+            faqs: product.faqs,
+            unitsPerPack: product.unitsPerPack,
+            packType: product.packType
+          },
+          language
+        })
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      const responseData = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: responseData.message }]);
+      if (responseData.specialPricingEligible) setSpecialPricingEligible(true);
+      if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
+      if (responseData.profileUpdate) {
+        saveCustomerProfile({ ...responseData.profileUpdate, firstName: data.firstName, lastName: data.lastName, email: data.email, country: data.country });
+      } else {
+        const currentProfile = getCustomerProfile() || {};
+        saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, country: data.country });
+      }
+      if (responseData.referToAgent) {
+        setIsConversationComplete(true);
+        trackQuoteSubmitted(quoteRequestId, 1);
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I'm having trouble processing that. Could you try again?" }]);
     } finally {
       setIsLoading(false);
     }
@@ -285,6 +360,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setInputValue('');
     setIsLoading(true);
     trackChatMessage(messages.length);
+    const triggeredLaneA = isLaneATrigger(userInput);
 
     try {
       if (!quoteRequestId) {
@@ -339,6 +415,13 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       if (data.referToAgent) {
         setIsConversationComplete(true);
         if (quoteRequestId) trackQuoteSubmitted(quoteRequestId, 1);
+      }
+
+      if (triggeredLaneA && !contactFormSubmitted) {
+        const profile = getCustomerProfile();
+        if (!profile?.firstName || !profile?.email) {
+          setShowContactForm(true);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -870,6 +953,27 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                       {text}
                     </button>
                   ))}
+                </motion.div>
+              )}
+              {showContactForm && !isLoading && (
+                <motion.div
+                  className="flex justify-start"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <ChatContactForm
+                    onSubmit={handleContactFormSubmit}
+                    isLoading={isLoading}
+                    defaultValues={{
+                      fullName: (() => {
+                        const p = getCustomerProfile();
+                        return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
+                      })(),
+                      email: getCustomerProfile()?.email || '',
+                      country: getCustomerProfile()?.country || ''
+                    }}
+                  />
                 </motion.div>
               )}
               {isLoading && (

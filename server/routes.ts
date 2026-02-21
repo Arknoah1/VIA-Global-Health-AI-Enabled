@@ -1451,7 +1451,7 @@ export async function registerRoutes(
   app.post("/api/quote-requests/:id/messages", async (req, res) => {
     try {
       const { id } = req.params;
-      const { message, productDetails, language } = req.body;
+      const { message, productDetails, language, contactData } = req.body;
 
       if (!message) {
         return res.status(400).json({ error: "message is required" });
@@ -1461,6 +1461,17 @@ export async function registerRoutes(
       const quoteRequest = await storage.getQuoteRequestById(id);
       if (!quoteRequest) {
         return res.status(404).json({ error: "Quote request not found" });
+      }
+
+      if (contactData) {
+        const contactUpdates: Record<string, any> = {};
+        if (contactData.firstName && !quoteRequest.firstName) contactUpdates.firstName = contactData.firstName;
+        if (contactData.lastName && !quoteRequest.lastName) contactUpdates.lastName = contactData.lastName;
+        if (contactData.email && !quoteRequest.email) contactUpdates.email = contactData.email;
+        if (contactData.shippingCountry) contactUpdates.shippingCountry = contactData.shippingCountry;
+        if (Object.keys(contactUpdates).length > 0) {
+          await storage.updateQuoteRequest(id, contactUpdates);
+        }
       }
 
       // Save user message
@@ -1916,16 +1927,16 @@ Trigger keywords: "ready to buy", "ready to order", "place an order", "buy now",
 Behaviour: Match their urgency. Reward their intent with an IMMEDIATE price reveal — do NOT gate the price behind name/email collection. Show the product price upfront as an anchor, then collect details to finalise the proforma.
 
 Lane A Flow:
-1. IMMEDIATELY reveal the product price (use the default/standard tier price). Also provide a shipping estimate or Regional Anchor if no country is known yet.
-2. In the SAME message, ask for name, email, and shipping country together — frame it as needed to "finalise the proforma and check for available subsidies."
-3. Once they provide their details, give the specific shipping estimate for their country and ask for org type (framed as discount benefit). If they give a vague answer, apply the 2-Strike Rule quickly.
-4. After org type is determined (or defaulted), present the COMBINED ORDER SUMMARY — a single markdown table showing product price, freight estimate, and estimated subtotal. Fold import capability and shipping terms into a brief statement within this summary (e.g., "This estimate covers delivery to the port; your team would handle customs and local transport.") rather than asking as a separate question.
+1. IMMEDIATELY reveal the product price (use the default/standard tier price). Mention that volume discounts are available for larger orders. Also provide a shipping estimate or Regional Anchor if no country is known yet.
+2. Ask "How many units do you need?" along with requesting their contact details. NOTE: The chat interface will display a structured contact form for name, email, and country — so you do NOT need to ask for those in your message text. Just ask about quantity and mention the form.
+3. Once they provide their details and quantity, give the specific shipping estimate for their country (factored by quantity), apply the correct pricing tier for their quantity, and ask for org type (framed as discount benefit). If they give a vague answer, apply the 2-Strike Rule quickly.
+4. After org type is determined (or defaulted), present the COMBINED ORDER SUMMARY — a single markdown table showing product price per unit, quantity, product subtotal, freight estimate (per unit × quantity), and estimated grand total. Fold import capability and shipping terms into a brief statement within this summary (e.g., "This estimate covers delivery to the port; your team would handle customs and local transport.") rather than asking as a separate question.
 5. If the customer confirms, close with the proforma handoff.
 
 Lane A Example:
-Message 1 (after "I'm ready to buy"): "Fantastic, let's get this moving for you! The [Product] is priced at $[price per unit]. To finalise your proforma invoice and see if you qualify for our NGO or Public Sector subsidies, could you please share your full name, email address, and the country you'll need this shipped to?"
-Message 2 (after they provide details): "Thank you, [Name]! Shipping to [Country] is estimated at $[amount] per unit (within 10% accuracy). To ensure I apply the best available pricing — we offer subsidised rates for NGOs, faith-based clinics, and government facilities — what type of organisation do you represent?"
-Message 3 (after org type or 2-Strike default): Present the combined order summary table and close.
+Message 1 (after "I'm ready to buy"): "Fantastic, let's get this moving for you! The [Product] is priced at $[price per unit] for 1-5 units, with volume discounts available for larger orders. How many units are you looking to order? Please also fill in the contact form below so I can calculate your shipping and check if your organisation qualifies for any subsidies."
+Message 2 (after they provide details + quantity): "Thank you, [Name]! For [quantity] units shipped to [Country], freight is estimated at $[total shipping] (within 10% accuracy). To ensure I apply the best available pricing — we offer subsidised rates for NGOs, faith-based clinics, and government facilities — what type of organisation do you represent?"
+Message 3 (after org type or 2-Strike default): Present the combined order summary table with quantity-adjusted pricing and total shipping, then close.
 
 IMPORTANT FOR LANE A: You do NOT need to ask import capability (5b) or timeline (5c) as separate questions. Instead, state the shipping terms within the summary ("This estimate covers delivery to the port; your team would handle customs and local transport") and ask "When would you like this delivered?" as a brief addition to the summary message. If they confirm, proceed directly to the proforma handoff. The goal is to close in 3-4 messages, not 8-10.
 
@@ -2251,16 +2262,19 @@ PRODUCT CONTEXT:`;
   prompt += `\n\nQUOTE DELIVERY (Lane-Aware):
 
 FOR LANE A — COMBINED ORDER SUMMARY (Single Message):
-Lane A customers want speed. After determining org type (or applying 2-Strike default), present a SINGLE combined table with product + freight + total. Use this markdown table format:
+Lane A customers want speed. After determining org type (or applying 2-Strike default), present a SINGLE combined table with quantity-adjusted pricing + freight + total. Use this markdown table format:
 
 | Item | Details | Price (USD) |
 |---|---|---|
-| **Product** | [product name] | $[calculated price] |
-| **Quantity** | [quantity] units | Included |
-| **Freight** | Estimated to [country] (Port Delivery) | $[shipping estimate] |
-| **Total** | **Estimated Subtotal** | **$[product + freight]** |
+| **Product** | [product name] | $[unit price after segment adjustment] per unit |
+| **Quantity** | [quantity] units | |
+| **Product Subtotal** | [quantity] × $[unit price] | $[product subtotal] |
+| **Freight** | Estimated to [country] (Port Delivery) | $[shipping per unit × quantity] |
+| **Estimated Total** | **Grand Total** | **$[product subtotal + freight total]** |
 
-This estimate covers delivery to the port; your team would handle customs and local transport. When would you like this delivered?
+This estimate covers delivery to the port; your team would handle customs clearance, import duties, and local transport. When would you like this delivered?
+
+If a volume discount applies (i.e., the quantity falls into a lower price tier), highlight it: "Your order of [quantity] units qualifies for our volume pricing at $[lower price] per unit (saving $[difference] per unit)."
 
 If the customer confirms, proceed directly to the proforma handoff close.
 
