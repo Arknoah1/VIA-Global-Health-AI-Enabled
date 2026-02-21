@@ -84,8 +84,14 @@ Preferred communication style: Simple, everyday language.
 ### AI Integration
 - **Provider**: OpenAI API (via Replit AI integrations)
 - **Use Case**: Powers the conversational quote request flow, helping users specify their needs
-- **Amara Prompt Strategy**: "Value-First Flow" (Sales Advisor persona)
+- **Amara Prompt Strategy**: "Value-First Flow" with Adaptive Lanes (Senior Sales Advisor persona)
+  - **Strategic Lanes** for adaptive conversation routing:
+    - Lane A (Express): High-intent buyers — fast pacing, combine questions, match urgency
+    - Lane B (Advisor): Question-askers — lead with Regional Anchor shipping range, consult first, collect details organically
+    - Lane C (Discovery): Default — standard step-by-step Value-First Flow
   - Leads with shipping estimates before asking qualifying questions
+  - Regional Anchor: Provides shipping range across known destinations when no specific country is mentioned
+  - Organisation type framed as a "discount benefit" ("we offer subsidised rates for NGOs...")
   - Flow: Shipping estimate → Name+Email → Organisation type → Product price → Quantity/Import/Timeline
   - 2-Strike Rule: If customer ignores org type question twice, defaults to "Standard Healthcare Provider" pricing
   - Organisation type is permanently locked once provided (anti-gaming)
