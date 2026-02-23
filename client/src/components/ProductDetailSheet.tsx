@@ -842,7 +842,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
       {/* AI Quote Assistant Dialog - Chat with Amara */}
       <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialogWithDismiss()}>
-        <DialogContent className="w-[95vw] sm:max-w-md h-[85vh] sm:h-[600px] max-h-[600px] flex flex-col p-0 rounded-t-xl sm:rounded-xl">
+        <DialogContent className="w-[95vw] sm:max-w-lg h-[90vh] sm:h-[80vh] max-h-[800px] flex flex-col p-0 rounded-t-xl sm:rounded-xl">
           <DialogHeader className="p-3 sm:p-4 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
             <div className="flex items-center justify-between w-full">
               <DialogTitle className="flex items-center gap-2">
