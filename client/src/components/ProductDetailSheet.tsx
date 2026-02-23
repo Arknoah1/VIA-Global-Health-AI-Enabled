@@ -126,8 +126,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
   const [showSupportChat, setShowSupportChat] = useState(false);
   const [autoOpenDismissed, setAutoOpenDismissed] = useState(false);
-  const [showContactForm, setShowContactForm] = useState(false);
   const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
+  const [chatStep, setChatStep] = useState<'intro' | 'quantity' | 'details' | 'chat'>('intro');
+  const [quantity, setQuantity] = useState<string>('');
+  const [priceText, setPriceText] = useState('');
+  const [pricingTiers, setPricingTiers] = useState<Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -135,13 +138,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   };
 
   const chatProgress = useMemo(() => {
-    const userMessages = messages.filter(m => m.role === 'user').length;
-    if (userMessages === 0) return { step: 1, label: "Getting started", total: 4 };
-    if (userMessages <= 2) return { step: 1, label: "Getting to know you", total: 4 };
-    if (userMessages <= 4) return { step: 2, label: "Understanding your needs", total: 4 };
-    if (userMessages <= 7) return { step: 3, label: "Building your quote", total: 4 };
-    return { step: 4, label: "Finalizing details", total: 4 };
-  }, [messages]);
+    if (chatStep === 'intro') return { step: 1, label: "Product & pricing", total: 4 };
+    if (chatStep === 'quantity') return { step: 2, label: "Order quantity", total: 4 };
+    if (chatStep === 'details') return { step: 3, label: "Your details", total: 4 };
+    return { step: 4, label: "Finalising your quote", total: 4 };
+  }, [chatStep]);
 
   const filteredFaqs = useMemo(() => {
     if (!product?.faqs || !faqSearchQuery.trim()) return product?.faqs || [];
@@ -179,19 +180,13 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       setQuoteRequestId(data.quoteRequestId);
       setMessages([{ role: 'assistant', content: data.message }]);
       trackQuoteStarted(product.name);
-      const profile = getCustomerProfile();
-      if (!profile?.firstName || !profile?.email) {
-        setShowContactForm(true);
-      } else {
-        setContactFormSubmitted(true);
-      }
+      if (data.priceText) setPriceText(data.priceText);
+      if (data.pricingTiers) setPricingTiers(data.pricingTiers);
+      setChatStep('intro');
     } catch (error) {
       console.error('Error starting quote session:', error);
       setInitError(t("productDetail.connectionError"));
-      setMessages([{ 
-        role: 'assistant', 
-        content: t("chat.fallbackGreeting", { product: product.name })
-      }]);
+      setChatStep('intro');
     } finally {
       setIsLoading(false);
     }
@@ -211,8 +206,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       setRecommendedProducts([]);
       setIsConversationComplete(false);
       setInitError(null);
-      setShowContactForm(false);
       setContactFormSubmitted(false);
+      setChatStep('intro');
+      setQuantity('');
+      setPriceText('');
+      setPricingTiers([]);
     }
   }, [product?.id]);
 
@@ -239,62 +237,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const handleCloseQuoteDialogWithDismiss = () => {
     setAutoOpenDismissed(true);
     setShowQuoteDialog(false);
-  };
-
-  const handleContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
-    if (!quoteRequestId || !product) return;
-    setShowContactForm(false);
-    setContactFormSubmitted(true);
-
-    const displayMessage = `${data.fullName}, ${data.email}, ${data.country}`;
-    setMessages(prev => [...prev, { role: 'user', content: displayMessage }]);
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: displayMessage,
-          contactData: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            email: data.email,
-            shippingCountry: data.country
-          },
-          productDetails: {
-            name: product.name,
-            description: product.description,
-            category: product.category,
-            specifications: product.specifications,
-            faqs: product.faqs,
-            unitsPerPack: product.unitsPerPack,
-            packType: product.packType
-          },
-          language
-        })
-      });
-      if (!response.ok) throw new Error('Failed to send message');
-      const responseData = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: responseData.message }]);
-      if (responseData.specialPricingEligible) setSpecialPricingEligible(true);
-      if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
-      if (responseData.profileUpdate) {
-        saveCustomerProfile({ ...responseData.profileUpdate, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
-      } else {
-        const currentProfile = getCustomerProfile() || {};
-        saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
-      }
-      if (responseData.referToAgent) {
-        setIsConversationComplete(true);
-        trackQuoteSubmitted(quoteRequestId, 1);
-      }
-    } catch (error) {
-      console.error('Error submitting contact form:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I'm having trouble processing that. Could you try again?" }]);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSendMessage = async () => {
@@ -372,6 +314,134 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     }
   };
 
+  const getPriceForQuantity = (qty: number) => {
+    if (pricingTiers.length === 0) return null;
+    const matchedTier = pricingTiers.find(t => 
+      qty >= t.minQuantity && (t.maxQuantity === null || qty <= t.maxQuantity)
+    );
+    if (matchedTier) return matchedTier.unitPriceCents / 100;
+    const lastTier = pricingTiers[pricingTiers.length - 1];
+    if (qty > (lastTier.maxQuantity || 0)) return lastTier.unitPriceCents / 100;
+    return pricingTiers[0].unitPriceCents / 100;
+  };
+
+  const handleQuantityConfirm = () => {
+    const qty = parseInt(quantity);
+    if (!qty || qty < 1) return;
+    const profile = getCustomerProfile();
+    const hasCompleteProfile = !!(profile?.firstName && profile?.email && profile?.shippingCountry);
+    if (hasCompleteProfile) {
+      setContactFormSubmitted(true);
+      setChatStep('chat');
+      const unitPrice = getPriceForQuantity(qty);
+      const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
+      const quantityMessage = `I'd like to order ${qty} units${priceInfo}`;
+      setMessages(prev => [...prev, { role: 'user', content: quantityMessage }]);
+      sendQuantityToAI(quantityMessage, { firstName: profile!.firstName!, lastName: profile!.lastName || '', email: profile!.email!, shippingCountry: profile!.shippingCountry! });
+    } else {
+      setChatStep('details');
+    }
+  };
+
+  const sendQuantityToAI = async (quantityMessage: string, contactInfo?: { firstName: string; lastName: string; email: string; shippingCountry: string }) => {
+    if (!quoteRequestId || !product) return;
+    setIsLoading(true);
+    try {
+      const messageBody: Record<string, unknown> = {
+        message: quantityMessage,
+        productDetails: {
+          name: product.name,
+          description: product.description,
+          category: product.category,
+          specifications: product.specifications,
+          faqs: product.faqs,
+          unitsPerPack: product.unitsPerPack,
+          packType: product.packType
+        },
+        language
+      };
+      if (contactInfo) {
+        messageBody.contactData = contactInfo;
+      }
+      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(messageBody)
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      if (data.specialPricingEligible) setSpecialPricingEligible(true);
+      if (data.recommendedProducts?.length > 0) setRecommendedProducts(data.recommendedProducts);
+      if (data.profileUpdate) {
+        const currentProfile = getCustomerProfile() || {};
+        saveCustomerProfile({ ...currentProfile, ...data.profileUpdate });
+      }
+      if (data.referToAgent) {
+        setIsConversationComplete(true);
+        trackQuoteSubmitted(quoteRequestId, 1);
+      }
+    } catch (error) {
+      console.error('Error sending quantity:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting. You can type your message below to retry, or close and reopen the dialog." }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStepContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
+    if (!quoteRequestId || !product) return;
+    setContactFormSubmitted(true);
+    setChatStep('chat');
+    const qty = parseInt(quantity) || 1;
+    const unitPrice = getPriceForQuantity(qty);
+    const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
+    const combinedMessage = `I'd like to order ${qty} units${priceInfo}. My details: ${data.fullName}, ${data.email}, shipping to ${data.country}`;
+    setMessages(prev => [...prev, { role: 'user', content: combinedMessage }]);
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: combinedMessage,
+          contactData: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            shippingCountry: data.country
+          },
+          productDetails: {
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            specifications: product.specifications,
+            faqs: product.faqs,
+            unitsPerPack: product.unitsPerPack,
+            packType: product.packType
+          },
+          language
+        })
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      const responseData = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: responseData.message }]);
+      if (responseData.specialPricingEligible) setSpecialPricingEligible(true);
+      if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
+      const currentProfile = getCustomerProfile() || {};
+      saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
+      if (responseData.referToAgent) {
+        setIsConversationComplete(true);
+        trackQuoteSubmitted(quoteRequestId, 1);
+      }
+    } catch (error) {
+      console.error('Error submitting step contact form:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting. You can type your message below to retry, or close and reopen the dialog." }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCloseQuoteDialog = () => {
     setShowQuoteDialog(false);
   };
@@ -385,6 +455,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setRecommendedProducts([]);
     setIsConversationComplete(false);
     setInitError(null);
+    setChatStep('intro');
+    setQuantity('');
+    setPriceText('');
+    setPricingTiers([]);
+    setContactFormSubmitted(false);
   };
 
   const currentImage = product?.images && product.images.length > 0 
@@ -806,35 +881,21 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               )}
             </div>
             <DialogDescription className="sr-only">AI-powered chat assistant to help you get a custom quote for this product</DialogDescription>
-            {messages.length > 0 && (
-              <div className="mt-2 pt-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-medium text-muted-foreground">{chatProgress.label}</span>
-                  <span className="text-[10px] text-muted-foreground">Step {chatProgress.step} of {chatProgress.total}</span>
-                </div>
-                <div className="h-1 bg-muted rounded-full overflow-hidden">
-                  <motion.div 
-                    className="h-full bg-primary rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(chatProgress.step / chatProgress.total) * 100}%` }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                  />
-                </div>
+            <div className="mt-2 pt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-medium text-muted-foreground">{chatProgress.label}</span>
+                <span className="text-[10px] text-muted-foreground">Step {chatProgress.step} of {chatProgress.total}</span>
               </div>
-            )}
-          </DialogHeader>
-
-          {/* Special Pricing Banner */}
-          {specialPricingEligible && (
-            <div className="px-4 pt-2">
-              <Alert className="bg-green-50 border-green-200">
-                <Star className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800 text-sm">
-                  You may qualify for special pricing! We'll include this in your quote.
-                </AlertDescription>
-              </Alert>
+              <div className="h-1 bg-muted rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-primary rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(chatProgress.step / chatProgress.total) * 100}%` }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                />
+              </div>
             </div>
-          )}
+          </DialogHeader>
 
           {/* Init Error Banner */}
           {initError && (
@@ -847,41 +908,165 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               </Alert>
             </div>
           )}
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-4">
-              {messages.map((msg, idx) => (
-                <motion.div
-                  key={idx}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground whitespace-pre-line'
-                        : 'bg-muted chat-markdown'
-                    }`}
-                    data-testid={`chat-message-${msg.role}-${idx}`}
-                  >
-                    {msg.role === 'assistant' ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                    ) : (
-                      msg.content
+
+          {/* STEPWISE FLOW: Steps 1-3 are structured UI, Step 4 is open chat */}
+          {chatStep === 'intro' && (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex-1 flex flex-col justify-center items-center text-center space-y-4 px-2"
+              >
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Stethoscope className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Hi! I'm Amara from VIA Global Health</p>
+                  <h3 className="text-lg font-bold text-foreground" data-testid="step-product-name">{product.name}</h3>
+                </div>
+                {priceText ? (
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 w-full max-w-xs" data-testid="step-price-display">
+                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Starting price</p>
+                    <p className="text-2xl font-bold text-primary">{priceText.split(' ')[0]}</p>
+                    <p className="text-xs text-muted-foreground">{priceText.split(' ').slice(1).join(' ')}</p>
+                    {pricingTiers.length > 1 && (
+                      <p className="text-xs text-primary/70 mt-1">Volume discounts available</p>
                     )}
                   </div>
-                </motion.div>
-              ))}
-              {showContactForm && !isLoading && (
-                <motion.div
-                  className="flex justify-start"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+                ) : isLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading pricing...
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Contact us for pricing details</p>
+                )}
+                <Button
+                  onClick={() => setChatStep('quantity')}
+                  disabled={isLoading}
+                  className="w-full max-w-xs h-11 text-sm font-semibold"
+                  data-testid="button-step-continue-to-quantity"
                 >
+                  Get a Quote
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </motion.div>
+            </div>
+          )}
+
+          {chatStep === 'quantity' && (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex-1 flex flex-col justify-center items-center space-y-4 px-2"
+              >
+                <div>
+                  <h3 className="text-base font-semibold text-center mb-1">How many units do you need?</h3>
+                  {product.unitsPerPack && product.packType && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Sold in {product.packType}s of {product.unitsPerPack} units
+                    </p>
+                  )}
+                </div>
+                <div className="w-full max-w-xs">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleQuantityConfirm()}
+                    placeholder="Enter quantity"
+                    className="h-12 text-center text-lg font-semibold"
+                    data-testid="input-step-quantity"
+                    autoFocus
+                  />
+                </div>
+                {quantity && parseInt(quantity) > 0 && pricingTiers.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="bg-muted/50 border rounded-xl p-3 w-full max-w-xs text-center"
+                    data-testid="step-quantity-price-summary"
+                  >
+                    {(() => {
+                      const qty = parseInt(quantity);
+                      const unitPrice = getPriceForQuantity(qty);
+                      if (!unitPrice) return null;
+                      return (
+                        <>
+                          <p className="text-xs text-muted-foreground">Estimated total</p>
+                          <p className="text-xl font-bold text-foreground">${(qty * unitPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="text-xs text-muted-foreground">${unitPrice.toFixed(2)} per unit x {qty} units</p>
+                        </>
+                      );
+                    })()}
+                  </motion.div>
+                )}
+                {pricingTiers.length > 1 && (
+                  <div className="w-full max-w-xs">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5 text-center">Volume pricing</p>
+                    <div className="space-y-1">
+                      {pricingTiers.map((tier, idx) => {
+                        const qty = parseInt(quantity) || 0;
+                        const isActive = qty >= tier.minQuantity && (tier.maxQuantity === null || qty <= tier.maxQuantity);
+                        return (
+                          <div
+                            key={idx}
+                            className={`flex items-center justify-between text-xs px-3 py-1.5 rounded-lg transition-colors ${
+                              isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'
+                            }`}
+                            data-testid={`pricing-tier-${idx}`}
+                          >
+                            <span>
+                              {tier.minQuantity}{tier.maxQuantity ? `-${tier.maxQuantity}` : '+'} units
+                            </span>
+                            <span>${(tier.unitPriceCents / 100).toFixed(2)}/unit</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-2 w-full max-w-xs">
+                  <Button
+                    variant="outline"
+                    onClick={() => setChatStep('intro')}
+                    className="h-11 px-4"
+                    data-testid="button-step-back-to-intro"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleQuantityConfirm}
+                    disabled={!quantity || parseInt(quantity) < 1}
+                    className="flex-1 h-11 text-sm font-semibold"
+                    data-testid="button-step-confirm-quantity"
+                  >
+                    Continue
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {chatStep === 'details' && (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex-1 flex flex-col justify-center items-center space-y-4 px-2"
+              >
+                <div className="text-center mb-2">
+                  <h3 className="text-base font-semibold mb-1">Almost there!</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Fill in your details so I can calculate shipping and finalise your quote.
+                  </p>
+                </div>
+                <div className="w-full flex justify-center">
                   <ChatContactForm
-                    onSubmit={handleContactFormSubmit}
+                    onSubmit={handleStepContactFormSubmit}
                     isLoading={isLoading}
                     defaultValues={{
                       fullName: (() => {
@@ -892,78 +1077,129 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                       country: getCustomerProfile()?.shippingCountry || ''
                     }}
                   />
-                </motion.div>
-              )}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted rounded-2xl px-4 py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
                 </div>
-              )}
-
-              {/* Product Recommendations */}
-              {recommendedProducts.length > 0 && (
-                <div className="pt-2">
-                  <p className="text-xs text-muted-foreground mb-2">You might also be interested in:</p>
-                  <div className="space-y-2">
-                    {recommendedProducts.map((prod) => (
-                      <a 
-                        key={prod.id}
-                        href={`/products/${slugify(prod.name)}`}
-                        className="block p-3 rounded-xl border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer group"
-                        data-testid={`recommended-product-${prod.id}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium group-hover:text-primary transition-colors">{prod.name}</p>
-                            <p className="text-xs text-muted-foreground">{prod.sku}</p>
-                          </div>
-                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-2" />
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Conversation Complete Message */}
-              {isConversationComplete && (
-                <motion.div 
-                  className="pt-4 text-center"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setChatStep('quantity')}
+                  className="text-xs text-muted-foreground"
+                  data-testid="button-step-back-to-quantity"
                 >
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm">
-                    <Check className="h-4 w-4" />
-                    Amara has your details - expect a quote within 24 hours
-                  </div>
-                </motion.div>
-              )}
-              <div ref={messagesEndRef} />
+                  Back to quantity
+                </Button>
+              </motion.div>
             </div>
-          </div>
+          )}
 
-          <div className="p-3 sm:p-4 border-t flex gap-2 bg-muted/30 shrink-0">
-            <Input
-              placeholder={isConversationComplete ? "Conversation complete" : t("productDetail.typeMessage")}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              disabled={isLoading || isConversationComplete}
-              className="bg-background h-11 text-base sm:text-sm"
-              data-testid="input-chat-message"
-            />
-            <Button 
-              size="icon" 
-              onClick={handleSendMessage} 
-              disabled={isLoading || !inputValue.trim() || isConversationComplete}
-              className="bg-primary hover:bg-primary/90 h-11 w-11 shrink-0"
-              data-testid="button-send-message"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
+          {chatStep === 'chat' && (
+            <>
+              {/* Special Pricing Banner */}
+              {specialPricingEligible && (
+                <div className="px-4 pt-2">
+                  <Alert className="bg-green-50 border-green-200">
+                    <Star className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 text-sm">
+                      You may qualify for special pricing! We'll include this in your quote.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-4">
+                  {messages.map((msg, idx) => (
+                    <motion.div
+                      key={idx}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground whitespace-pre-line'
+                            : 'bg-muted chat-markdown'
+                        }`}
+                        data-testid={`chat-message-${msg.role}-${idx}`}
+                      >
+                        {msg.role === 'assistant' ? (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        ) : (
+                          msg.content
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-2xl px-4 py-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    </div>
+                  )}
+
+                  {recommendedProducts.length > 0 && (
+                    <div className="pt-2">
+                      <p className="text-xs text-muted-foreground mb-2">You might also be interested in:</p>
+                      <div className="space-y-2">
+                        {recommendedProducts.map((prod) => (
+                          <a 
+                            key={prod.id}
+                            href={`/products/${slugify(prod.name)}`}
+                            className="block p-3 rounded-xl border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer group"
+                            data-testid={`recommended-product-${prod.id}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium group-hover:text-primary transition-colors">{prod.name}</p>
+                                <p className="text-xs text-muted-foreground">{prod.sku}</p>
+                              </div>
+                              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-2" />
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {isConversationComplete && (
+                    <motion.div 
+                      className="pt-4 text-center"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm">
+                        <Check className="h-4 w-4" />
+                        Amara has your details - expect a quote within 24 hours
+                      </div>
+                    </motion.div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
+
+              <div className="p-3 sm:p-4 border-t flex gap-2 bg-muted/30 shrink-0">
+                <Input
+                  placeholder={isConversationComplete ? "Conversation complete" : t("productDetail.typeMessage")}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  disabled={isLoading || isConversationComplete}
+                  className="bg-background h-11 text-base sm:text-sm"
+                  data-testid="input-chat-message"
+                />
+                <Button 
+                  size="icon" 
+                  onClick={handleSendMessage} 
+                  disabled={isLoading || !inputValue.trim() || isConversationComplete}
+                  className="bg-primary hover:bg-primary/90 h-11 w-11 shrink-0"
+                  data-testid="button-send-message"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

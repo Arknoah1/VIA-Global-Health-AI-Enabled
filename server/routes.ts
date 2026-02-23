@@ -1466,9 +1466,25 @@ export async function registerRoutes(
         messageType: "greeting"
       });
 
+      // Build pricing tiers array for frontend stepwise flow
+      let pricingTiersData: Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }> = [];
+      if (productId) {
+        try {
+          const tiers = await storage.getProductPricingTiers(productId);
+          pricingTiersData = tiers
+            .sort((a, b) => a.minQuantity - b.minQuantity)
+            .map(t => ({ minQuantity: t.minQuantity, maxQuantity: t.maxQuantity, unitPriceCents: t.unitPriceCents }));
+        } catch (e) {
+          // Already logged above
+        }
+      }
+
       res.json({
         quoteRequestId: quoteRequest.id,
-        message: greeting
+        message: greeting,
+        priceText,
+        pricingTiers: pricingTiersData,
+        productName: productName || null
       });
     } catch (error) {
       console.error("Error starting quote request:", error);
@@ -2098,10 +2114,12 @@ ENGAGEMENT STRATEGY (Lane A Express — Default for ALL conversations):
 
 INFORMATION TO GATHER (Express pace — move fast):
 
-PHASE 1 — ALREADY DONE:
-1. The opening message has ALREADY revealed the product price and asked for quantity. A contact form collects name, email, and shipping country.
-2. When the customer provides their country (via form or message), immediately provide the specific shipping estimate from the reference data.
-3. Name and email will typically come from the structured contact form. Do NOT re-ask for these if they are in the CURRENT CUSTOMER STATE below.
+PHASE 1 — ALREADY DONE (via structured UI steps before this chat):
+1. The customer has ALREADY SEEN the product price in a structured pricing screen.
+2. The customer has ALREADY ENTERED their desired quantity via a structured quantity input.
+3. The customer has ALREADY PROVIDED their name, email, and shipping country via a structured contact form (check CURRENT CUSTOMER STATE below).
+4. Do NOT re-ask for price, quantity, name, email, or country if they are already in the CURRENT CUSTOMER STATE below.
+5. When the customer's country is available, IMMEDIATELY provide the specific shipping estimate from the reference data in your FIRST response.
 
 PHASE 2 — QUALIFY AND FINALISE:
 4. Organisation type — frame as a benefit: "To ensure I apply the best available pricing — we offer subsidised rates for NGOs, faith-based clinics, and government facilities — what type of organisation do you represent?"

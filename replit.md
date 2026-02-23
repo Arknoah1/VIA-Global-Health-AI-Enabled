@@ -85,14 +85,19 @@ Preferred communication style: Simple, everyday language.
 - **Provider**: OpenAI API (via Replit AI integrations)
 - **Use Case**: Powers the conversational quote request flow, helping users specify their needs
 - **Amara Prompt Strategy**: Lane A Express by Default (Senior Sales Advisor persona)
-  - **All conversations start in Lane A (Express) mode**: Opening message reveals product price upfront with quantity question
-  - **ChatContactForm** shows immediately after opening message for name, email, and shipping country (skipped for returning customers with existing profile)
-  - Quick reply buttons removed — every user is treated as a ready buyer
-  - Opening greeting fetches product pricing tiers from DB and includes price in first message
+  - **Stepwise Quote Flow** (ProductDetailSheet): 4-step structured UI before AI chat
+    - Step 1 (Intro & Price): Product name, starting price from DB pricing tiers, "Get a Quote" button
+    - Step 2 (Quantity): Numeric quantity input with live tier-based pricing calculator, volume discount display
+    - Step 3 (Details): Contact form (name, email, shipping country) — skipped for returning customers with saved profile
+    - Step 4 (Chat): Full AI conversation with Amara; quantity + contact data sent automatically as first message
+  - Progress bar in dialog header reflects current step (1-4)
+  - Chat text input hidden during steps 1-3; only visible in step 4
+  - Backend returns `priceText` and `pricingTiers` array from `/api/quote-requests/start`
+  - AmaraChatDialog (general, no product) retains the original single-step chat flow
   - If customer asks detailed questions, Amara can slow to consultative pace while maintaining momentum
   - Regional Anchor: Provides shipping range across known destinations when specific country not mentioned
   - Organisation type framed as a "discount benefit" ("we offer subsidised rates for NGOs...")
-  - Flow: Product price + quantity question (opening) → Contact form data → Shipping estimate → Org type → Combined Order Summary
+  - Flow: Structured steps (price → quantity → contact) → AI chat (shipping estimate → org type → Combined Order Summary)
   - 2-Strike Rule: If customer ignores org type question twice, defaults to "Standard Healthcare Provider" pricing
   - Organisation type is permanently locked once provided (anti-gaming)
   - Red flag gatekeeper: Detects blocked email domains (16) and suspicious keywords (12), switches to Public Partner Mode
