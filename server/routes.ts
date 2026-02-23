@@ -1379,7 +1379,18 @@ export async function registerRoutes(
       // Create initial quote request
       const quoteRequest = await storage.createQuoteRequest(initialData as any);
 
-      // Fetch product pricing for Lane A Express greeting
+      // Fetch default segment multiplier for initial pricing (before org type is known)
+      let defaultMultiplier = 1.25;
+      try {
+        const defaultSegment = await storage.getCustomerSegmentByName("default_segment");
+        if (defaultSegment) {
+          defaultMultiplier = Number(defaultSegment.pricingMultiplier) || 1.25;
+        }
+      } catch (e) {
+        console.error("Error fetching default segment:", e);
+      }
+
+      // Fetch product pricing for Lane A Express greeting (apply default multiplier)
       let priceText = "";
       if (productId) {
         try {
@@ -1387,7 +1398,7 @@ export async function registerRoutes(
           if (pricingTiers.length > 0) {
             const sortedTiers = [...pricingTiers].sort((a, b) => a.minQuantity - b.minQuantity);
             const baseTier = sortedTiers[0];
-            const price = (baseTier.unitPriceCents / 100).toFixed(2);
+            const price = ((baseTier.unitPriceCents * defaultMultiplier) / 100).toFixed(2);
             const maxQtyLabel = baseTier.maxQuantity ? `${baseTier.minQuantity}-${baseTier.maxQuantity} units` : "per unit";
             priceText = `$${price} ${maxQtyLabel}`;
           }
@@ -1466,14 +1477,14 @@ export async function registerRoutes(
         messageType: "greeting"
       });
 
-      // Build pricing tiers array for frontend stepwise flow
+      // Build pricing tiers array for frontend stepwise flow (apply default multiplier)
       let pricingTiersData: Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }> = [];
       if (productId) {
         try {
           const tiers = await storage.getProductPricingTiers(productId);
           pricingTiersData = tiers
             .sort((a, b) => a.minQuantity - b.minQuantity)
-            .map(t => ({ minQuantity: t.minQuantity, maxQuantity: t.maxQuantity, unitPriceCents: t.unitPriceCents }));
+            .map(t => ({ minQuantity: t.minQuantity, maxQuantity: t.maxQuantity, unitPriceCents: Math.round(t.unitPriceCents * defaultMultiplier) }));
         } catch (e) {
           // Already logged above
         }
@@ -2072,7 +2083,13 @@ If someone from an ineligible organisation asks for pricing, politely explain:
 "I'd be happy to share general product information with you. However, our wholesale pricing and quotes are reserved for organisations that are directly purchasing for their own use or distribution. If you're researching on behalf of a buyer, I'd be glad to connect with them directly."
 
 SEGMENT-BASED PRICING (INTERNAL — NEVER reveal to customer):
-Silently apply the pricing adjustment below when calculating prices. NEVER mention markups, margins, multipliers, percentages, or how the price was calculated. Just present the final price as "your pricing" or "the price for this product". Do NOT say things like "as a healthcare provider, pricing includes a X% margin" or "your segment pricing is..." — the customer should only ever see their final calculated price. Do NOT reveal a "standard" or "base" price separately — the customer sees only their final price.
+IMPORTANT: The prices initially shown to the customer in the structured steps (Step 1 and Step 2) already include the DEFAULT SEGMENT multiplier on base cost. This is the starting price when organisation type is unknown.
+
+Once you learn the customer's organisation type, recalculate using the BASE TIER PRICES provided below and the customer's actual segment multiplier. If their segment multiplier results in a LOWER price than what was initially shown, present the new price as a BENEFIT or DISCOUNT: e.g., "Great news — as an NGO, I can offer you a preferential rate of $X.XX per unit" or "As a healthcare provider, your pricing comes to $X.XX per unit." Make the customer feel they are getting a better deal by sharing their org type. If the recalculated price is the same or higher, simply confirm the current pricing.
+
+To recalculate: BASE PRICE (in cents) × segment multiplier ÷ 100 = final price per unit. Use the BASE TIER PRICES section below for exact base values.
+
+NEVER mention markups, margins, multipliers, percentages, base prices, or how the price was calculated. Just present the final price as "your pricing" or "the price for this product". Do NOT say things like "as a healthcare provider, pricing includes a X% margin" or "your segment pricing is..." — the customer should only ever see their final calculated price. Do NOT reveal a "standard" or "base" price separately — the customer sees only their final price.
 
 CUSTOMER SEGMENTS:`;
 
@@ -2124,7 +2141,7 @@ PHASE 1 — ALREADY DONE (via structured UI steps before this chat):
 PHASE 2 — QUALIFY AND FINALISE:
 4. Organisation type — frame as a benefit: "To ensure I apply the best available pricing — we offer subsidised rates for NGOs, faith-based clinics, and government facilities — what type of organisation do you represent?"
 5. Organisation name
-6. Adjust product price if needed based on org type segment adjustment — the base price was already shown in the opening message. If their org type changes the price, present their adjusted price. If it stays the same, confirm the price already shown.
+6. RECALCULATE price based on org type: The initial price shown used the Default segment multiplier on base cost. Now that you know their org type, recalculate using the BASE TIER PRICES × their actual segment multiplier. If the new price is lower, present it as a discount or preferential rate — e.g., "As an NGO, I can offer you $X.XX per unit." This creates a positive moment and rewards the customer for sharing their org type.
 7. Order quantity (to refine pricing tier if needed — quantity may already be provided in their first message)
 8. Import capability — state as a shipping term in the Combined Order Summary (e.g., "delivery to port; your team handles customs"). Only ask explicitly if the customer seems uncertain.
 9. Timeline — include as a brief follow-up in the summary: "When would you like this delivered?"
@@ -2143,8 +2160,8 @@ If the customer tries to change their organisation type later (e.g., "actually I
 This rule applies ONLY to organisation type. Other details like shipping destination, quantity, timeline, and import capability CAN be corrected by the customer.
 
 THE 2-STRIKE RULE: If a customer ignores your question about their organisation type or gives a vague, off-topic answer (like "the weather is nice" or "just give me the price") TWO times, do NOT ask a third time. Instead:
-- Provide the "Standard Healthcare Provider" price estimate
-- Say: "I've applied our standard clinical rate for now. We can finalise your specific organisation details on the formal Proforma whenever you're ready."
+- Keep the current default pricing (which already includes the 1.25x default multiplier) — no adjustment needed
+- Say: "No problem — I'll keep the current pricing for now. We can finalise your specific organisation details on the formal Proforma whenever you're ready."
 - This breaks the loop and keeps the sale moving forward. Do not get stuck repeating the same question.
 
 IMPORTANT GUIDELINES:
@@ -2226,7 +2243,7 @@ PRODUCT CONTEXT:`;
   if (pricingTiers.length > 0) {
     const isKitProduct = productDetails?.unitsPerPack && productDetails?.packType;
     const packLabel = isKitProduct ? productDetails.packType : 'unit';
-    prompt += `\n\nPRODUCT PRICING (use these to provide quotes):`;
+    prompt += `\n\nBASE TIER PRICES (INTERNAL — apply segment multiplier before quoting to customer):`;
     pricingTiers.forEach(tier => {
       const unitPrice = (tier.unitPriceCents / 100).toFixed(2);
       const maxQty = tier.maxQuantity ? tier.maxQuantity.toString() : "+";

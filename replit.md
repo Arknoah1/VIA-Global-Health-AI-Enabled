@@ -55,7 +55,7 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/quote-requests` - Submit quote requests
 - `POST /api/chat` - AI-powered chat for quote assistance
 - `POST /api/recommendations` - AI-powered product recommendations based on browsing history (rate-limited per IP)
-- `POST /api/quote-requests/start` - Start quote session, accepts optional `customerProfile` for returning customers
+- `POST /api/quote-requests/start` - Start quote session, accepts optional `customerProfile` for returning customers. Returns `priceText` and `pricingTiers` with Default segment multiplier (1.25x) applied to base prices
 - `POST /api/quote-requests/:id/messages` - Chat message handler, returns `profileUpdate` for frontend persistence
 - `PATCH /api/quote-requests/:id/status` - Update quote request status (active, in_progress, closed_won, closed_lost); triggers async AI review on close
 - `GET /api/sales-insights` - Retrieve all sales insights extracted from closed deals
