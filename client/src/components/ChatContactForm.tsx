@@ -118,7 +118,7 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
             id="chat-fullname"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="e.g. Tania Mielnikowicz"
+            placeholder="e.g. Jane Doe"
             className="h-9 text-sm"
             data-testid="input-contact-fullname"
           />
@@ -133,7 +133,7 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="e.g. tania@clinic.com"
+            placeholder="e.g. jane@clinic.com"
             className="h-9 text-sm"
             data-testid="input-contact-email"
           />
