@@ -28,13 +28,9 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [quoteRequestId, setQuoteRequestId] = useState<string | null>(null);
   const [isConversationComplete, setIsConversationComplete] = useState(false);
-  const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const laneATriggers = ["i'm ready to buy", "ready to buy", "ready to order", "i need bulk pricing", "buy now", "want to purchase", "want to order", "send me a quote", "send me a proforma", "i want pricing", "i need to order", "place an order"];
-  const isLaneATrigger = (text: string) => laneATriggers.some(trigger => text.toLowerCase().includes(trigger));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,6 +59,12 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
       setQuoteRequestId(data.quoteRequestId);
       setMessages([{ role: "assistant", content: data.message }]);
       trackQuoteStarted("General Inquiry");
+      const profile = getCustomerProfile();
+      if (!profile?.firstName || !profile?.email) {
+        setShowContactForm(true);
+      } else {
+        setContactFormSubmitted(true);
+      }
     } catch (error) {
       console.error("Error starting chat session:", error);
       setMessages([{
@@ -82,7 +84,8 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
       setMessages([]);
       setQuoteRequestId(null);
       setIsConversationComplete(false);
-      setShowQuickReplies(true);
+      setShowContactForm(false);
+      setContactFormSubmitted(false);
       startSession();
     }
   }, [isOpen]);
@@ -93,8 +96,6 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
     const userMessage = text.trim();
     if (!userMessage) return;
 
-    setShowQuickReplies(false);
-    const triggeredLaneA = isLaneATrigger(userMessage);
     const updatedMessages: ChatMessage[] = [...messages, { role: "user", content: userMessage }];
     setMessages(updatedMessages);
     setInputValue("");
@@ -121,13 +122,6 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
       if (data.referToAgent) {
         setIsConversationComplete(true);
         trackQuoteSubmitted(quoteRequestId, 1);
-      }
-
-      if (triggeredLaneA && !contactFormSubmitted) {
-        const profile = getCustomerProfile();
-        if (!profile?.firstName || !profile?.email) {
-          setShowContactForm(true);
-        }
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -168,7 +162,7 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
       const responseData = await response.json();
       setMessages(prev => [...prev, { role: 'assistant', content: responseData.reply || responseData.message }]);
       const currentProfile = getCustomerProfile() || {};
-      saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, country: data.country });
+      saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
       if (responseData.referToAgent) {
         setIsConversationComplete(true);
         trackQuoteSubmitted(quoteRequestId, 1);
@@ -188,7 +182,6 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
       setQuoteRequestId(null);
       setIsConversationComplete(false);
       setInputValue("");
-      setShowQuickReplies(true);
       setShowContactForm(false);
       setContactFormSubmitted(false);
     }, 300);
@@ -248,27 +241,6 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
                 </div>
               </motion.div>
             ))}
-            {showQuickReplies && messages.length === 1 && messages[0]?.role === "assistant" && !isLoading && (
-              <motion.div
-                className="flex flex-wrap gap-2 justify-center pt-2"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                {["I need bulk pricing", "I have some questions", "Just exploring options"].map((text) => (
-                  <Button
-                    key={text}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs rounded-full"
-                    onClick={() => sendMessage(text)}
-                    data-testid={`quick-reply-general-${text.toLowerCase().replace(/\s+/g, "-")}`}
-                  >
-                    {text}
-                  </Button>
-                ))}
-              </motion.div>
-            )}
             {showContactForm && !isLoading && (
               <motion.div
                 className="flex justify-start"
@@ -285,7 +257,7 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
                       return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
                     })(),
                     email: getCustomerProfile()?.email || '',
-                    country: getCustomerProfile()?.country || ''
+                    country: getCustomerProfile()?.shippingCountry || ''
                   }}
                 />
               </motion.div>

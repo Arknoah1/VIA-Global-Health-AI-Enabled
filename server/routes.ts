@@ -1379,24 +1379,49 @@ export async function registerRoutes(
       // Create initial quote request
       const quoteRequest = await storage.createQuoteRequest(initialData as any);
 
-      // Personalized greeting for returning customers, language-aware
+      // Fetch product pricing for Lane A Express greeting
+      let priceText = "";
+      if (productId) {
+        try {
+          const pricingTiers = await storage.getProductPricingTiers(productId);
+          if (pricingTiers.length > 0) {
+            const sortedTiers = [...pricingTiers].sort((a, b) => a.minQuantity - b.minQuantity);
+            const baseTier = sortedTiers[0];
+            const price = (baseTier.unitPriceCents / 100).toFixed(2);
+            const maxQtyLabel = baseTier.maxQuantity ? `${baseTier.minQuantity}-${baseTier.maxQuantity} units` : "per unit";
+            priceText = `$${price} ${maxQtyLabel}`;
+          }
+        } catch (e) {
+          console.error("Error fetching pricing for greeting:", e);
+        }
+      }
+
+      // Lane A Express greeting — leads with price and asks for quantity + form
       let greeting: string;
-      const greetings: Record<string, { returning: (name: string, product: string) => string; new: (product: string) => string }> = {
+      const greetings: Record<string, { returning: (name: string, product: string, price: string) => string; new: (product: string, price: string) => string; returningNoPrice: (name: string, product: string) => string; newNoPrice: (product: string) => string }> = {
         en: {
-          returning: (name, product) => `Welcome back, ${name}! Great to see you again. I see you're interested in the ${product} — a popular choice among our partners. Which country would you need this shipped to? I can pull up our latest freight estimates for you right away.`,
-          new: (product) => `Hello! I'm Amara from VIA Global Health. The ${product} is trusted by healthcare providers across 40+ countries in Africa. Which country would you need this shipped to? I can pull up our latest freight estimates and pricing for you right away.`
+          returning: (name, product, price) => `Welcome back, ${name}! The ${product} is priced at ${price}, with volume discounts available for larger orders. Shipping costs depend on your destination, but I'll calculate that for you shortly.\n\nHow many units are you looking to order? Please also fill in the contact form below so I can finalise your quote and calculate shipping to your country.`,
+          new: (product, price) => `Hello! I'm Amara from VIA Global Health. The ${product} is priced at ${price}, with volume discounts available for larger orders. Shipping costs depend on your destination, but I'll calculate that for you shortly.\n\nHow many units are you looking to order? Please also fill in the contact form below so I can finalise your quote and calculate shipping to your country.`,
+          returningNoPrice: (name, product) => `Welcome back, ${name}! Great to see you again. I see you're interested in the ${product} — a popular choice among our partners. Which country would you need this shipped to? I can pull up our latest freight estimates for you right away.`,
+          newNoPrice: (product) => `Hello! I'm Amara from VIA Global Health. The ${product} is trusted by healthcare providers across 40+ countries in Africa. Which country would you need this shipped to? I can pull up our latest freight estimates and pricing for you right away.`
         },
         fr: {
-          returning: (name, product) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product} — un choix populaire parmi nos partenaires. Dans quel pays souhaitez-vous que cela soit expédié ? Je peux vous fournir nos dernières estimations de fret immédiatement.`,
-          new: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est utilisé par des professionnels de santé dans plus de 40 pays en Afrique. Dans quel pays souhaitez-vous que cela soit expédié ? Je peux vous fournir nos dernières estimations de fret et de prix immédiatement.`
+          returning: (name, product, price) => `Bienvenue à nouveau, ${name} ! Le ${product} est au prix de ${price}, avec des remises sur volume pour les commandes plus importantes. Les frais d'expédition dépendent de votre destination, mais je les calculerai pour vous sous peu.\n\nCombien d'unités souhaitez-vous commander ? Veuillez également remplir le formulaire ci-dessous pour que je puisse finaliser votre devis et calculer l'expédition vers votre pays.`,
+          new: (product, price) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est au prix de ${price}, avec des remises sur volume pour les commandes plus importantes. Les frais d'expédition dépendent de votre destination, mais je les calculerai pour vous sous peu.\n\nCombien d'unités souhaitez-vous commander ? Veuillez également remplir le formulaire ci-dessous pour que je puisse finaliser votre devis et calculer l'expédition vers votre pays.`,
+          returningNoPrice: (name, product) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product} — un choix populaire parmi nos partenaires. Dans quel pays souhaitez-vous que cela soit expédié ?`,
+          newNoPrice: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est utilisé par des professionnels de santé dans plus de 40 pays en Afrique. Dans quel pays souhaitez-vous que cela soit expédié ?`
         },
         pt: {
-          returning: (name, product) => `Bem-vindo(a) de volta, ${name}! Que bom ver você novamente. Vejo que está interessado(a) no ${product} — uma escolha popular entre nossos parceiros. Para qual país você precisaria que isso fosse enviado? Posso verificar nossas estimativas de frete mais recentes para você imediatamente.`,
-          new: (product) => `Olá! Sou Amara da VIA Global Health. O ${product} é confiado por profissionais de saúde em mais de 40 países na África. Para qual país você precisaria que isso fosse enviado? Posso verificar nossas estimativas de frete e preços mais recentes para você imediatamente.`
+          returning: (name, product, price) => `Bem-vindo(a) de volta, ${name}! O ${product} tem o preço de ${price}, com descontos por volume para pedidos maiores. Os custos de envio dependem do seu destino, mas calcularei isso para você em breve.\n\nQuantas unidades você gostaria de pedir? Por favor, preencha também o formulário abaixo para que eu possa finalizar seu orçamento e calcular o frete para o seu país.`,
+          new: (product, price) => `Olá! Sou Amara da VIA Global Health. O ${product} tem o preço de ${price}, com descontos por volume para pedidos maiores. Os custos de envio dependem do seu destino, mas calcularei isso para você em breve.\n\nQuantas unidades você gostaria de pedir? Por favor, preencha também o formulário abaixo para que eu possa finalizar seu orçamento e calcular o frete para o seu país.`,
+          returningNoPrice: (name, product) => `Bem-vindo(a) de volta, ${name}! Vejo que está interessado(a) no ${product}. Para qual país você precisaria que isso fosse enviado?`,
+          newNoPrice: (product) => `Olá! Sou Amara da VIA Global Health. O ${product} é confiado por profissionais de saúde em mais de 40 países na África. Para qual país você precisaria que isso fosse enviado?`
         },
         sw: {
-          returning: (name, product) => `Karibu tena, ${name}! Ni vizuri kukuona tena. Naona una nia ya ${product} — chaguo maarufu miongoni mwa washirika wetu. Ni nchi ipi ungependa hii itumwe? Naweza kukupa makadirio ya gharama za usafirishaji mara moja.`,
-          new: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} inaaminika na watoa huduma za afya katika nchi zaidi ya 40 barani Afrika. Ni nchi ipi ungependa hii itumwe? Naweza kukupa makadirio ya gharama za usafirishaji na bei mara moja.`
+          returning: (name, product, price) => `Karibu tena, ${name}! ${product} ina bei ya ${price}, na punguzo la bei kwa maagizo makubwa. Gharama za usafirishaji zinategemea mahali unapopeleka, lakini nitahesabu hilo kwako hivi karibuni.\n\nUnataka kuagiza vitengo vingapi? Tafadhali jaza fomu hapa chini ili niweze kukamilisha bei yako na kuhesabu usafirishaji hadi nchi yako.`,
+          new: (product, price) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} ina bei ya ${price}, na punguzo la bei kwa maagizo makubwa. Gharama za usafirishaji zinategemea mahali unapopeleka, lakini nitahesabu hilo kwako hivi karibuni.\n\nUnataka kuagiza vitengo vingapi? Tafadhali jaza fomu hapa chini ili niweze kukamilisha bei yako na kuhesabu usafirishaji hadi nchi yako.`,
+          returningNoPrice: (name, product) => `Karibu tena, ${name}! Naona una nia ya ${product}. Ni nchi ipi ungependa hii itumwe?`,
+          newNoPrice: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} inaaminika na watoa huduma za afya katika nchi zaidi ya 40 barani Afrika. Ni nchi ipi ungependa hii itumwe?`
         }
       };
       const langGreetings = greetings[lang] || greetings.en;
@@ -1423,10 +1448,14 @@ export async function registerRoutes(
         greeting = customerProfile?.firstName
           ? generalLangGreetings.returning(customerProfile.firstName)
           : generalLangGreetings.new();
+      } else if (customerProfile?.firstName && priceText) {
+        greeting = langGreetings.returning(customerProfile.firstName, productName, priceText);
       } else if (customerProfile?.firstName) {
-        greeting = langGreetings.returning(customerProfile.firstName, productName);
+        greeting = langGreetings.returningNoPrice(customerProfile.firstName, productName);
+      } else if (priceText) {
+        greeting = langGreetings.new(productName, priceText);
       } else {
-        greeting = langGreetings.new(productName);
+        greeting = langGreetings.newNoPrice(productName);
       }
       
       // Save initial assistant message
@@ -2059,32 +2088,32 @@ COMMON OBJECTIONS TO ADDRESS PROACTIVELY:
 2. Product fit ("Is this right for my context?") — Ask questions to understand their needs and provide guidance
 3. Timing/budget constraints ("Can I wait for better options?") — Acknowledge their timeline and emphasise VIA's flexibility
 
-ENGAGEMENT STRATEGY (Lane-Aware):
-- Detect the customer's lane from their first message and adapt your pacing accordingly
-- Lane A (Express): Skip the slow build — give shipping estimate + ask for details in one message, move fast
-- Lane B (Advisor): Lead with the Regional Anchor shipping estimate to show you have data, then answer their questions. Collect details organically during the conversation.
-- Lane C (Discovery/Default): Your opening message hooks the customer with the product and asks about their destination country. Follow the step-by-step Value-First Flow.
-- ALL LANES: When they respond with a country, IMMEDIATELY give the specific shipping estimate — this is your primary trust-builder
-- ALL LANES: Frame the org type question as a discount benefit, not an interrogation
+ENGAGEMENT STRATEGY (Lane A Express — Default for ALL conversations):
+- IMPORTANT: Every conversation now starts in Lane A (Express) mode by default. The opening message has ALREADY been sent with the product price and a request for quantity. A structured contact form is displayed below the message for the customer to fill in their name, email, and shipping country.
+- The customer's FIRST message will typically contain their quantity (e.g., "10 units", "I need 50") and/or their contact details from the form. Treat this as a ready buyer.
+- When they respond with a country (from the form), IMMEDIATELY give the specific shipping estimate — this is your primary trust-builder
+- Frame the org type question as a discount benefit, not an interrogation
+- If a customer asks questions or wants to explore (advisor/discovery behaviour), you can slow down and be consultative, but always maintain forward momentum toward the quote.
+- ALL conversations: When they mention a country, IMMEDIATELY give the specific shipping estimate from the reference data.
 
-INFORMATION TO GATHER (adapt pace to the customer's lane):
+INFORMATION TO GATHER (Express pace — move fast):
 
-PHASE 1 — GIVE VALUE FIRST:
-1. Your opening message contains a product hook. For Lane C, ask about their destination country and wait. For Lanes A/B, provide the Regional Anchor shipping range immediately.
-2. When they mention a country, immediately provide the specific shipping estimate from the reference data.
-3. After giving the shipping estimate, ask for their full name and email together. For Lane A, you may combine this with the org type question in one natural message.
+PHASE 1 — ALREADY DONE:
+1. The opening message has ALREADY revealed the product price and asked for quantity. A contact form collects name, email, and shipping country.
+2. When the customer provides their country (via form or message), immediately provide the specific shipping estimate from the reference data.
+3. Name and email will typically come from the structured contact form. Do NOT re-ask for these if they are in the CURRENT CUSTOMER STATE below.
 
-PHASE 2 — QUALIFY AND PRICE:
+PHASE 2 — QUALIFY AND FINALISE:
 4. Organisation type — frame as a benefit: "To ensure I apply the best available pricing — we offer subsidised rates for NGOs, faith-based clinics, and government facilities — what type of organisation do you represent?"
 5. Organisation name
-6. Reveal product price (calculate using tiers + segment adjustment) — show only their final price
-7. Order quantity (to refine pricing tier if needed)
-8. Import capability — YOU MUST EXPLICITLY ASK THIS. Do NOT skip it or assume the answer. Ask: "Since VIA ships to port, your organisation would handle customs clearance and final delivery. Is that something your team can manage, or would you need guidance on finding a local freight forwarder?"
-9. Timeline — Ask: "When would you need this delivered?"
+6. Adjust product price if needed based on org type segment adjustment — the base price was already shown in the opening message. If their org type changes the price, present their adjusted price. If it stays the same, confirm the price already shown.
+7. Order quantity (to refine pricing tier if needed — quantity may already be provided in their first message)
+8. Import capability — state as a shipping term in the Combined Order Summary (e.g., "delivery to port; your team handles customs"). Only ask explicitly if the customer seems uncertain.
+9. Timeline — include as a brief follow-up in the summary: "When would you like this delivered?"
 10. Shipping method recommendation (based on quantity and urgency)
 
-RULE FOR LANES B AND C: Steps 8 and 9 are MANDATORY. You must ask each one and wait for an answer before proceeding to the confirmation summary.
-RULE FOR LANE A: Import capability (Step 8) is stated as a shipping term within the Combined Order Summary, not asked as a separate question. Timeline (Step 9) is included as a brief follow-up in the summary message. The goal is to close in 3-4 messages.
+DEFAULT RULE (Lane A Express): Import capability (Step 8) is stated as a shipping term within the Combined Order Summary, not asked as a separate question. Timeline (Step 9) is included as a brief follow-up in the summary message. The goal is to close in 3-4 messages.
+EXCEPTION FOR CONSULTATIVE CUSTOMERS: If a customer switches to asking detailed questions, you may slow down and ask Steps 8 and 9 explicitly before the summary.
 
 LOCKED ANSWERS & THE 2-STRIKE RULE:
 
@@ -2106,10 +2135,9 @@ IMPORTANT GUIDELINES:
 3. Never provide clinical or medical advice — if asked, say you'll connect them with a specialist
 4. Weave in trust signals naturally (years in business, partnerships, global reach)
 5. Be warm and personable — customers should feel they're talking to a real person who cares
-6. QUESTION PACING — adapts to the customer's lane:
-   - Lane C (Discovery): ONE question per message, with ONE exception: you may ask for name AND email together after providing the shipping estimate.
-   - Lane B (Advisor): Collect details organically during the consultation — don't interrupt their questions to ask for name/email. Wait for natural pauses.
-   - Lane A (Express): You may combine multiple questions naturally (e.g., name + email + org type in one message) to match their urgency. Do NOT slow down a ready buyer.
+6. QUESTION PACING — Express pace by default:
+   - Default: You may combine multiple questions naturally (e.g., shipping estimate + org type in one message) to keep momentum. Do NOT slow down a ready buyer.
+   - If the customer asks detailed questions or wants consultation, you may slow down to ONE question per message to be more consultative.
 
 SPECIAL PRICING NOTICE:
 When the user mentions they are from an NGO, Faith-based organisation, Government agency, or Public hospital/clinic, warmly acknowledge that they may qualify for special pricing and assure them you'll include this in their quote.
@@ -2146,7 +2174,7 @@ CURRENT CUSTOMER STATE (already collected — do NOT re-ask for these):`;
   if (stateItems.length > 0) {
     stateItems.forEach(item => { prompt += `\n- ${item}`; });
   } else {
-    prompt += `\n- No information collected yet. Your opening message contains a product hook and asks about their destination country. Wait for them to respond, then lead with the shipping estimate.`;
+    prompt += `\n- No information collected yet. The opening message has already shown the product price and asked for quantity. A contact form is displayed for name, email, and shipping country. The customer's first message will likely contain their quantity and/or form data. Respond with the shipping estimate and ask about their organisation type.`;
   }
 
   prompt += `

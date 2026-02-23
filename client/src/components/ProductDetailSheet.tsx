@@ -126,7 +126,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
   const [showSupportChat, setShowSupportChat] = useState(false);
   const [autoOpenDismissed, setAutoOpenDismissed] = useState(false);
-  const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -180,6 +179,12 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       setQuoteRequestId(data.quoteRequestId);
       setMessages([{ role: 'assistant', content: data.message }]);
       trackQuoteStarted(product.name);
+      const profile = getCustomerProfile();
+      if (!profile?.firstName || !profile?.email) {
+        setShowContactForm(true);
+      } else {
+        setContactFormSubmitted(true);
+      }
     } catch (error) {
       console.error('Error starting quote session:', error);
       setInitError(t("productDetail.connectionError"));
@@ -202,7 +207,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     if (product) {
       setMessages([]);
       setQuoteRequestId(null);
-      setShowQuickReplies(true);
       setSpecialPricingEligible(false);
       setRecommendedProducts([]);
       setIsConversationComplete(false);
@@ -235,63 +239,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const handleCloseQuoteDialogWithDismiss = () => {
     setAutoOpenDismissed(true);
     setShowQuoteDialog(false);
-  };
-
-  const laneATriggers = ["i'm ready to buy", "ready to buy", "ready to order", "i need bulk pricing", "buy now", "want to purchase", "want to order", "send me a quote", "send me a proforma", "i want pricing", "i need to order", "place an order"];
-
-  const isLaneATrigger = (text: string) => {
-    const lower = text.toLowerCase();
-    return laneATriggers.some(trigger => lower.includes(trigger));
-  };
-
-  const handleQuickReply = async (text: string) => {
-    if (isLoading || !product || isConversationComplete || !quoteRequestId) return;
-    setShowQuickReplies(false);
-    const userMessage: ChatMessage = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-    trackChatMessage(messages.length);
-    const triggeredLaneA = isLaneATrigger(text);
-    try {
-      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          productDetails: {
-            name: product.name,
-            description: product.description,
-            category: product.category,
-            specifications: product.specifications,
-            faqs: product.faqs,
-            unitsPerPack: product.unitsPerPack,
-            packType: product.packType
-          },
-          language
-        })
-      });
-      if (!response.ok) throw new Error('Failed to send message');
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
-      if (data.specialPricingEligible) setSpecialPricingEligible(true);
-      if (data.recommendedProducts?.length > 0) setRecommendedProducts(data.recommendedProducts);
-      if (data.profileUpdate) saveCustomerProfile(data.profileUpdate);
-      if (data.referToAgent) {
-        setIsConversationComplete(true);
-        trackQuoteSubmitted(quoteRequestId, 1);
-      }
-      if (triggeredLaneA && !contactFormSubmitted) {
-        const profile = getCustomerProfile();
-        if (!profile?.firstName || !profile?.email) {
-          setShowContactForm(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error sending quick reply:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, but I'm having trouble responding. Please try again." }]);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
@@ -333,10 +280,10 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       if (responseData.specialPricingEligible) setSpecialPricingEligible(true);
       if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
       if (responseData.profileUpdate) {
-        saveCustomerProfile({ ...responseData.profileUpdate, firstName: data.firstName, lastName: data.lastName, email: data.email, country: data.country });
+        saveCustomerProfile({ ...responseData.profileUpdate, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
       } else {
         const currentProfile = getCustomerProfile() || {};
-        saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, country: data.country });
+        saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
       }
       if (responseData.referToAgent) {
         setIsConversationComplete(true);
@@ -353,14 +300,12 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
 
-    setShowQuickReplies(false);
     const userInput = inputValue.trim();
     const userMessage: ChatMessage = { role: 'user', content: userInput };
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
     trackChatMessage(messages.length);
-    const triggeredLaneA = isLaneATrigger(userInput);
 
     try {
       if (!quoteRequestId) {
@@ -416,13 +361,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
         setIsConversationComplete(true);
         if (quoteRequestId) trackQuoteSubmitted(quoteRequestId, 1);
       }
-
-      if (triggeredLaneA && !contactFormSubmitted) {
-        const profile = getCustomerProfile();
-        if (!profile?.firstName || !profile?.email) {
-          setShowContactForm(true);
-        }
-      }
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev, { 
@@ -447,7 +385,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     setRecommendedProducts([]);
     setIsConversationComplete(false);
     setInitError(null);
-    setShowQuickReplies(true);
   };
 
   const currentImage = product?.images && product.images.length > 0 
@@ -936,25 +873,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                   </div>
                 </motion.div>
               ))}
-              {showQuickReplies && messages.length === 1 && messages[0]?.role === 'assistant' && !isLoading && (
-                <motion.div 
-                  className="flex flex-wrap gap-2 justify-center pt-2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  {["I'm ready to buy", "I have some questions", "Just exploring options"].map((text) => (
-                    <button
-                      key={text}
-                      onClick={() => handleQuickReply(text)}
-                      className="px-3 py-2 text-xs font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all duration-200"
-                      data-testid={`quick-reply-${text.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
               {showContactForm && !isLoading && (
                 <motion.div
                   className="flex justify-start"
@@ -971,7 +889,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                         return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
                       })(),
                       email: getCustomerProfile()?.email || '',
-                      country: getCustomerProfile()?.country || ''
+                      country: getCustomerProfile()?.shippingCountry || ''
                     }}
                   />
                 </motion.div>
