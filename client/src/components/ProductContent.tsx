@@ -1,12 +1,12 @@
 import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText, Play, Download, HelpCircle, Check, Send, Loader2, Star, AlertCircle,
   Shield, Settings, Package, Activity, Heart,
   ChevronDown, ChevronUp, Search, Eye, Sparkles,
   Stethoscope, ClipboardCheck,
-  Microscope, ExternalLink, Headphones, Mail
+  Microscope, ExternalLink, Headphones, Mail,
+  MapPin, Calendar, Award, Box, Quote, BookOpen, Link2, Tag, AlertTriangle, Truck
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ReactMarkdown from "react-markdown";
@@ -24,6 +24,7 @@ import { ChatContactForm } from "@/components/ChatContactForm";
 
 interface ProductContentProps {
   product: Product;
+  relatedProducts?: Product[];
 }
 
 const formatBulletText = (text: string) => {
@@ -45,36 +46,6 @@ const formatBulletText = (text: string) => {
   );
 };
 
-const extractFirstSpecValue = (text: string): string => {
-  if (!text) return "";
-  if (text.includes('•')) {
-    const parts = text.split('•').map(part => part.trim()).filter(part => part.length > 0);
-    if (parts.length > 0) {
-      return parts[0].split('\n')[0].trim();
-    }
-  }
-  return text.split('\n')[0].trim();
-};
-
-const featureCategories = {
-  performance: { icon: Activity, color: "bg-blue-500/10 text-blue-600 border-blue-200", label: "Clinical Efficiency" },
-  durability: { icon: Shield, color: "bg-slate-500/10 text-slate-600 border-slate-200", label: "Reliability" },
-  sustainability: { icon: Heart, color: "bg-emerald-500/10 text-emerald-600 border-emerald-200", label: "Patient Care" },
-  technology: { icon: Microscope, color: "bg-indigo-500/10 text-indigo-600 border-indigo-200", label: "Advanced Technology" },
-  quality: { icon: ClipboardCheck, color: "bg-rose-500/10 text-rose-600 border-rose-200", label: "Certified Quality" },
-  value: { icon: Stethoscope, color: "bg-cyan-500/10 text-cyan-600 border-cyan-200", label: "Clinical Value" },
-};
-
-const categorizeFeature = (feature: string): keyof typeof featureCategories => {
-  const lowerFeature = feature.toLowerCase();
-  if (lowerFeature.includes('fast') || lowerFeature.includes('speed') || lowerFeature.includes('quick') || lowerFeature.includes('performance') || lowerFeature.includes('efficient')) return 'performance';
-  if (lowerFeature.includes('durable') || lowerFeature.includes('strong') || lowerFeature.includes('robust') || lowerFeature.includes('reliable') || lowerFeature.includes('sturdy')) return 'durability';
-  if (lowerFeature.includes('eco') || lowerFeature.includes('green') || lowerFeature.includes('sustainable') || lowerFeature.includes('recyclable') || lowerFeature.includes('environment')) return 'sustainability';
-  if (lowerFeature.includes('smart') || lowerFeature.includes('digital') || lowerFeature.includes('tech') || lowerFeature.includes('automated') || lowerFeature.includes('iot')) return 'technology';
-  if (lowerFeature.includes('premium') || lowerFeature.includes('quality') || lowerFeature.includes('certified') || lowerFeature.includes('tested') || lowerFeature.includes('approved')) return 'quality';
-  return 'value';
-};
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -86,7 +57,18 @@ interface RecommendedProduct {
   sku: string;
 }
 
-export function ProductContent({ product }: ProductContentProps) {
+function SectionHeading({ icon: Icon, children, id }: { icon: React.ElementType; children: React.ReactNode; id?: string }) {
+  return (
+    <h2 id={id} className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2.5 mb-4 pt-2" data-testid={`section-heading-${id}`}>
+      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <Icon className="h-4 w-4 text-primary" />
+      </div>
+      {children}
+    </h2>
+  );
+}
+
+export function ProductContent({ product, relatedProducts }: ProductContentProps) {
   const { t, language } = useTranslation();
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -107,6 +89,7 @@ export function ProductContent({ product }: ProductContentProps) {
   const [quantity, setQuantity] = useState<string>('');
   const [priceText, setPriceText] = useState('');
   const [pricingTiers, setPricingTiers] = useState<Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>>([]);
+  const [purchasingInfoOpen, setPurchasingInfoOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -127,6 +110,10 @@ export function ProductContent({ product }: ProductContentProps) {
       faq => faq.question.toLowerCase().includes(query) || faq.answer.toLowerCase().includes(query)
     );
   }, [product?.faqs, faqSearchQuery]);
+
+  const salesRestrictions = product.salesRestrictions as { cantShipTo?: string[]; cantSellTo?: string[] } | null;
+  const hasSalesRestrictions = salesRestrictions && ((salesRestrictions.cantShipTo?.length || 0) > 0 || (salesRestrictions.cantSellTo?.length || 0) > 0);
+  const hasPurchasingInfo = hasSalesRestrictions || product.leadTimeDays || (product.shippingLengthCm && product.shippingWidthCm);
 
   const startQuoteSession = async () => {
     if (!product) return;
@@ -227,13 +214,9 @@ export function ProductContent({ product }: ProductContentProps) {
         body: JSON.stringify({
           message: userInput,
           productDetails: {
-            name: product.name,
-            description: product.description,
-            category: product.category,
-            specifications: product.specifications,
-            faqs: product.faqs,
-            unitsPerPack: product.unitsPerPack,
-            packType: product.packType
+            name: product.name, description: product.description, category: product.category,
+            specifications: product.specifications, faqs: product.faqs,
+            unitsPerPack: product.unitsPerPack, packType: product.packType
           },
           language
         })
@@ -394,6 +377,16 @@ export function ProductContent({ product }: ProductContentProps) {
     ? (product.images as string[])[selectedImageIndex] || product?.imageUrl
     : product?.imageUrl;
 
+  const videos = (product.videos as { title: string; url: string }[] | null) || [];
+  const documents = (product.documents as { name: string; url: string; thumbnailUrl?: string }[] | null) || [];
+  const regulatoryCertificates = (product.regulatoryCertificates as { name: string; url: string; thumbnailUrl?: string }[] | null) || [];
+  const testimonials = (product.testimonials as { quote: string; author: string; organization: string }[] | null) || [];
+  const studiesAndTrials = (product.studiesAndTrials as { title: string; url: string }[] | null) || [];
+  const standardAccessories = (product.standardAccessories as string[] | null) || [];
+  const optionalAccessories = (product.optionalAccessories as { name: string; productUrl?: string }[] | null) || [];
+  const boxContents = (product.boxContents as string[] | null) || [];
+  const tags = (product.tags as string[] | null) || [];
+
   return (
     <>
       <div className="container mx-auto px-4 py-6 lg:py-10">
@@ -442,7 +435,7 @@ export function ProductContent({ product }: ProductContentProps) {
               </div>
             )}
 
-            {/* Desktop CTA - shown below images on large screens */}
+            {/* Desktop CTA */}
             <div className="hidden lg:block pt-4">
               <Button
                 className="w-full h-14 text-base font-semibold bg-teal-600 hover:bg-teal-700 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
@@ -474,287 +467,546 @@ export function ProductContent({ product }: ProductContentProps) {
                   </span>
                 </div>
               )}
-            </div>
-
-            {/* Quick Info Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
-                <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-4 border">
-                  <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                    <Stethoscope className="h-3 w-3 text-primary" />
-                    {t("productDetail.keyFeatures")}
-                  </h3>
-                  <ul className="space-y-2">
-                    {(product.keyFeatures as string[]).slice(0, 4).map((feature, idx) => (
-                      <motion.li
-                        key={idx}
-                        className="flex items-start gap-2.5 text-sm"
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                      >
-                        <span className="text-foreground line-clamp-2">{feature}</span>
-                      </motion.li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {Object.keys(product.specifications).length > 0 && (
-                <div className="bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20 rounded-xl p-4 border">
-                  <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                    <Settings className="h-3 w-3 text-blue-600" />
-                    {t("productDetail.quickSpecs")}
-                  </h3>
-                  <dl className="space-y-2 text-sm">
-                    {Object.entries(product.specifications).slice(0, 4).map(([key, value], idx) => {
-                      const extractedValue = extractFirstSpecValue(value as string);
-                      return (
-                        <motion.div
-                          key={key}
-                          className="flex flex-col gap-0.5 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                        >
-                          <dt className="text-muted-foreground font-medium text-[10px] uppercase tracking-wider">{key}</dt>
-                          <dd className="text-foreground font-medium line-clamp-2">
-                            {extractedValue || t("productDetail.seeFullSpecs")}
-                          </dd>
-                        </motion.div>
-                      );
-                    })}
-                  </dl>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {tags.map((tag, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1 bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 text-[11px]" data-testid={`tag-${idx}`}>
+                      <Tag className="h-2.5 w-2.5" />
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Tabs for Detailed Info */}
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto scrollbar-hide">
-                <TabsTrigger
-                  value="details"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 min-h-[44px]"
+            {/* Seller / Manufacturer Info Card */}
+            {(product.sellerName || product.regulatoryApproval || product.warrantyTerm) && (
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/30 dark:to-slate-800/20 rounded-xl p-4 border space-y-3" data-testid="seller-info-card">
+                <h3 className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Shield className="h-3 w-3 text-primary" />
+                  Manufacturer Information
+                </h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {product.sellerName && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Manufacturer</span>
+                      <p className="font-medium">{product.sellerName}</p>
+                    </div>
+                  )}
+                  {product.sellerLocation && (
+                    <div>
+                      <span className="text-muted-foreground text-xs flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />Location</span>
+                      <p className="font-medium">{product.sellerLocation}</p>
+                    </div>
+                  )}
+                  {product.regulatoryApproval && (
+                    <div>
+                      <span className="text-muted-foreground text-xs flex items-center gap-1"><Award className="h-2.5 w-2.5" />Regulatory</span>
+                      <p className="font-medium">{product.regulatoryApproval}</p>
+                    </div>
+                  )}
+                  {product.warrantyTerm && (
+                    <div>
+                      <span className="text-muted-foreground text-xs flex items-center gap-1"><Shield className="h-2.5 w-2.5" />Warranty</span>
+                      <p className="font-medium">{product.warrantyTerm}</p>
+                    </div>
+                  )}
+                  {product.minimumOrderQuantity && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">MOQ</span>
+                      <p className="font-medium">{product.minimumOrderQuantity} {product.minimumOrderQuantity === 1 ? 'unit' : 'units'}</p>
+                    </div>
+                  )}
+                  {product.estimatedLifespan && (
+                    <div>
+                      <span className="text-muted-foreground text-xs flex items-center gap-1"><Calendar className="h-2.5 w-2.5" />Lifespan</span>
+                      <p className="font-medium">{product.estimatedLifespan}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {product.description && (
+              <div data-testid="product-description">
+                <SectionHeading icon={ClipboardCheck} id="description">
+                  {t("productDetail.clinicalOverview")}
+                </SectionHeading>
+                <div className="text-muted-foreground leading-relaxed text-sm sm:text-base whitespace-pre-line">
+                  {product.description}
+                </div>
+                {product.buyersGuideUrl && (
+                  <a
+                    href={product.buyersGuideUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary hover:underline"
+                    data-testid="link-buyers-guide"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Read the Buyer's Guide
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Important Purchasing Information */}
+            {hasPurchasingInfo && (
+              <div className="border rounded-xl overflow-hidden" data-testid="purchasing-info">
+                <button
+                  className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+                  onClick={() => setPurchasingInfoOpen(!purchasingInfoOpen)}
+                  data-testid="button-toggle-purchasing-info"
                 >
-                  <span className="text-sm">{t("productDetail.overview")}</span>
-                </TabsTrigger>
-                {Object.keys(product.specifications).length > 0 && (
-                  <TabsTrigger
-                    value="specs"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 min-h-[44px]"
-                  >
-                    <span className="text-sm">{t("productDetail.specs")}</span>
-                  </TabsTrigger>
-                )}
-                {(product.videoUrl || (product.documents as any[]).length > 0) && (
-                  <TabsTrigger
-                    value="media"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 min-h-[44px]"
-                  >
-                    <span className="text-sm">{t("productDetail.media")}</span>
-                  </TabsTrigger>
-                )}
-                {product.faqs && (product.faqs as any[]).length > 0 && (
-                  <TabsTrigger
-                    value="faqs"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 min-h-[44px]"
-                  >
-                    <span className="text-sm">{t("productDetail.faqs")}</span>
-                  </TabsTrigger>
-                )}
-              </TabsList>
-
-              {/* Overview Tab */}
-              <TabsContent value="details" className="space-y-6 py-6">
-                {product.description && (
-                  <div className="bg-muted/20 rounded-xl p-5 border">
-                    <h3 className="font-semibold mb-3 text-base flex items-center gap-2">
-                      <ClipboardCheck className="h-5 w-5 text-primary" />
-                      {t("productDetail.clinicalOverview")}
-                    </h3>
-                    <div className="text-muted-foreground leading-relaxed text-sm sm:text-base">
-                      {formatBulletText(product.description)}
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
                     </div>
+                    <span className="font-semibold text-sm">Important Purchasing Information</span>
                   </div>
-                )}
-
-                {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-4 text-base flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-primary" />
-                      {t("productDetail.keySpecifications")}
-                    </h3>
-                    <div className="grid gap-3">
-                      {(product.keyFeatures as string[]).map((feature, idx) => (
-                        <motion.div
-                          key={idx}
-                          className="flex items-start gap-3 p-4 rounded-xl border bg-card hover:shadow-md hover:border-primary/30 transition-all duration-200 group"
-                          whileHover={{ x: 4 }}
-                        >
-                          <div className="flex-1">
-                            <span className="text-sm text-foreground font-medium">{feature}</span>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Specifications Tab */}
-              {Object.keys(product.specifications).length > 0 && (
-                <TabsContent value="specs" className="py-6">
-                  <div className="grid gap-4">
-                    {Object.entries(product.specifications).map(([key, value], idx) => (
-                      <motion.div
-                        key={key}
-                        className="p-4 rounded-xl border bg-gradient-to-r from-card to-card/50 hover:shadow-md hover:border-primary/30 transition-all duration-200"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                        whileHover={{ scale: 1.01 }}
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center">
-                            <Settings className="h-3.5 w-3.5 text-primary" />
-                          </div>
-                          <div className="font-semibold text-sm text-foreground">{key}</div>
-                        </div>
-                        <div className="text-sm text-muted-foreground pl-8">
-                          {formatBulletText(value as string)}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </TabsContent>
-              )}
-
-              {/* Media & Files Tab */}
-              {(product.videoUrl || (product.documents as any[]).length > 0) && (
-                <TabsContent value="media" className="space-y-6 py-6">
-                  {product.videoUrl && (
-                    <div>
-                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
-                        <Play className="h-5 w-5 text-primary" /> {t("productDetail.productVideo")}
-                      </h3>
-                      <div className="aspect-video rounded-xl overflow-hidden bg-black/5 border shadow-lg">
-                        <iframe
-                          width="100%"
-                          height="100%"
-                          src={product.videoUrl}
-                          title="Product Video"
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          data-testid="product-video"
-                        ></iframe>
-                      </div>
-                    </div>
-                  )}
-                  {product.documents && (product.documents as any[]).length > 0 && (
-                    <div>
-                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
-                        <FileText className="h-5 w-5 text-primary" /> {t("productDetail.documents")}
-                      </h3>
-                      <div className="grid gap-3">
-                        {(product.documents as any[]).map((doc, idx) => (
-                          <motion.div
-                            key={idx}
-                            className="flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200"
-                            whileHover={{ x: 4 }}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary">
-                                <FileText className="h-6 w-6" />
-                              </div>
-                              <div>
-                                <div className="font-medium text-sm">{doc.name}</div>
-                                <div className="text-xs text-muted-foreground">PDF Document</div>
-                              </div>
-                            </div>
-                            <Button variant="outline" size="sm" className="gap-2" data-testid={`download-document-${idx}`}>
-                              <Download className="h-4 w-4" />
-                              {t("productDetail.downloadDocument")}
-                            </Button>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              )}
-
-              {/* FAQs Tab with Search */}
-              {product.faqs && (product.faqs as any[]).length > 0 && (
-                <TabsContent value="faqs" className="py-6">
-                  <div className="mb-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder={t("productDetail.searchFaqs")}
-                        value={faqSearchQuery}
-                        onChange={(e) => setFaqSearchQuery(e.target.value)}
-                        className="pl-10"
-                        data-testid="input-faq-search"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <AnimatePresence>
-                      {filteredFaqs.map((faq: any, idx: number) => (
-                        <motion.div
-                          key={idx}
-                          className="rounded-xl border bg-card overflow-hidden hover:border-primary/50 transition-colors"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          layout
-                        >
-                          <button
-                            className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
-                            onClick={() => setExpandedFaqIndex(expandedFaqIndex === idx ? null : idx)}
-                            data-testid={`faq-question-${idx}`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                                <HelpCircle className="h-4 w-4" />
-                              </div>
-                              <h4 className="font-semibold text-sm leading-snug">{faq.question}</h4>
-                            </div>
-                            {expandedFaqIndex === idx ? (
-                              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                            )}
-                          </button>
-                          <AnimatePresence>
-                            {expandedFaqIndex === idx && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="px-4 pb-4"
-                              >
-                                <div className="pl-11 pt-1">
-                                  <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                  {purchasingInfoOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+                <AnimatePresence>
+                  {purchasingInfoOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-t"
+                    >
+                      <div className="p-4 space-y-4 text-sm">
+                        {hasSalesRestrictions && (
+                          <div className="space-y-2">
+                            {salesRestrictions!.cantShipTo && salesRestrictions!.cantShipTo.length > 0 && (
+                              <div className="flex items-start gap-2">
+                                <Truck className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="font-medium text-red-600">Unable to ship to: </span>
+                                  <span className="text-muted-foreground">{salesRestrictions!.cantShipTo.join(', ')}</span>
                                 </div>
-                              </motion.div>
+                              </div>
                             )}
-                          </AnimatePresence>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                    {filteredFaqs.length === 0 && faqSearchQuery && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                        <p>No FAQs found matching "{faqSearchQuery}"</p>
+                            {salesRestrictions!.cantSellTo && salesRestrictions!.cantSellTo.length > 0 && (
+                              <div className="flex items-start gap-2">
+                                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="font-medium text-red-600">Unable to sell to: </span>
+                                  <span className="text-muted-foreground">{salesRestrictions!.cantSellTo.join(', ')}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {product.leadTimeDays && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-500 shrink-0" />
+                            <span><span className="font-medium">Lead time:</span> {product.leadTimeDays} days</span>
+                          </div>
+                        )}
+                        {product.shippingLengthCm && product.shippingWidthCm && product.shippingDepthCm && (
+                          <div className="flex items-center gap-2">
+                            <Box className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span><span className="font-medium">Shipping dimensions:</span> {product.shippingLengthCm} × {product.shippingWidthCm} × {product.shippingDepthCm} cm</span>
+                          </div>
+                        )}
+                        {product.shippingWeightKg && (
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span><span className="font-medium">Shipping weight:</span> {product.shippingWeightKg} kg</span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Full-Width Content Sections Below the 2-Column Grid */}
+        <div className="mt-10 max-w-4xl mx-auto space-y-10">
+
+          {/* Key Features */}
+          {product.keyFeatures && (product.keyFeatures as string[]).length > 0 && (
+            <section data-testid="section-key-features">
+              <SectionHeading icon={Activity} id="key-features">
+                {t("productDetail.keyFeatures")}
+              </SectionHeading>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(product.keyFeatures as string[]).map((feature, idx) => {
+                  const dashIdx = feature.indexOf(' - ');
+                  const title = dashIdx > -1 ? feature.substring(0, dashIdx) : feature;
+                  const desc = dashIdx > -1 ? feature.substring(dashIdx + 3) : '';
+                  return (
+                    <motion.div
+                      key={idx}
+                      className="p-4 rounded-xl border bg-card hover:shadow-md hover:border-primary/30 transition-all duration-200"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      data-testid={`feature-${idx}`}
+                    >
+                      <div className="font-semibold text-sm text-foreground mb-1">{title}</div>
+                      {desc && <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Specifications */}
+          {Object.keys(product.specifications).length > 0 && (
+            <section data-testid="section-specifications">
+              <SectionHeading icon={Settings} id="specifications">
+                {t("productDetail.specs")}
+              </SectionHeading>
+              <div className="grid gap-4">
+                {Object.entries(product.specifications).map(([key, value], idx) => (
+                  <motion.div
+                    key={key}
+                    className="p-4 rounded-xl border bg-card"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                  >
+                    <div className="font-semibold text-sm text-foreground mb-2">{key}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {formatBulletText(value as string)}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Standard Accessories */}
+          {standardAccessories.length > 0 && (
+            <section data-testid="section-standard-accessories">
+              <SectionHeading icon={Check} id="standard-accessories">
+                Standard Accessories
+              </SectionHeading>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {standardAccessories.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 p-3 rounded-lg border bg-card text-sm" data-testid={`accessory-${idx}`}>
+                    <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Optional Accessories */}
+          {optionalAccessories.length > 0 && (
+            <section data-testid="section-optional-accessories">
+              <SectionHeading icon={Sparkles} id="optional-accessories">
+                Optional Accessories & Add-ons
+              </SectionHeading>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {optionalAccessories.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 p-3 rounded-lg border bg-card text-sm" data-testid={`optional-accessory-${idx}`}>
+                    <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    {item.productUrl ? (
+                      <a href={item.productUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
+                        {item.name}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span>{item.name}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Product Documents */}
+          {documents.length > 0 && (
+            <section data-testid="section-documents">
+              <SectionHeading icon={FileText} id="documents">
+                {t("productDetail.documents")}
+              </SectionHeading>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {documents.map((doc, idx) => (
+                  <a
+                    key={idx}
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 hover:shadow-md transition-all duration-200 group"
+                    data-testid={`document-${idx}`}
+                  >
+                    {(doc as any).thumbnailUrl ? (
+                      <img src={(doc as any).thumbnailUrl} alt={doc.name} className="h-14 w-10 object-cover rounded border" />
+                    ) : (
+                      <div className="h-14 w-10 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <FileText className="h-6 w-6" />
                       </div>
                     )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{doc.name}</div>
+                      <div className="text-xs text-muted-foreground">PDF Document</div>
+                    </div>
+                    <Download className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Regulatory Certificates */}
+          {regulatoryCertificates.length > 0 && (
+            <section data-testid="section-certificates">
+              <SectionHeading icon={Award} id="certificates">
+                Regulatory Certificates
+              </SectionHeading>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {regulatoryCertificates.map((cert, idx) => (
+                  <a
+                    key={idx}
+                    href={cert.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 hover:shadow-md transition-all duration-200 group"
+                    data-testid={`certificate-${idx}`}
+                  >
+                    {cert.thumbnailUrl ? (
+                      <img src={cert.thumbnailUrl} alt={cert.name} className="h-14 w-10 object-cover rounded border" />
+                    ) : (
+                      <div className="h-14 w-10 rounded bg-green-500/10 flex items-center justify-center text-green-600 shrink-0">
+                        <Award className="h-6 w-6" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{cert.name}</div>
+                      <div className="text-xs text-muted-foreground">Certificate</div>
+                    </div>
+                    <Download className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Videos */}
+          {videos.length > 0 && (
+            <section data-testid="section-videos">
+              <SectionHeading icon={Play} id="videos">
+                Videos
+              </SectionHeading>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {videos.map((video, idx) => (
+                  <div key={idx} className="space-y-2" data-testid={`video-${idx}`}>
+                    <div className="aspect-video rounded-xl overflow-hidden bg-black/5 border shadow-sm">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={video.url}
+                        title={video.title}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                    {video.title && <p className="text-sm font-medium text-center text-muted-foreground">{video.title}</p>}
                   </div>
-                </TabsContent>
-              )}
-            </Tabs>
-          </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Testimonials */}
+          {testimonials.length > 0 && (
+            <section data-testid="section-testimonials">
+              <SectionHeading icon={Quote} id="testimonials">
+                Testimonials
+              </SectionHeading>
+              <div className="grid gap-4">
+                {testimonials.map((t, idx) => (
+                  <motion.div
+                    key={idx}
+                    className="p-5 rounded-xl border bg-card relative"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    data-testid={`testimonial-${idx}`}
+                  >
+                    <Quote className="h-6 w-6 text-primary/20 absolute top-4 right-4" />
+                    <blockquote className="text-sm text-muted-foreground italic leading-relaxed mb-3 pr-8">
+                      "{t.quote}"
+                    </blockquote>
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                        {t.author.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{t.author}</p>
+                        {t.organization && <p className="text-xs text-muted-foreground">{t.organization}</p>}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* FAQs */}
+          {product.faqs && (product.faqs as any[]).length > 0 && (
+            <section data-testid="section-faqs">
+              <SectionHeading icon={HelpCircle} id="faqs">
+                {t("productDetail.faqs")}
+              </SectionHeading>
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={t("productDetail.searchFaqs")}
+                    value={faqSearchQuery}
+                    onChange={(e) => setFaqSearchQuery(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-faq-search"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {filteredFaqs.map((faq: any, idx: number) => (
+                    <motion.div
+                      key={idx}
+                      className="rounded-xl border bg-card overflow-hidden hover:border-primary/30 transition-colors"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      layout
+                    >
+                      <button
+                        className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+                        onClick={() => setExpandedFaqIndex(expandedFaqIndex === idx ? null : idx)}
+                        data-testid={`faq-question-${idx}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </div>
+                          <h4 className="font-semibold text-sm leading-snug">{faq.question}</h4>
+                        </div>
+                        {expandedFaqIndex === idx ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
+                      </button>
+                      <AnimatePresence>
+                        {expandedFaqIndex === idx && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="px-4 pb-4"
+                          >
+                            <div className="pl-10 pt-1">
+                              <p className="text-sm text-muted-foreground leading-relaxed">{faq.answer}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {filteredFaqs.length === 0 && faqSearchQuery && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>No FAQs found matching "{faqSearchQuery}"</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Studies & Trials */}
+          {studiesAndTrials.length > 0 && (
+            <section data-testid="section-studies">
+              <SectionHeading icon={Microscope} id="studies">
+                Studies & Trials
+              </SectionHeading>
+              <div className="grid gap-2">
+                {studiesAndTrials.map((study, idx) => (
+                  <a
+                    key={idx}
+                    href={study.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all text-sm group"
+                    data-testid={`study-${idx}`}
+                  >
+                    <FileText className="h-4 w-4 text-primary shrink-0" />
+                    <span className="flex-1 group-hover:text-primary transition-colors">{study.title}</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary shrink-0" />
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Box Contents */}
+          {boxContents.length > 0 && (
+            <section data-testid="section-box-contents">
+              <SectionHeading icon={Box} id="box-contents">
+                Box Contents
+              </SectionHeading>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {boxContents.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2.5 p-3 rounded-lg border bg-card text-sm" data-testid={`box-item-${idx}`}>
+                    <Package className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Warranty */}
+          {product.warrantyText && (
+            <section data-testid="section-warranty">
+              <SectionHeading icon={Shield} id="warranty">
+                Warranty
+              </SectionHeading>
+              <div className="p-4 rounded-xl border bg-card">
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{product.warrantyText}</p>
+              </div>
+            </section>
+          )}
+
+          {/* Related Products */}
+          {relatedProducts && relatedProducts.length > 0 && (
+            <section data-testid="section-related-products">
+              <SectionHeading icon={Link2} id="related-products">
+                Related Products
+              </SectionHeading>
+              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                {relatedProducts.map((rp) => (
+                  <a
+                    key={rp.id}
+                    href={`/products/${slugify(rp.name)}`}
+                    className="flex-shrink-0 w-48 rounded-xl border bg-card hover:shadow-md hover:border-primary/30 transition-all overflow-hidden group"
+                    data-testid={`related-product-${rp.id}`}
+                  >
+                    <div className="aspect-square overflow-hidden bg-muted/30">
+                      <img src={rp.imageUrl} alt={rp.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform" />
+                    </div>
+                    <div className="p-3">
+                      <p className="text-sm font-medium line-clamp-2">{rp.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">SKU: {rp.sku}</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
 
@@ -818,7 +1070,6 @@ export function ProductContent({ product }: ProductContentProps) {
             </div>
           </DialogHeader>
 
-          {/* Init Error Banner */}
           {initError && (
             <div className="px-4 pt-2">
               <Alert variant="destructive">
@@ -990,14 +1241,8 @@ export function ProductContent({ product }: ProductContentProps) {
                     }}
                   />
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setChatStep('quantity')}
-                  className="text-xs text-muted-foreground"
-                  data-testid="button-step-back-to-quantity"
-                >
-                  Back to quantity
+                <Button variant="outline" onClick={() => setChatStep('quantity')} className="h-11 px-6" data-testid="button-step-back-to-quantity">
+                  Back
                 </Button>
               </motion.div>
             </div>
@@ -1006,99 +1251,96 @@ export function ProductContent({ product }: ProductContentProps) {
           {/* Step 4: Chat */}
           {chatStep === 'chat' && (
             <>
-              {specialPricingEligible && (
-                <div className="px-4 pt-2">
-                  <Alert className="bg-green-50 border-green-200">
-                    <Star className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800 text-sm">
-                      You may qualify for special pricing! We'll include this in your quote.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              )}
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  {messages.map((msg, idx) => (
-                    <motion.div
-                      key={idx}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground whitespace-pre-line' : 'bg-muted chat-markdown'}`}
-                        data-testid={`chat-message-${msg.role}-${idx}`}
-                      >
-                        {msg.role === 'assistant' ? (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="chat-messages-container">
+                {messages.map((msg, idx) => (
+                  <motion.div
+                    key={idx}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground rounded-br-md'
+                        : 'bg-muted rounded-bl-md'
+                    }`}>
+                      {msg.role === 'assistant' ? (
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                        ) : msg.content}
-                      </div>
-                    </motion.div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-muted rounded-2xl px-4 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : (
+                        <p>{msg.content}</p>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                     </div>
-                  )}
-                  {recommendedProducts.length > 0 && (
-                    <div className="pt-2">
-                      <p className="text-xs text-muted-foreground mb-2">You might also be interested in:</p>
-                      <div className="space-y-2">
-                        {recommendedProducts.map((prod) => (
-                          <a
-                            key={prod.id}
-                            href={`/products/${slugify(prod.name)}`}
-                            className="block p-3 rounded-xl border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors cursor-pointer group"
-                            data-testid={`recommended-product-${prod.id}`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium group-hover:text-primary transition-colors">{prod.name}</p>
-                                <p className="text-xs text-muted-foreground">{prod.sku}</p>
-                              </div>
-                              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-2" />
-                            </div>
-                          </a>
-                        ))}
-                      </div>
+                  </div>
+                )}
+                {specialPricingEligible && (
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex justify-center">
+                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl px-4 py-2 text-center">
+                      <p className="text-xs font-semibold text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                        <Star className="h-3 w-3" /> Special pricing may apply to your order
+                      </p>
                     </div>
-                  )}
-                  {isConversationComplete && (
-                    <motion.div
-                      className="pt-4 text-center"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                    >
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-sm">
-                        <Check className="h-4 w-4" />
-                        Amara has your details - expect a quote within 24 hours
-                      </div>
-                    </motion.div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
+                  </motion.div>
+                )}
+                {recommendedProducts.length > 0 && (
+                  <div className="bg-muted/50 rounded-xl p-3 border">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" /> Recommended products
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                      {recommendedProducts.map(rp => (
+                        <a key={rp.id} href={`/products/${slugify(rp.name)}`} className="text-xs bg-background border rounded-lg px-3 py-1.5 hover:border-primary transition-colors" data-testid={`recommended-${rp.id}`}>
+                          {rp.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {isConversationComplete && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-2">
+                    <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium">
+                      <Check className="h-4 w-4" />
+                      Quote request submitted
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">Our team will follow up via email shortly.</p>
+                  </motion.div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
-              <div className="p-3 sm:p-4 border-t flex gap-2 bg-muted/30 shrink-0">
-                <Input
-                  placeholder={isConversationComplete ? "Conversation complete" : t("productDetail.typeMessage")}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  disabled={isLoading || isConversationComplete}
-                  className="bg-background h-11 text-base sm:text-sm"
-                  data-testid="input-chat-message"
-                />
-                <Button
-                  size="icon"
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !inputValue.trim() || isConversationComplete}
-                  className="bg-primary hover:bg-primary/90 h-11 w-11 shrink-0"
-                  data-testid="button-send-message"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="p-3 border-t shrink-0">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={isConversationComplete ? "Quote submitted — we'll be in touch!" : "Type your message..."}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    disabled={isLoading || isConversationComplete}
+                    className="h-11"
+                    data-testid="input-chat-message"
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!inputValue.trim() || isLoading || isConversationComplete}
+                    size="icon"
+                    className="h-11 w-11 shrink-0"
+                    data-testid="button-send-message"
+                  >
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </>
           )}

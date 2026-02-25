@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { Product } from "@/lib/types";
 import { Loader2, ArrowLeft, ChevronRight } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/analytics";
 import { slugify } from "@/lib/slugify";
 
@@ -27,6 +27,27 @@ export default function ProductPage() {
     },
     enabled: !!slug,
   });
+
+  const { data: allProducts } = useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const res = await fetch("/api/products");
+      if (!res.ok) throw new Error("Failed to fetch products");
+      return res.json();
+    },
+    enabled: !!product,
+  });
+
+  const relatedProducts = useMemo(() => {
+    if (!product || !allProducts) return [];
+    const manualIds = (product.relatedProductIds as string[] | null) || [];
+    if (manualIds.length > 0) {
+      return allProducts.filter(p => manualIds.includes(String(p.id)) && String(p.id) !== String(product.id));
+    }
+    return allProducts
+      .filter(p => p.category === product.category && String(p.id) !== String(product.id))
+      .slice(0, 4);
+  }, [product, allProducts]);
 
   useEffect(() => {
     if (product) {
@@ -116,7 +137,7 @@ export default function ProductPage() {
         </div>
 
         {/* Product Content */}
-        <ProductContent product={product} />
+        <ProductContent product={product} relatedProducts={relatedProducts} />
 
         {/* JSON-LD Structured Data */}
         <script

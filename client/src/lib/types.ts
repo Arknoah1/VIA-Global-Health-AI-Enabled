@@ -17,6 +17,30 @@ export interface Product {
   faqs: { question: string; answer: string }[];
   unitsPerPack?: number | null;
   packType?: string | null;
+  shippingLengthCm?: number | null;
+  shippingWidthCm?: number | null;
+  shippingDepthCm?: number | null;
+  shippingWeightKg?: number | null;
+  pickupCountry?: string | null;
+  sellerName?: string | null;
+  sellerLocation?: string | null;
+  warrantyTerm?: string | null;
+  warrantyText?: string | null;
+  regulatoryApproval?: string | null;
+  minimumOrderQuantity?: number | null;
+  estimatedLifespan?: string | null;
+  salesRestrictions?: { cantShipTo: string[]; cantSellTo: string[] } | null;
+  leadTimeDays?: number | null;
+  standardAccessories?: string[] | null;
+  optionalAccessories?: { name: string; productUrl?: string }[] | null;
+  boxContents?: string[] | null;
+  testimonials?: { quote: string; author: string; organization: string }[] | null;
+  studiesAndTrials?: { title: string; url: string }[] | null;
+  regulatoryCertificates?: { name: string; url: string; thumbnailUrl?: string }[] | null;
+  videos?: { title: string; url: string }[] | null;
+  tags?: string[] | null;
+  relatedProductIds?: string[] | null;
+  buyersGuideUrl?: string | null;
 }
 
 export type ScrapeStatus = 'idle' | 'scanning' | 'extracting' | 'completed' | 'error';
