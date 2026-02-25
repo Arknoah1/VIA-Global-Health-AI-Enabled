@@ -2,7 +2,7 @@ import { db } from "../db";
 import { products, customerSegments } from "@shared/schema";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
-import { like, sql } from "drizzle-orm";
+import { eq, like, sql } from "drizzle-orm";
 
 function log(message: string, source = "seeder") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -32,10 +32,75 @@ function loadSeedData(): any[] | null {
   return null;
 }
 
+async function applyEnrichedProductData() {
+  try {
+    const enrichedPath = join(process.cwd(), "server", "enriched-products.json");
+    if (!existsSync(enrichedPath)) {
+      return;
+    }
+
+    const allProducts = await db.select({ id: products.id, sku: products.sku, standardAccessories: products.standardAccessories }).from(products);
+    const needsEnrichment = allProducts.filter(p => !p.standardAccessories || (Array.isArray(p.standardAccessories) && (p.standardAccessories as any[]).length === 0));
+
+    if (needsEnrichment.length === 0) {
+      log("All products already have enriched data, skipping", "seeder");
+      return;
+    }
+
+    const enrichedData: any[] = JSON.parse(readFileSync(enrichedPath, "utf-8"));
+    log(`Applying enriched data to ${needsEnrichment.length} products...`, "seeder");
+
+    let updated = 0;
+    for (const dbProduct of needsEnrichment) {
+      const enriched = enrichedData.find(e => e.sku === dbProduct.sku);
+      if (!enriched) continue;
+
+      await db.update(products).set({
+        description: enriched.description,
+        images: enriched.images,
+        keyFeatures: enriched.keyFeatures,
+        documents: enriched.documents,
+        specifications: enriched.specifications,
+        standardAccessories: enriched.standardAccessories,
+        optionalAccessories: enriched.optionalAccessories,
+        boxContents: enriched.boxContents,
+        testimonials: enriched.testimonials,
+        studiesAndTrials: enriched.studiesAndTrials,
+        regulatoryCertificates: enriched.regulatoryCertificates,
+        videos: enriched.videos,
+        tags: enriched.tags,
+        warrantyText: enriched.warrantyText,
+        warrantyTerm: enriched.warrantyTerm,
+        sellerName: enriched.sellerName,
+        sellerLocation: enriched.sellerLocation,
+        regulatoryApproval: enriched.regulatoryApproval,
+        minimumOrderQuantity: enriched.minimumOrderQuantity,
+        estimatedLifespan: enriched.estimatedLifespan,
+        salesRestrictions: enriched.salesRestrictions,
+        leadTimeDays: enriched.leadTimeDays,
+        shippingLengthCm: enriched.shippingLengthCm,
+        shippingWidthCm: enriched.shippingWidthCm,
+        shippingDepthCm: enriched.shippingDepthCm,
+        shippingWeightKg: enriched.shippingWeightKg,
+        pickupCountry: enriched.pickupCountry,
+        buyersGuideUrl: enriched.buyersGuideUrl,
+        relatedProductIds: enriched.relatedProductIds,
+      }).where(eq(products.id, dbProduct.id));
+
+      updated++;
+    }
+
+    log(`Enriched ${updated} products with detailed data`, "seeder");
+  } catch (error) {
+    log(`Error applying enriched product data: ${error}`, "seeder");
+  }
+}
+
 export async function seedDatabase() {
   await seedCustomerSegments();
   await fixExternalImageUrls();
   await ensureProductPackaging();
+  await applyEnrichedProductData();
 
   try {
     const existingProducts = await db.select().from(products).limit(1);
