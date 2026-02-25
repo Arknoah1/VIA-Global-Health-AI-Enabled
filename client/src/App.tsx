@@ -17,6 +17,9 @@ const ProductPricingPage = lazy(() => import("@/pages/ProductPricingPage"));
 const TrainingTranscriptsPage = lazy(() => import("@/pages/TrainingTranscriptsPage"));
 const AdminLoginPage = lazy(() => import("@/pages/AdminLoginPage"));
 const ProductPage = lazy(() => import("@/pages/ProductPage"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
+const ContactPage = lazy(() => import("@/pages/ContactPage"));
+const ReturnPolicyPage = lazy(() => import("@/pages/ReturnPolicyPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function PageLoader() {
@@ -64,6 +67,9 @@ function Router() {
         <Route path="/products/:slug" component={ProductPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/track-quote" component={QuoteTrackingPage} />
+        <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+        <Route path="/contact" component={ContactPage} />
+        <Route path="/return-policy" component={ReturnPolicyPage} />
         <Route path="/admin">
           <AdminGuard><Dashboard /></AdminGuard>
         </Route>

@@ -32,6 +32,9 @@ Preferred communication style: Simple, everyday language.
 - `/admin` - Admin dashboard (password-protected) for product management and scraping
 - `/admin/quote-requests` - Manage quote requests and generate invoices
 - `/admin/pricing` - Configure pricing tiers, country restrictions, customer segments
+- `/contact` - Contact Us page with office locations, email, and chat CTA
+- `/privacy-policy` - Privacy Policy (exact text from viaglobalhealth.com)
+- `/return-policy` - Return Policy (exact text from viaglobalhealth.com)
 - `/admin/training` - Training transcript management
 
 ### Admin Authentication

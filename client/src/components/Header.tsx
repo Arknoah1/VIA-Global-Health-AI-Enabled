@@ -67,6 +67,13 @@ export function Header() {
             >
               {t("nav.trackQuote")}
             </Link>
+            <Link 
+              href="/contact" 
+              className={`transition-colors ${isActive("/contact") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
+              data-testid="link-contact-nav"
+            >
+              {t("nav.contact")}
+            </Link>
           </nav>
 
           <div className="hidden md:flex items-center gap-3" data-testid="nav-cta-desktop">
@@ -148,6 +155,14 @@ export function Header() {
                 data-testid="link-mobile-track-quote"
               >
                 {t("nav.trackQuote")}
+              </Link>
+              <Link 
+                href="/contact" 
+                className="block px-4 py-3 min-h-[44px] rounded-lg hover:bg-slate-100 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="link-mobile-contact"
+              >
+                {t("nav.contact")}
               </Link>
               <div className="px-4 py-2">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 font-medium">{t("nav.language")}</p>
