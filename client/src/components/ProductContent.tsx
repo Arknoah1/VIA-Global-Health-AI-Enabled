@@ -659,7 +659,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
           )}
 
           {/* Specifications */}
-          {Object.keys(product.specifications).length > 0 && (
+          {Object.keys(product.specifications || {}).length > 0 && (
             <section data-testid="section-specifications">
               <SectionHeading icon={Settings} id="specifications">
                 {t("productDetail.specs")}
@@ -826,7 +826,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 Testimonials
               </SectionHeading>
               <div className="grid gap-4">
-                {testimonials.map((t, idx) => (
+                {testimonials.map((testimonial, idx) => (
                   <motion.div
                     key={idx}
                     className="p-5 rounded-xl border bg-card relative"
@@ -837,15 +837,15 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   >
                     <Quote className="h-6 w-6 text-primary/20 absolute top-4 right-4" />
                     <blockquote className="text-sm text-muted-foreground italic leading-relaxed mb-3 pr-8">
-                      "{t.quote}"
+                      "{testimonial.quote}"
                     </blockquote>
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
-                        {t.author.charAt(0).toUpperCase()}
+                        {testimonial.author.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold">{t.author}</p>
-                        {t.organization && <p className="text-xs text-muted-foreground">{t.organization}</p>}
+                        <p className="text-sm font-semibold">{testimonial.author}</p>
+                        {testimonial.organization && <p className="text-xs text-muted-foreground">{testimonial.organization}</p>}
                       </div>
                     </div>
                   </motion.div>
