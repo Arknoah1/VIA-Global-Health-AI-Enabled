@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation, Link } from "wouter";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ProductDetailSheet } from "@/components/ProductDetailSheet";
+import { ProductContent } from "@/components/ProductContent";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { Product } from "@/lib/types";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronRight } from "lucide-react";
 import { useEffect } from "react";
 import { trackProductView } from "@/lib/analytics";
 import { slugify } from "@/lib/slugify";
@@ -86,11 +86,67 @@ export default function ProductPage() {
         { name: product.name }
       ]} />
 
-      <ProductDetailSheet
-        product={product}
-        isOpen={true}
-        onClose={() => setLocation("/catalog")}
-      />
+      <main className="flex-1" role="main">
+        {/* Breadcrumb Navigation */}
+        <div className="border-b bg-card">
+          <div className="container mx-auto px-4 py-3">
+            <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+              <ol className="flex items-center gap-1.5 flex-wrap" itemScope itemType="https://schema.org/BreadcrumbList">
+                <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
+                  <a href="/" itemProp="item" className="hover:text-primary transition-colors">
+                    <span itemProp="name">{t("breadcrumb.home")}</span>
+                  </a>
+                  <meta itemProp="position" content="1" />
+                </li>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
+                  <a href="/catalog" itemProp="item" className="hover:text-primary transition-colors">
+                    <span itemProp="name">{t("breadcrumb.catalog")}</span>
+                  </a>
+                  <meta itemProp="position" content="2" />
+                </li>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
+                  <span itemProp="name" className="text-foreground font-medium">{product.name}</span>
+                  <meta itemProp="position" content="3" />
+                </li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+
+        {/* Product Content */}
+        <ProductContent product={product} />
+
+        {/* JSON-LD Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              name: product.name,
+              description: product.description,
+              sku: product.sku,
+              image: product.imageUrl,
+              brand: {
+                "@type": "Brand",
+                name: "VIA Global Health"
+              },
+              category: product.category,
+              offers: {
+                "@type": "Offer",
+                availability: "https://schema.org/InStock",
+                priceCurrency: "USD",
+                seller: {
+                  "@type": "Organization",
+                  name: "VIA Global Health"
+                }
+              }
+            })
+          }}
+        />
+      </main>
 
       <Footer />
     </div>

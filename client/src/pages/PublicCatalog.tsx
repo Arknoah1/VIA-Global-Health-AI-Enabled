@@ -8,20 +8,19 @@ import { Footer } from "@/components/Footer";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ProductCard";
-import { ProductDetailSheet } from "@/components/ProductDetailSheet";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 import { RecommendedProducts } from "@/components/RecommendedProducts";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { trackCatalogView } from "@/lib/analytics";
+import { slugify } from "@/lib/slugify";
 
 export default function PublicCatalog() {
   const { t } = useTranslation();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const initialSearch = searchParams.get("search") || "";
   const autoOpen = searchParams.get("autoOpen") === "true";
 
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
@@ -40,11 +39,11 @@ export default function PublicCatalog() {
 
   useEffect(() => {
     if (autoOpen && !isLoading && products.length > 0 && initialSearch) {
-      const filtered = products.filter(p => 
+      const filtered = products.filter(p =>
         p.name.toLowerCase().includes(initialSearch.toLowerCase())
       );
       if (filtered.length > 0) {
-        setSelectedProduct(filtered[0]);
+        setLocation(`/products/${slugify(filtered[0].name)}`);
       }
     }
   }, [isLoading, products, initialSearch, autoOpen]);
@@ -52,22 +51,25 @@ export default function PublicCatalog() {
   const categories = ["all", ...Array.from(new Set(products.map(p => p.category)))];
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
+  const handleSelectRecommendedProduct = (product: Product) => {
+    setLocation(`/products/${slugify(product.name)}`);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <ProductSEO products={products} selectedProduct={selectedProduct} />
+      <ProductSEO products={products} selectedProduct={null} />
       <BreadcrumbSEO items={[
         { name: t("breadcrumb.home"), url: "/" },
         { name: t("breadcrumb.catalog"), url: "/catalog" },
-        ...(selectedProduct ? [{ name: selectedProduct.name }] : [])
       ]} />
-      
+
       <Header />
 
       <main className="flex-1" role="main">
@@ -101,8 +103,8 @@ export default function PublicCatalog() {
           <div className="flex flex-col md:flex-row gap-4 mb-8">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder={t("catalog.searchPlaceholder")} 
+              <Input
+                placeholder={t("catalog.searchPlaceholder")}
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -126,7 +128,7 @@ export default function PublicCatalog() {
 
           {/* AI Recommendations */}
           <RecommendedProducts
-            onSelectProduct={setSelectedProduct}
+            onSelectProduct={handleSelectRecommendedProduct}
             allProducts={products}
           />
 
@@ -142,25 +144,15 @@ export default function PublicCatalog() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredProducts.map(product => (
-                <ProductCard 
-                  key={product.id} 
-                  product={product} 
-                  onSelectProduct={setSelectedProduct}
+                <ProductCard
+                  key={product.id}
+                  product={product}
                   data-testid={`card-product-${product.id}`}
                 />
               ))}
             </div>
           )}
         </div>
-
-        {/* Product Detail Sheet */}
-        <ProductDetailSheet
-          product={selectedProduct}
-          isOpen={!!selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-        />
-
-
       </main>
 
       <Footer />

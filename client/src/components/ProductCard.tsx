@@ -1,7 +1,7 @@
 import { Product } from "@/lib/types";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, MoreHorizontal } from "lucide-react";
+import { Eye } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { useLocation } from "wouter";
@@ -38,18 +38,18 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
   }, []);
 
   return (
-    <Card 
+    <Card
       className="overflow-hidden transition-all hover:shadow-md cursor-pointer group"
-      onClick={() => setLocation(`/products/${slugify(product.name)}`)}
+      onClick={() => onSelectProduct ? onSelectProduct(product) : setLocation(`/products/${slugify(product.name)}`)}
     >
       <div ref={imgRef} className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
         {!imageLoaded && (
           <div className="absolute inset-0 bg-muted animate-pulse" />
         )}
         {isInView && (
-          <img 
-            src={(product as any).imageUrl || (product as any).image_url} 
-            alt={product.name} 
+          <img
+            src={(product as any).imageUrl || (product as any).image_url}
+            alt={product.name}
             loading="lazy"
             onLoad={() => setImageLoaded(true)}
             className={`h-full w-full object-cover transition-all duration-300 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
@@ -72,12 +72,9 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
           SKU: {product.sku}
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 flex gap-2">
+      <CardFooter className="p-4 pt-0">
         <Button variant="outline" size="sm" className="w-full">
           <Eye className="h-4 w-4 mr-2" /> {t("productCard.details")}
-        </Button>
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={(e) => e.stopPropagation()}>
-          <MoreHorizontal className="h-4 w-4" />
         </Button>
       </CardFooter>
     </Card>
