@@ -23,11 +23,23 @@ export function Footer() {
               </div>
               <div className="flex items-start gap-2">
                 <Building2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue-400" />
-                <span>{t("footer.seattleOffice")}</span>
+                <div>
+                  <span className="text-white font-medium">Seattle, WA</span>
+                  <br />
+                  <span>2212 Queen Anne Ave. N Unit #824</span>
+                  <br />
+                  <span>Seattle, WA 98109 USA</span>
+                </div>
               </div>
               <div className="flex items-start gap-2">
                 <Building2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue-400" />
-                <span>{t("footer.nairobiOffice")}</span>
+                <div>
+                  <span className="text-white font-medium">Nairobi, Kenya</span>
+                  <br />
+                  <span>General Mathenge Rd, Westlands</span>
+                  <br />
+                  <span>48620-00100 GPO Nairobi, Kenya</span>
+                </div>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue-400" />

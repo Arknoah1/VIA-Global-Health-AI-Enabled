@@ -105,7 +105,10 @@ export default function ContactPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-700" data-testid="text-office-usa-location">{t("contact.usaOfficeLocation")}</p>
+                <div className="text-slate-700 space-y-0.5" data-testid="text-office-usa-location">
+                  <p>2212 Queen Anne Ave. N Unit #824</p>
+                  <p>Seattle, WA 98109 USA</p>
+                </div>
               </CardContent>
             </Card>
 
@@ -122,7 +125,10 @@ export default function ContactPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-700" data-testid="text-office-kenya-location">{t("contact.kenyaOfficeLocation")}</p>
+                <div className="text-slate-700 space-y-0.5" data-testid="text-office-kenya-location">
+                  <p>General Mathenge Rd, Westlands</p>
+                  <p>48620-00100 GPO Nairobi, Kenya</p>
+                </div>
               </CardContent>
             </Card>
           </div>
