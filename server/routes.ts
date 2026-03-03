@@ -118,9 +118,8 @@ export async function registerRoutes(
     try {
       const search = req.query.search as string | undefined;
       
-      // Set cache headers for browser caching
-      res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
-      res.set('ETag', `"products-${Date.now()}"`);
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
       
       // Use server-side cache for non-search requests
       if (!search && isCacheValid(cache.products)) {
@@ -172,8 +171,8 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Product not found" });
       }
       
-      // Set cache headers
-      res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
       
       res.json(product);
     } catch (error) {
