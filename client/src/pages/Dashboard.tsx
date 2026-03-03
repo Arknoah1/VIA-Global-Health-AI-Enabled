@@ -6,6 +6,7 @@ import { ProductTable } from "@/components/ProductTable";
 import { ProductCard } from "@/components/ProductCard";
 import { ScraperModal } from "@/components/ScraperModal";
 import { ProductDetailSheet } from "@/components/ProductDetailSheet";
+import { EditProductDialog } from "@/components/EditProductDialog";
 import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,13 +33,14 @@ import {
 export default function Dashboard() {
   const [isScraperOpen, setIsScraperOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState("");
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch products from API
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products"],
     queryFn: async () => {
@@ -48,7 +50,6 @@ export default function Dashboard() {
     },
   });
 
-  // Mutation to save scraped products
   const saveProductsMutation = useMutation({
     mutationFn: async (newProducts: Product[]) => {
       const response = await fetch("/api/products", {
@@ -64,8 +65,59 @@ export default function Dashboard() {
     },
   });
 
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Product> }) => {
+      const response = await fetch(`/api/products/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to update product");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setEditingProduct(null);
+      toast({
+        title: "Product Updated",
+        description: "The product has been saved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update the product. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete product");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setDeletingProduct(null);
+      toast({
+        title: "Product Deleted",
+        description: "The product has been removed from the database.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete the product. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleScrapeComplete = async (newProducts: Product[]) => {
-    // Products are already saved by the /api/scrape endpoint, just refresh the list
     queryClient.invalidateQueries({ queryKey: ["products"] });
     toast({
       title: "Extraction Complete",
@@ -124,11 +176,20 @@ export default function Dashboard() {
     clearDatabaseMutation.mutate();
   };
 
+  const handleEditSave = (id: string, data: Partial<Product>) => {
+    updateProductMutation.mutate({ id, data });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deletingProduct) {
+      deleteProductMutation.mutate(deletingProduct.id);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background w-full">
       <Sidebar />
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="h-16 border-b bg-card flex items-center justify-between px-6 shrink-0">
           <h1 className="text-xl font-semibold">Product Database</h1>
           <div className="flex items-center gap-3">
@@ -166,7 +227,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Toolbar */}
         <div className="p-6 pb-0 space-y-4 shrink-0">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div className="relative w-full sm:w-96">
@@ -204,7 +264,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-auto p-6">
           {isLoading ? (
             <div className="h-full flex items-center justify-center">
@@ -223,6 +282,8 @@ export default function Dashboard() {
             <ProductTable 
               products={filteredProducts} 
               onSelectProduct={setSelectedProduct}
+              onEditProduct={setEditingProduct}
+              onDeleteProduct={setDeletingProduct}
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -231,6 +292,8 @@ export default function Dashboard() {
                   key={product.id} 
                   product={product} 
                   onSelectProduct={setSelectedProduct}
+                  onEditProduct={setEditingProduct}
+                  onDeleteProduct={setDeletingProduct}
                 />
               ))}
             </div>
@@ -249,6 +312,32 @@ export default function Dashboard() {
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
       />
+
+      <EditProductDialog
+        product={editingProduct}
+        isOpen={!!editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSave={handleEditSave}
+        isSaving={updateProductMutation.isPending}
+      />
+
+      <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Delete Product</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{deletingProduct?.name}"? This action cannot be undone.
+          </AlertDialogDescription>
+          <div className="flex justify-end gap-3">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

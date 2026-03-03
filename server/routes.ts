@@ -236,6 +236,17 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/products/:id", requireAdmin, async (req, res) => {
+    try {
+      const updated = await storage.updateProduct(req.params.id, req.body);
+      invalidateCache();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      res.status(500).json({ error: "Failed to update product" });
+    }
+  });
+
   // Delete product
   app.delete("/api/products/:id", requireAdmin, async (req, res) => {
     try {

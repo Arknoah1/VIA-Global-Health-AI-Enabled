@@ -1,7 +1,7 @@
 import { Product } from "@/lib/types";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { useLocation } from "wouter";
@@ -10,9 +10,11 @@ import { slugify } from "@/lib/slugify";
 interface ProductCardProps {
   product: Product;
   onSelectProduct?: (product: Product) => void;
+  onEditProduct?: (product: Product) => void;
+  onDeleteProduct?: (product: Product) => void;
 }
 
-export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
+export function ProductCard({ product, onSelectProduct, onEditProduct, onDeleteProduct }: ProductCardProps) {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -36,6 +38,8 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
 
     return () => observer.disconnect();
   }, []);
+
+  const isAdmin = !!onEditProduct;
 
   return (
     <Card
@@ -73,9 +77,23 @@ export function ProductCard({ product, onSelectProduct }: ProductCardProps) {
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button variant="outline" size="sm" className="w-full">
-          <Eye className="h-4 w-4 mr-2" /> {t("productCard.details")}
-        </Button>
+        {isAdmin ? (
+          <div className="flex gap-2 w-full">
+            <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); onSelectProduct?.(product); }} data-testid={`card-view-${product.id}`}>
+              <Eye className="h-4 w-4 mr-1" /> View
+            </Button>
+            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onEditProduct?.(product); }} data-testid={`card-edit-${product.id}`}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDeleteProduct?.(product); }} data-testid={`card-delete-${product.id}`}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" className="w-full">
+            <Eye className="h-4 w-4 mr-2" /> {t("productCard.details")}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

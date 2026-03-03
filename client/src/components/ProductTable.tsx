@@ -8,12 +8,13 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Eye, MoreHorizontal, ExternalLink } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -21,9 +22,11 @@ interface ProductTableProps {
   products: Product[];
   isLoading?: boolean;
   onSelectProduct?: (product: Product) => void;
+  onEditProduct?: (product: Product) => void;
+  onDeleteProduct?: (product: Product) => void;
 }
 
-export function ProductTable({ products, isLoading, onSelectProduct }: ProductTableProps) {
+export function ProductTable({ products, isLoading, onSelectProduct, onEditProduct, onDeleteProduct }: ProductTableProps) {
   if (isLoading) {
     return <div className="p-8 text-center text-muted-foreground">Loading data...</div>;
   }
@@ -73,17 +76,25 @@ export function ProductTable({ products, isLoading, onSelectProduct }: ProductTa
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} data-testid={`actions-${product.id}`}>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => onSelectProduct?.(product)}>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSelectProduct?.(product); }} data-testid={`view-${product.id}`}>
                       <Eye className="mr-2 h-4 w-4" /> View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <ExternalLink className="mr-2 h-4 w-4" /> View Source
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEditProduct?.(product); }} data-testid={`edit-${product.id}`}>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit Product
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); onDeleteProduct?.(product); }}
+                      data-testid={`delete-${product.id}`}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete Product
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

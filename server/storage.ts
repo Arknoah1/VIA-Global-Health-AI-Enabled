@@ -19,6 +19,7 @@ export interface IStorage {
   getProductsByCategory(category: string, excludeId?: string): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
   createProducts(products: InsertProduct[]): Promise<Product[]>;
+  updateProduct(id: string, data: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: string): Promise<void>;
   deleteAllProducts(): Promise<void>;
   createQuoteRequest(quoteRequest: InsertQuoteRequest): Promise<QuoteRequest>;
@@ -125,6 +126,12 @@ export class DatabaseStorage implements IStorage {
   async createProducts(productList: InsertProduct[]): Promise<Product[]> {
     const result = await db.insert(products).values(productList).returning();
     return result;
+  }
+
+  async updateProduct(id: string, data: Partial<InsertProduct>): Promise<Product> {
+    const result = await db.update(products).set(data).where(eq(products.id, id)).returning();
+    if (result.length === 0) throw new Error("Product not found");
+    return result[0];
   }
 
   async deleteProduct(id: string): Promise<void> {
