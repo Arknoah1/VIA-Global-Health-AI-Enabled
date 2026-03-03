@@ -109,9 +109,9 @@ async function fixBrokenDocumentUrls() {
         return !url.startsWith('http');
       });
       
-      const newCerts = certs.filter((c: any) => {
+      let newCerts = certs.filter((c: any) => {
         const url = c?.url || '';
-        if (url === '#' || url === '') return false;
+        if (url === '#') { c.url = ''; }
         if (url.startsWith('https://viaglobalhealth.comhttps://')) return false;
         if (url.startsWith('http')) {
           if (p.sku === 'HTU-110C' && (c.name || '').includes('FDA')) {
@@ -120,6 +120,7 @@ async function fixBrokenDocumentUrls() {
           }
           return false;
         }
+        if (!url && !c.thumbnailUrl) return false;
         return true;
       });
       
@@ -136,6 +137,13 @@ async function fixBrokenDocumentUrls() {
         return true;
       });
       
+      if ((p.sku === 'SKU: VIA_ESU-110' || p.sku === 'VIA_ESU-110') && newCerts.length === 0) {
+        newCerts = [
+          { name: "ISO 13485", url: "", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-0.png" },
+          { name: "US FDA", url: "", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-1.png" }
+        ];
+      }
+
       if (newDocs.length !== docs.length || newCerts.length !== certs.length || newStudies.length !== studies.length) {
         await db.update(products).set({
           documents: newDocs,

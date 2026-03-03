@@ -797,25 +797,40 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                         <Award className="h-5 w-5 text-primary" /> {t("productDetail.regulatoryCertificates")}
                       </h3>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {(product.regulatoryCertificates as any[]).map((cert: any, idx: number) => (
-                          <a
-                            key={idx}
-                            href={cert.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 text-center"
-                            data-testid={`certificate-${idx}`}
-                          >
-                            {cert.thumbnailUrl ? (
-                              <img src={cert.thumbnailUrl} alt={cert.name} className="h-20 w-20 object-contain" />
-                            ) : (
-                              <div className="h-20 w-20 rounded-xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
-                                <Award className="h-10 w-10 text-green-600" />
-                              </div>
-                            )}
-                            <span className="text-sm font-medium">{cert.name}</span>
-                          </a>
-                        ))}
+                        {(product.regulatoryCertificates as any[]).map((cert: any, idx: number) => {
+                          const certContent = (
+                            <>
+                              {cert.thumbnailUrl ? (
+                                <img src={cert.thumbnailUrl} alt={cert.name} className="h-20 w-20 object-contain" />
+                              ) : (
+                                <div className="h-20 w-20 rounded-xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
+                                  <Award className="h-10 w-10 text-green-600" />
+                                </div>
+                              )}
+                              <span className="text-sm font-medium">{cert.name}</span>
+                            </>
+                          );
+                          return cert.url ? (
+                            <a
+                              key={idx}
+                              href={cert.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 text-center"
+                              data-testid={`certificate-${idx}`}
+                            >
+                              {certContent}
+                            </a>
+                          ) : (
+                            <div
+                              key={idx}
+                              className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card text-center"
+                              data-testid={`certificate-${idx}`}
+                            >
+                              {certContent}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
