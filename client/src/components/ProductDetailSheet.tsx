@@ -619,7 +619,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     <span className="text-sm">{t("productDetail.specs")}</span>
                   </TabsTrigger>
                 )}
-                {(product.videoUrl || (product.documents as any[]).length > 0) && (
+                {(product.videoUrl || (product.videos as any[] || []).length > 0 || (product.documents as any[]).length > 0 || (product.regulatoryCertificates as any[] || []).length > 0) && (
                   <TabsTrigger 
                     value="media" 
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-3 min-h-[44px]"
@@ -707,9 +707,36 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               )}
 
               {/* Media & Files Tab */}
-              {(product.videoUrl || (product.documents as any[]).length > 0) && (
+              {(product.videoUrl || (product.videos as any[] || []).length > 0 || (product.documents as any[]).length > 0 || (product.regulatoryCertificates as any[] || []).length > 0) && (
                 <TabsContent value="media" className="space-y-6 py-6">
-                  {product.videoUrl && (
+                  {(product.videos as any[] || []).length > 0 ? (
+                    <div>
+                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
+                        <Play className="h-5 w-5 text-primary" /> {t("productDetail.productVideo")}
+                      </h3>
+                      <div className="grid gap-4">
+                        {(product.videos as any[]).map((video: any, idx: number) => (
+                          <div key={idx} className="space-y-2">
+                            <div className="aspect-video rounded-xl overflow-hidden bg-black/5 border shadow-lg">
+                              <iframe 
+                                width="100%" 
+                                height="100%" 
+                                src={video.url} 
+                                title={video.title || `Video ${idx + 1}`}
+                                frameBorder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowFullScreen
+                                data-testid={`product-video-${idx}`}
+                              ></iframe>
+                            </div>
+                            {video.title && (
+                              <p className="text-sm text-muted-foreground font-medium">{video.title}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : product.videoUrl ? (
                     <div>
                       <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
                         <Play className="h-5 w-5 text-primary" /> {t("productDetail.productVideo")}
@@ -727,7 +754,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                         ></iframe>
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
                   {product.documents && (product.documents as any[]).length > 0 && (
                     <div>
@@ -742,9 +769,13 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                             whileHover={{ x: 4 }}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary">
-                                <FileText className="h-6 w-6" />
-                              </div>
+                              {doc.thumbnailUrl ? (
+                                <img src={doc.thumbnailUrl} alt={doc.name} className="h-12 w-12 rounded-xl object-cover border" />
+                              ) : (
+                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary">
+                                  <FileText className="h-6 w-6" />
+                                </div>
+                              )}
                               <div>
                                 <div className="font-medium text-sm">{doc.name}</div>
                                 <div className="text-xs text-muted-foreground">PDF Document</div>
@@ -755,6 +786,35 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                               {t("productDetail.downloadDocument")}
                             </Button>
                           </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {product.regulatoryCertificates && (product.regulatoryCertificates as any[]).length > 0 && (
+                    <div>
+                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-base">
+                        <Award className="h-5 w-5 text-primary" /> {t("productDetail.regulatoryCertificates")}
+                      </h3>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {(product.regulatoryCertificates as any[]).map((cert: any, idx: number) => (
+                          <a
+                            key={idx}
+                            href={cert.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 text-center"
+                            data-testid={`certificate-${idx}`}
+                          >
+                            {cert.thumbnailUrl ? (
+                              <img src={cert.thumbnailUrl} alt={cert.name} className="h-20 w-20 object-contain" />
+                            ) : (
+                              <div className="h-20 w-20 rounded-xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
+                                <Award className="h-10 w-10 text-green-600" />
+                              </div>
+                            )}
+                            <span className="text-sm font-medium">{cert.name}</span>
+                          </a>
                         ))}
                       </div>
                     </div>

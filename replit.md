@@ -88,6 +88,10 @@ Preferred communication style: Simple, everyday language.
   2. Secondary: DOM scraping with selectors for both standard WooCommerce classes AND Divi theme builder (`et_pb_wc_*`) classes
 - **Metadata Extraction**: Parses short description bullets for seller name/location, warranty, MOQ, regulatory approval
 - **404 Detection**: Skips pages with "not found" / "404" in h1/title or `.error-404` class
+- **Document/Certificate Extraction**: Parses Divi's `et_link_options_data` JS variable to map blurb elements to PDF URLs, classifies as documents vs regulatory certificates based on section headings
+- **Video Extraction**: Captures all YouTube/Vimeo embeds with titles into `videos` array
+- **Local File Storage**: Downloads images to `client/public/images/products/`, documents to `client/public/documents/products/{sku}/`, thumbnails to `client/public/images/products/thumbnails/`
+- **Upsert on Re-scrape**: When scraping a product with an existing SKU, updates the existing record instead of failing on duplicate constraint. SKU comparison is case-insensitive and whitespace-trimmed.
 
 ### AI Integration
 - **Provider**: OpenAI API (via Replit AI integrations)

@@ -6,6 +6,8 @@ import { join, extname } from 'path';
 const MAX_PRICE_CENTS = 99999900;
 const DEFAULT_PRICE_CENTS = 50000;
 const IMAGES_DIR = join(process.cwd(), 'client', 'public', 'images', 'products');
+const THUMBNAILS_DIR = join(process.cwd(), 'client', 'public', 'images', 'products', 'thumbnails');
+const DOCUMENTS_DIR = join(process.cwd(), 'client', 'public', 'documents', 'products');
 
 async function downloadImage(url: string, productSlug: string, index: number): Promise<string> {
   try {
@@ -47,6 +49,64 @@ async function downloadImage(url: string, productSlug: string, index: number): P
   }
 }
 
+async function downloadFile(url: string, destDir: string, filename: string): Promise<string> {
+  try {
+    if (!url || !url.startsWith('http')) return url;
+
+    mkdirSync(destDir, { recursive: true });
+
+    const filepath = join(destDir, filename);
+
+    if (existsSync(filepath)) {
+      console.log(`[Scraper] File already exists: ${filename}`);
+      return filepath;
+    }
+
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+    });
+    if (!response.ok) {
+      console.log(`[Scraper] Failed to download file: ${url} (${response.status})`);
+      return url;
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    const header = buffer.slice(0, 20).toString('utf-8').toLowerCase();
+    if (header.includes('<!doctype') || header.includes('<html')) {
+      console.log(`[Scraper] Skipping invalid file (got HTML): ${url}`);
+      return url;
+    }
+
+    writeFileSync(filepath, buffer);
+    console.log(`[Scraper] Downloaded file: ${filename} (${buffer.length} bytes)`);
+    return filepath;
+  } catch (err) {
+    console.log(`[Scraper] Error downloading file ${url}: ${err}`);
+    return url;
+  }
+}
+
+async function downloadDocument(url: string, sku: string, filename: string): Promise<string> {
+  const skuDir = join(DOCUMENTS_DIR, sku);
+  const result = await downloadFile(url, skuDir, filename);
+  if (result.startsWith('/') && !result.startsWith('/documents')) {
+    const relPath = result.replace(join(process.cwd(), 'client', 'public'), '');
+    return relPath;
+  }
+  if (result === url) return url;
+  return `/documents/products/${sku}/${filename}`;
+}
+
+async function downloadThumbnail(url: string, filename: string): Promise<string> {
+  const result = await downloadFile(url, THUMBNAILS_DIR, filename);
+  if (result.startsWith('/') && !result.startsWith('/images')) {
+    return `/images/products/thumbnails/${filename}`;
+  }
+  if (result === url) return url;
+  return `/images/products/thumbnails/${filename}`;
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -73,7 +133,9 @@ interface ScrapedRawData {
   keyFeatures: string[];
   specifications: Record<string, string>;
   faqs: Array<{question: string, answer: string}>;
-  documents: Array<{name: string, url: string}>;
+  documents: Array<{name: string, url: string, thumbnailUrl?: string}>;
+  regulatoryCertificates: Array<{name: string, url: string, thumbnailUrl?: string}>;
+  videos: Array<{title: string, url: string}>;
   videoUrl: string;
   sku: string;
   sellerName: string;
@@ -161,7 +223,9 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           keyFeatures: [] as string[],
           specifications: {} as Record<string, string>,
           faqs: [] as Array<{question: string, answer: string}>,
-          documents: [] as Array<{name: string, url: string}>,
+          documents: [] as Array<{name: string, url: string, thumbnailUrl?: string}>,
+          regulatoryCertificates: [] as Array<{name: string, url: string, thumbnailUrl?: string}>,
+          videos: [] as Array<{title: string, url: string}>,
           videoUrl: '',
           sku: '',
           sellerName: '',
@@ -677,25 +741,142 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           });
         }
 
-        const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="document"], a[href*="brochure"], a[href*="manual"]');
-        pdfLinks.forEach(link => {
-          const isInNav = link.closest('nav, header, footer, .menu, .et_pb_wc_related_products');
-          if (isInNav) return;
-          const href = link.getAttribute('href') || '';
-          const name = link.textContent?.trim() || 'Document';
-          if (href && name && href !== '#') {
-            result.documents.push({ name, url: href });
+        const blurbLinkMap: Record<string, string> = {};
+        const scripts = document.querySelectorAll('script');
+        for (const script of Array.from(scripts)) {
+          const text = script.textContent || '';
+          const match = text.match(/var\s+et_link_options_data\s*=\s*(\[[\s\S]*?\]);/);
+          if (match) {
+            try {
+              const linkData = JSON.parse(match[1]);
+              for (const item of linkData) {
+                if (item.class && item.url) {
+                  blurbLinkMap[item.class] = item.url;
+                }
+              }
+            } catch {}
+            break;
           }
-        });
+        }
+
+        let inDocSection = false;
+        let inCertSection = false;
+        const allH2s = document.querySelectorAll('h2');
+        
+        const sectionMap: Map<Element, string> = new Map();
+        for (const h2 of Array.from(allH2s)) {
+          const text = h2.textContent?.trim().toLowerCase() || '';
+          if (text.includes('product documents') || text.includes('manuals') || text.includes('brochures')) {
+            const section = h2.closest('.et_pb_section, .et_pb_row') || h2.parentElement;
+            if (section) sectionMap.set(section, 'documents');
+          }
+          if (text.includes('regulatory') || text.includes('certificates')) {
+            const section = h2.closest('.et_pb_section, .et_pb_row') || h2.parentElement;
+            if (section) sectionMap.set(section, 'certificates');
+          }
+        }
+
+        const blurbs = document.querySelectorAll('.et_pb_blurb');
+        for (const blurb of Array.from(blurbs)) {
+          const blurbClasses = blurb.className || '';
+          const nameEl = blurb.querySelector('.et_pb_module_header span, .et_pb_module_header, h4');
+          const name = nameEl?.textContent?.trim() || '';
+          if (!name) continue;
+
+          const thumbImg = blurb.querySelector('.et_pb_main_blurb_image img');
+          const thumbnailUrl = thumbImg?.getAttribute('src') || '';
+
+          let pdfUrl = '';
+          const classMatch = blurbClasses.match(/et_pb_blurb_\d+/);
+          if (classMatch && blurbLinkMap[classMatch[0]]) {
+            pdfUrl = blurbLinkMap[classMatch[0]];
+            if (pdfUrl.startsWith('/')) {
+              pdfUrl = 'https://viaglobalhealth.com' + pdfUrl;
+            }
+          }
+
+          const aTag = blurb.querySelector('a[href*=".pdf"]');
+          if (!pdfUrl && aTag) {
+            pdfUrl = aTag.getAttribute('href') || '';
+          }
+
+          let isDocSection = false;
+          let isCertSection = false;
+
+          let parent: Element | null = blurb;
+          while (parent) {
+            if (sectionMap.has(parent)) {
+              const sType = sectionMap.get(parent);
+              if (sType === 'documents') isDocSection = true;
+              if (sType === 'certificates') isCertSection = true;
+              break;
+            }
+            parent = parent.parentElement;
+          }
+
+          if (!isDocSection && !isCertSection) {
+            const nameLower = name.toLowerCase();
+            if (nameLower.includes('iso') || nameLower.includes('fda') || nameLower.includes('ce ') || 
+                nameLower.includes('certificate') || nameLower.includes('regulatory')) {
+              isCertSection = true;
+            } else if (pdfUrl) {
+              isDocSection = true;
+            }
+          }
+
+          if (isCertSection) {
+            result.regulatoryCertificates.push({
+              name,
+              url: pdfUrl || '#',
+              thumbnailUrl: thumbnailUrl || undefined
+            });
+          } else if (isDocSection || pdfUrl) {
+            result.documents.push({
+              name,
+              url: pdfUrl || '#',
+              thumbnailUrl: thumbnailUrl || undefined
+            });
+          }
+        }
+
+        if (result.documents.length === 0) {
+          const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="document"], a[href*="brochure"], a[href*="manual"]');
+          pdfLinks.forEach(link => {
+            const isInNav = link.closest('nav, header, footer, .menu, .et_pb_wc_related_products');
+            if (isInNav) return;
+            const href = link.getAttribute('href') || '';
+            const linkName = link.textContent?.trim() || 'Document';
+            if (href && linkName && href !== '#') {
+              result.documents.push({ name: linkName, url: href });
+            }
+          });
+        }
+
         if (result.documents.length === 0) {
           result.documents.push({ name: 'Product Brochure', url: '#' });
           result.documents.push({ name: 'User Manual', url: '#' });
           result.documents.push({ name: 'Technical Specifications', url: '#' });
         }
 
-        const videoEl = document.querySelector('iframe[src*="youtube"], iframe[src*="vimeo"], video source');
-        if (videoEl) {
-          result.videoUrl = videoEl.getAttribute('src') || '';
+        const videoIframes = document.querySelectorAll('iframe[src*="youtube"], iframe[src*="vimeo"]');
+        for (const iframe of Array.from(videoIframes)) {
+          const src = iframe.getAttribute('src') || '';
+          const title = iframe.getAttribute('title') || `Video ${result.videos.length + 1}`;
+          if (src) {
+            result.videos.push({ title, url: src });
+          }
+        }
+
+        const videoSources = document.querySelectorAll('video source');
+        for (const source of Array.from(videoSources)) {
+          const src = source.getAttribute('src') || '';
+          if (src) {
+            result.videos.push({ title: `Video ${result.videos.length + 1}`, url: src });
+          }
+        }
+
+        if (result.videos.length > 0) {
+          result.videoUrl = result.videos[0].url;
         }
 
         return result;
@@ -711,8 +892,9 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
         continue;
       }
 
+      const sku = productDetails.sku || generateUniqueSKU();
       console.log(`[Scraper] Extracted product: ${productDetails.name}`);
-      console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features`);
+      console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features, ${productDetails.documents.length} documents, ${productDetails.regulatoryCertificates.length} certificates, ${productDetails.videos.length} videos`);
       console.log(`[Scraper] Downloading ${productDetails.images.length} image(s) locally...`);
 
       const slug = slugify(productDetails.name);
@@ -727,20 +909,64 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
 
       console.log(`[Scraper] Saved ${localImages.filter(p => p.startsWith('/')).length} image(s) locally`);
 
+      console.log(`[Scraper] Downloading ${productDetails.documents.length} document(s) and ${productDetails.regulatoryCertificates.length} certificate(s)...`);
+
+      const localDocuments: Array<{name: string, url: string, thumbnailUrl?: string}> = [];
+      for (let i = 0; i < productDetails.documents.length; i++) {
+        const doc = productDetails.documents[i];
+        let localUrl = doc.url;
+        let localThumb = doc.thumbnailUrl;
+        
+        if (doc.url && doc.url.startsWith('http') && doc.url.includes('.pdf')) {
+          const pdfFilename = slugify(doc.name) + '.pdf';
+          localUrl = await downloadDocument(doc.url, sku, pdfFilename);
+        }
+        
+        if (doc.thumbnailUrl && doc.thumbnailUrl.startsWith('http')) {
+          const thumbFilename = `${sku}-doc-thumb-${i}${extname(new URL(doc.thumbnailUrl).pathname).toLowerCase() || '.png'}`;
+          localThumb = await downloadThumbnail(doc.thumbnailUrl, thumbFilename);
+        }
+        
+        localDocuments.push({ name: doc.name, url: localUrl, thumbnailUrl: localThumb });
+      }
+
+      const localCertificates: Array<{name: string, url: string, thumbnailUrl?: string}> = [];
+      for (let i = 0; i < productDetails.regulatoryCertificates.length; i++) {
+        const cert = productDetails.regulatoryCertificates[i];
+        let localUrl = cert.url;
+        let localThumb = cert.thumbnailUrl;
+        
+        if (cert.url && cert.url.startsWith('http') && cert.url.includes('.pdf')) {
+          const certFilename = 'cert-' + slugify(cert.name) + '.pdf';
+          localUrl = await downloadDocument(cert.url, sku, certFilename);
+        }
+        
+        if (cert.thumbnailUrl && cert.thumbnailUrl.startsWith('http')) {
+          const thumbFilename = `${sku}-cert-thumb-${i}${extname(new URL(cert.thumbnailUrl).pathname).toLowerCase() || '.png'}`;
+          localThumb = await downloadThumbnail(cert.thumbnailUrl, thumbFilename);
+        }
+        
+        localCertificates.push({ name: cert.name, url: localUrl, thumbnailUrl: localThumb });
+      }
+
+      console.log(`[Scraper] Downloaded ${localDocuments.filter(d => d.url.startsWith('/')).length} document(s) and ${localCertificates.filter(c => c.url.startsWith('/')).length} certificate(s) locally`);
+
       products.push({
         name: productDetails.name,
         description: productDetails.description,
         price: sanitizePrice(productDetails.price),
         currency: 'USD',
         category: productDetails.category,
-        sku: productDetails.sku || generateUniqueSKU(),
+        sku: sku,
         imageUrl: localMainImage,
         images: localImages,
         videoUrl: productDetails.videoUrl || null,
         keyFeatures: productDetails.keyFeatures,
-        documents: productDetails.documents,
+        documents: localDocuments,
         specifications: productDetails.specifications,
         faqs: productDetails.faqs,
+        regulatoryCertificates: localCertificates,
+        videos: productDetails.videos,
         status: 'active',
         sellerName: productDetails.sellerName || null,
         sellerLocation: productDetails.sellerLocation || null,

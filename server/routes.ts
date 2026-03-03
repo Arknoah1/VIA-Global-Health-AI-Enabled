@@ -190,10 +190,24 @@ export async function registerRoutes(
       const scrapedProducts = await scrapeViaGlobalHealth(urls);
       console.log(`[API] Scraped ${scrapedProducts.length} products, saving to database...`);
       
-      const saved = await storage.createProducts(scrapedProducts);
+      const existingProducts = await storage.getAllProducts();
+      const skuToProduct = new Map(existingProducts.map(p => [p.sku?.trim().toLowerCase(), p]));
+      
+      const saved: any[] = [];
+      for (const product of scrapedProducts) {
+        const normalizedSku = product.sku?.trim().toLowerCase();
+        const existing = normalizedSku ? skuToProduct.get(normalizedSku) : undefined;
+        if (existing) {
+          console.log(`[API] Product with SKU ${product.sku} already exists (id: ${existing.id}), updating...`);
+          const updated = await storage.updateProduct(existing.id, product);
+          saved.push(updated);
+        } else {
+          const created = await storage.createProduct(product);
+          saved.push(created);
+        }
+      }
       console.log(`[API] Saved ${saved.length} products to database`);
       
-      // Invalidate cache when new products are added
       invalidateCache();
       
       res.json({ 
