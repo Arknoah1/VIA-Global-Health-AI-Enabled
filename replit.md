@@ -83,6 +83,11 @@ Preferred communication style: Simple, everyday language.
 - **Tool**: Puppeteer with headless Chromium
 - **Purpose**: Scrapes product data from viaglobalhealth.com including images, descriptions, specifications
 - **Location**: `server/scraper.ts`
+- **Data Extraction Strategy**: Two-phase approach:
+  1. Primary: JSON-LD structured data (Schema.org Product markup) for reliable name, price, SKU, images, dimensions
+  2. Secondary: DOM scraping with selectors for both standard WooCommerce classes AND Divi theme builder (`et_pb_wc_*`) classes
+- **Metadata Extraction**: Parses short description bullets for seller name/location, warranty, MOQ, regulatory approval
+- **404 Detection**: Skips pages with "not found" / "404" in h1/title or `.error-404` class
 
 ### AI Integration
 - **Provider**: OpenAI API (via Replit AI integrations)

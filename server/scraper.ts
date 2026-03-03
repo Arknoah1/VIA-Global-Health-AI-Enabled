@@ -63,6 +63,31 @@ function sanitizePrice(price: number): number {
   return Math.min(cents, MAX_PRICE_CENTS);
 }
 
+interface ScrapedRawData {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  imageUrl: string;
+  images: string[];
+  keyFeatures: string[];
+  specifications: Record<string, string>;
+  faqs: Array<{question: string, answer: string}>;
+  documents: Array<{name: string, url: string}>;
+  videoUrl: string;
+  sku: string;
+  sellerName: string;
+  sellerLocation: string;
+  warrantyTerm: string;
+  regulatoryApproval: string;
+  minimumOrderQuantity: number | null;
+  shippingWeightKg: number | null;
+  shippingLengthCm: number | null;
+  shippingWidthCm: number | null;
+  shippingDepthCm: number | null;
+  is404: boolean;
+}
+
 export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProduct[]> {
   let browser;
   const products: InsertProduct[] = [];
@@ -73,7 +98,6 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
     return `VIA-${timestamp}-${productIndex++}`;
   }
 
-  // Default to thermocoagulator if no URLs provided
   const urlsToScrape = urls && urls.length > 0 ? urls : ['https://viaglobalhealth.com/product/thermocoagulator/'];
 
   try {
@@ -86,7 +110,6 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
     const page = await browser.newPage();
     await page.setViewport({ width: 1920, height: 1080 });
     
-    // Scrape each URL
     for (const productUrl of urlsToScrape) {
     
       console.log(`[Scraper] Navigating to ${productUrl}...`);
@@ -102,7 +125,6 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
 
       await page.waitForSelector('h1', { timeout: 10000 }).catch(() => {});
 
-      // Scroll down the page to load all content
       console.log('[Scraper] Scrolling to load all content...');
       await page.evaluate(() => {
         return new Promise<void>((resolve) => {
@@ -123,478 +145,613 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
         });
       });
 
-      // Scroll back up
       await page.evaluate(() => window.scrollTo(0, 0));
       await new Promise(resolve => setTimeout(resolve, 500));
 
       console.log('[Scraper] Extracting detailed product data...');
 
-      const productDetails = await page.evaluate(() => {
-      const name = document.querySelector('h1.product_title, h1')?.textContent?.trim() || 'LifeWrap Non-Pneumatic Anti-Shock Garment (NASG)';
-      
-      let description = '';
-      const descEl = document.querySelector('.woocommerce-product-details__short-description, .product-description, [class*="description"]');
-      if (descEl) {
-        description = descEl.textContent?.trim() || '';
-      }
-      const contentEl = document.querySelector('.entry-content, .product-content, article');
-      if (contentEl && !description) {
-        description = contentEl.textContent?.trim().substring(0, 1000) || '';
-      }
-      if (!description) {
-        description = 'The LifeWrap Non-Pneumatic Anti-Shock Garment (NASG) is a first-aid device designed to stabilize patients experiencing hypovolemic shock and obstetric hemorrhage.';
-      }
+      const productDetails: ScrapedRawData | null = await page.evaluate(() => {
+        const result: any = {
+          name: '',
+          description: '',
+          price: 0,
+          category: '',
+          imageUrl: '',
+          images: [] as string[],
+          keyFeatures: [] as string[],
+          specifications: {} as Record<string, string>,
+          faqs: [] as Array<{question: string, answer: string}>,
+          documents: [] as Array<{name: string, url: string}>,
+          videoUrl: '',
+          sku: '',
+          sellerName: '',
+          sellerLocation: '',
+          warrantyTerm: '',
+          regulatoryApproval: '',
+          minimumOrderQuantity: null,
+          shippingWeightKg: null,
+          shippingLengthCm: null,
+          shippingWidthCm: null,
+          shippingDepthCm: null,
+          is404: false
+        };
 
-      let price = 0;
-      const priceEl = document.querySelector('.price .woocommerce-Price-amount, .price, [class*="price"]');
-      if (priceEl) {
-        const priceText = priceEl.textContent || '';
-        const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-        if (priceMatch) {
-          price = parseFloat(priceMatch[0].replace(/,/g, ''));
+        const h1El = document.querySelector('h1.product_title, .et_pb_wc_title h1, h1');
+        const h1Text = h1El?.textContent?.trim() || '';
+        const titleTag = document.title || '';
+        if (
+          h1Text.toLowerCase().includes('not found') ||
+          h1Text.toLowerCase().includes('404') ||
+          titleTag.toLowerCase().includes('not found') ||
+          titleTag.toLowerCase().includes('404') ||
+          document.querySelector('.error-404, .not-found')
+        ) {
+          result.is404 = true;
+          return result;
         }
-      }
-      if (!price || price <= 0 || price > 100000) {
-        price = 350;
-      }
 
-      const categoryEl = document.querySelector('.posted_in a, .product_cat, [class*="category"]');
-      const category = categoryEl?.textContent?.trim() || 'Maternal & Newborn Health';
-
-      const mainImg = document.querySelector('.woocommerce-product-gallery__image img, .product-image img, img.wp-post-image');
-      const mainImageUrl = mainImg?.getAttribute('src') || mainImg?.getAttribute('data-src') || '';
-
-      const imageEls = document.querySelectorAll('.woocommerce-product-gallery__image img, .product-images img, .product-gallery img');
-      const images: string[] = [];
-      imageEls.forEach(img => {
-        const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
-        if (src && !images.includes(src)) {
-          images.push(src);
-        }
-      });
-      if (images.length === 0 && mainImageUrl) {
-        images.push(mainImageUrl);
-      }
-
-      // KEY FEATURES - Extract from product content, NOT navigation
-      const keyFeatures: string[] = [];
-      
-      // Find all paragraphs that contain bold text (feature pattern)
-      // The product page has format: <strong>Feature Name</strong> followed by description text
-      const allParagraphs = document.querySelectorAll('p, div.wpb_text_column, .vc_column_text');
-      
-      Array.from(allParagraphs).forEach((para) => {
-        // Skip if this is in navigation, header, or footer
-        const isInNav = para.closest('nav, header, footer, .menu, .navigation, #menu, .mega-menu');
-        if (isInNav) return;
-        
-        // Look for strong/bold tags
-        const boldEls = para.querySelectorAll('strong, b');
-        
-        Array.from(boldEls).forEach((bold) => {
-          const boldText = bold.textContent?.trim() || '';
-          
-          // Skip if it's a menu item or too short/long
-          if (boldText.length < 4 || boldText.length > 50) return;
-          
-          // Skip common non-feature headings
-          const skipWords = ['shop', 'product', 'resource', 'menu', 'cart', 'buy', 'login', 'contact', 'about'];
-          if (skipWords.some(word => boldText.toLowerCase().includes(word))) return;
-          
-          // Get the text content after this bold element
-          let descText = '';
-          
-          // Method 1: Check if bold is followed by text in same paragraph
-          const parentText = para.textContent?.trim() || '';
-          const boldIndex = parentText.indexOf(boldText);
-          if (boldIndex >= 0) {
-            descText = parentText.substring(boldIndex + boldText.length).trim();
-            // Clean up the description
-            if (descText.startsWith(':')) descText = descText.substring(1).trim();
-            if (descText.startsWith('-')) descText = descText.substring(1).trim();
-          }
-          
-          // Check if this looks like a real feature (has meaningful description)
-          if (descText.length > 30 && keyFeatures.length < 10) {
-            // Truncate very long descriptions
-            if (descText.length > 350) {
-              descText = descText.substring(0, 350).trim() + '...';
+        let jsonLd: any = null;
+        const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
+        for (const script of Array.from(jsonLdScripts)) {
+          try {
+            const data = JSON.parse(script.textContent || '');
+            if (data['@graph']) {
+              const productNode = data['@graph'].find((n: any) => n['@type'] === 'Product');
+              if (productNode) {
+                jsonLd = productNode;
+                break;
+              }
             }
-            keyFeatures.push(`${boldText} - ${descText}`);
-          }
-        });
-      });
+            if (data['@type'] === 'Product') {
+              jsonLd = data;
+              break;
+            }
+          } catch {}
+        }
 
-      // If we still don't have features, try alternative extraction
-      if (keyFeatures.length === 0) {
-        // Look for heading + following paragraph pattern
-        const headings = document.querySelectorAll('h3, h4, h5');
-        Array.from(headings).forEach((heading) => {
-          const isInNav = heading.closest('nav, header, footer, .menu, .navigation');
+        if (jsonLd) {
+          const rawName = jsonLd.name || '';
+          result.name = rawName.replace(/\s*[-–|].*VIA Global Health.*/i, '').replace(/^Buy\s+(the\s+)?/i, '').trim();
+          result.description = jsonLd.description || '';
+          result.sku = jsonLd.sku || '';
+          
+          if (jsonLd.category) {
+            const cat = jsonLd.category.replace(/&gt;/g, '>');
+            const parts = cat.split('>').map((s: string) => s.trim());
+            result.category = parts[parts.length - 1] || parts[0] || '';
+          }
+
+          if (jsonLd.offers) {
+            const offer = Array.isArray(jsonLd.offers) ? jsonLd.offers[0] : jsonLd.offers;
+            const p = parseFloat(offer?.price);
+            if (!isNaN(p) && p > 0) result.price = p;
+          }
+
+          if (jsonLd.image) {
+            const imgs = Array.isArray(jsonLd.image) ? jsonLd.image : [jsonLd.image];
+            for (const img of imgs) {
+              const url = typeof img === 'string' ? img : img?.url;
+              if (url) result.images.push(url);
+            }
+            if (result.images.length > 0) result.imageUrl = result.images[0];
+          }
+
+          if (jsonLd.weight?.value) {
+            result.shippingWeightKg = parseFloat(jsonLd.weight.value) || null;
+          }
+          if (jsonLd.height?.value) {
+            result.shippingDepthCm = parseFloat(jsonLd.height.value) || null;
+          }
+          if (jsonLd.width?.value) {
+            result.shippingWidthCm = parseFloat(jsonLd.width.value) || null;
+          }
+          if (jsonLd.depth?.value) {
+            result.shippingLengthCm = parseFloat(jsonLd.depth.value) || null;
+          }
+
+          if (jsonLd.brand?.name) {
+            result.sellerName = jsonLd.brand.name;
+          }
+        }
+
+        if (!result.name) {
+          result.name = h1Text || '';
+        }
+        if (!result.name) return null;
+
+        const shortDescEl = document.querySelector(
+          '.productShortDescription .et_pb_module_inner, ' +
+          '.et_pb_wc_description_0_tb_body .et_pb_module_inner, ' +
+          '.woocommerce-product-details__short-description, ' +
+          '.product-description'
+        );
+        const shortDesc = shortDescEl?.textContent?.trim() || '';
+
+        if (shortDesc && shortDesc.length > 10) {
+          const moqMatch = shortDesc.match(/Minimum Order Quantity[^:]*:\s*(.+)/i);
+          const sellerMatch = shortDesc.match(/Seller Name[^:]*:\s*(.+)/i);
+          const locationMatch = shortDesc.match(/Seller Location[^:]*:\s*(.+)/i);
+          const warrantyMatch = shortDesc.match(/Warranty Term[^:]*:\s*(.+)/i);
+          const regulatoryMatch = shortDesc.match(/Regulatory Approval[^:]*:\s*(.+)/i);
+
+          if (moqMatch) {
+            const moqVal = parseInt(moqMatch[1].split('\n')[0].split('•')[0].trim().replace(/\D/g, ''));
+            if (!isNaN(moqVal) && moqVal > 0) result.minimumOrderQuantity = moqVal;
+          }
+          if (sellerMatch && !result.sellerName) result.sellerName = sellerMatch[1].split('\n')[0].split('•')[0].trim();
+          if (locationMatch) result.sellerLocation = locationMatch[1].split('\n')[0].split('•')[0].trim();
+          if (warrantyMatch) result.warrantyTerm = warrantyMatch[1].split('\n')[0].split('•')[0].trim();
+          if (regulatoryMatch) result.regulatoryApproval = regulatoryMatch[1].split('\n')[0].split('•')[0].trim();
+
+          const cleanDesc = shortDesc
+            .replace(/•\s*Minimum Order Quantity.*/gi, '')
+            .replace(/•\s*Seller Name.*/gi, '')
+            .replace(/•\s*Seller Location.*/gi, '')
+            .replace(/•\s*Warranty Term.*/gi, '')
+            .replace(/•\s*Regulatory Approval.*/gi, '')
+            .trim();
+          if (cleanDesc.length > 10 && (!result.description || result.description.length < cleanDesc.length)) {
+            result.description = cleanDesc;
+          }
+        }
+
+        const longDescEl = document.querySelector(
+          '.et_pb_wc_description_1_tb_body .et_pb_module_inner, ' +
+          '.et_pb_wc_description:not(.productShortDescription) .et_pb_module_inner, ' +
+          '.woocommerce-Tabs-panel--description, ' +
+          '#tab-description'
+        );
+        const longDesc = longDescEl?.textContent?.trim() || '';
+        if (longDesc && longDesc.length > result.description.length) {
+          result.description = longDesc;
+        }
+
+        if (!result.description) {
+          const contentEl = document.querySelector('.entry-content, .product-content, article, .et_pb_post_content');
+          if (contentEl) {
+            result.description = contentEl.textContent?.trim().substring(0, 1000) || '';
+          }
+        }
+
+        if (!result.price) {
+          const priceEl = document.querySelector(
+            '.price .woocommerce-Price-amount, ' +
+            '.et_pb_wc_price .woocommerce-Price-amount, ' +
+            '.price, [class*="price"]'
+          );
+          if (priceEl) {
+            const priceText = priceEl.textContent || '';
+            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+            if (priceMatch) {
+              result.price = parseFloat(priceMatch[0].replace(/,/g, ''));
+            }
+          }
+        }
+
+        if (!result.price) {
+          const priceMeta = document.querySelector('meta[property="product:price:amount"]');
+          if (priceMeta) {
+            const p = parseFloat(priceMeta.getAttribute('content') || '');
+            if (!isNaN(p) && p > 0) result.price = p;
+          }
+        }
+
+        if (!result.category) {
+          const categoryEl = document.querySelector(
+            '.posted_in a, ' +
+            '.product_meta .posted_in a, ' +
+            '.et_pb_wc_meta .posted_in a, ' +
+            '.product_cat, [class*="category"]'
+          );
+          result.category = categoryEl?.textContent?.trim() || '';
+        }
+
+        if (result.images.length === 0) {
+          const galleryImgs = document.querySelectorAll(
+            '.woocommerce-product-gallery__image img, ' +
+            '.et_pb_wc_images img, ' +
+            '.flex-viewport img, ' +
+            '.product-images img, ' +
+            '.product-gallery img, ' +
+            'img.wp-post-image'
+          );
+          galleryImgs.forEach(img => {
+            const src = img.getAttribute('data-large_image') || img.getAttribute('src') || img.getAttribute('data-src') || '';
+            if (src && src.startsWith('http') && !result.images.includes(src) && !src.includes('-150x150') && !src.includes('-100x100')) {
+              result.images.push(src);
+            }
+          });
+          if (result.images.length > 0 && !result.imageUrl) {
+            result.imageUrl = result.images[0];
+          }
+        }
+
+        if (!result.imageUrl) {
+          const mainImg = document.querySelector(
+            '.woocommerce-product-gallery__image img, ' +
+            '.et_pb_wc_images img, ' +
+            '.product-image img, ' +
+            'img.wp-post-image'
+          );
+          result.imageUrl = mainImg?.getAttribute('data-large_image') || mainImg?.getAttribute('src') || mainImg?.getAttribute('data-src') || '';
+        }
+
+        if (!result.sku) {
+          const skuEl = document.querySelector('.sku, .et_pb_wc_meta .sku, [class*="sku"]');
+          result.sku = skuEl?.textContent?.trim() || '';
+        }
+
+        const allParagraphs = document.querySelectorAll('p, div.wpb_text_column, .vc_column_text, .et_pb_text_inner');
+        
+        Array.from(allParagraphs).forEach((para) => {
+          const isInNav = para.closest('nav, header, footer, .menu, .navigation, #menu, .mega-menu, .et_pb_wc_related_products');
           if (isInNav) return;
           
-          const headingText = heading.textContent?.trim() || '';
-          if (headingText.length < 4 || headingText.length > 50) return;
+          const boldEls = para.querySelectorAll('strong, b');
           
-          const nextEl = heading.nextElementSibling;
-          if (nextEl && (nextEl.tagName === 'P' || nextEl.tagName === 'DIV')) {
-            const descText = nextEl.textContent?.trim() || '';
-            if (descText.length > 30 && keyFeatures.length < 10) {
-              keyFeatures.push(`${headingText} - ${descText.substring(0, 350)}`);
+          Array.from(boldEls).forEach((bold) => {
+            const boldText = bold.textContent?.trim() || '';
+            
+            if (boldText.length < 4 || boldText.length > 50) return;
+            
+            const skipWords = ['shop', 'product', 'resource', 'menu', 'cart', 'buy', 'login', 'contact', 'about', 'click here', 'apply', 'we accept', 'payment', 'pricing'];
+            if (skipWords.some(word => boldText.toLowerCase().includes(word))) return;
+            
+            let descText = '';
+            
+            const parentText = para.textContent?.trim() || '';
+            const boldIndex = parentText.indexOf(boldText);
+            if (boldIndex >= 0) {
+              descText = parentText.substring(boldIndex + boldText.length).trim();
+              if (descText.startsWith(':')) descText = descText.substring(1).trim();
+              if (descText.startsWith('-')) descText = descText.substring(1).trim();
             }
-          }
+            
+            if (descText.length > 30 && result.keyFeatures.length < 10) {
+              if (descText.length > 350) {
+                descText = descText.substring(0, 350).trim() + '...';
+              }
+              result.keyFeatures.push(`${boldText} - ${descText}`);
+            }
+          });
         });
-      }
 
-      // Specifications - Extract from the Specifications section dynamically
-      const specifications: Record<string, string> = {};
-      const faqs: Array<{question: string, answer: string}> = [];
-      
-      // Find the "Specifications" heading or tab content
-      const allElements = Array.from(document.querySelectorAll('h2, h3, h4, strong, .woocommerce-Tabs-panel, #tab-specifications'));
-      let specSection: Element | null = null;
-      
-      // First try to find a specifications tab panel
-      specSection = document.querySelector('#tab-specifications, .woocommerce-Tabs-panel--specifications, [id*="specifications"]');
-      
-      // If no tab panel, find the Specifications heading
-      if (!specSection) {
-        const specHeader = allElements.find((h) => {
+        if (result.keyFeatures.length === 0) {
+          const headings = document.querySelectorAll('h3, h4, h5');
+          Array.from(headings).forEach((heading) => {
+            const isInNav = heading.closest('nav, header, footer, .menu, .navigation, .et_pb_wc_related_products');
+            if (isInNav) return;
+            
+            const headingText = heading.textContent?.trim() || '';
+            if (headingText.length < 4 || headingText.length > 50) return;
+            
+            const nextEl = heading.nextElementSibling;
+            if (nextEl && (nextEl.tagName === 'P' || nextEl.tagName === 'DIV')) {
+              const descText = nextEl.textContent?.trim() || '';
+              if (descText.length > 30 && result.keyFeatures.length < 10) {
+                result.keyFeatures.push(`${headingText} - ${descText.substring(0, 350)}`);
+              }
+            }
+          });
+        }
+
+        const allElements = Array.from(document.querySelectorAll('h2, h3, h4, strong, .woocommerce-Tabs-panel, #tab-specifications'));
+        let specSection: Element | null = null;
+        
+        specSection = document.querySelector('#tab-specifications, .woocommerce-Tabs-panel--specifications, [id*="specifications"]');
+        
+        if (!specSection) {
+          const specHeader = allElements.find((h) => {
+            const text = h.textContent?.trim().toLowerCase() || '';
+            return text === 'specifications';
+          });
+          if (specHeader) {
+            specSection = specHeader.closest('.wpb_text_column, .vc_column_text, .elementor-widget-container, .entry-content, article, .et_pb_section, .et_pb_post_content') || specHeader.parentElement;
+          }
+        }
+        
+        const faqHeader = allElements.find((h) => {
           const text = h.textContent?.trim().toLowerCase() || '';
-          return text === 'specifications';
+          return text === 'faqs' || text === 'faq' || text.includes('frequently asked');
         });
-        if (specHeader) {
-          // Get the parent container or use the header's parent
-          specSection = specHeader.closest('.wpb_text_column, .vc_column_text, .elementor-widget-container, .entry-content, article') || specHeader.parentElement;
-        }
-      }
-      
-      // Find FAQs header
-      const faqHeader = allElements.find((h) => {
-        const text = h.textContent?.trim().toLowerCase() || '';
-        return text === 'faqs' || text === 'faq' || text.includes('frequently asked');
-      });
-      
-      // Extract specifications by finding all bold headings followed by lists
-      if (specSection) {
-        // Get all strong/bold elements within the spec section
-        const boldElements = specSection.querySelectorAll('strong, b, h3, h4, h5');
         
-        Array.from(boldElements).forEach((boldEl) => {
-          const headingText = boldEl.textContent?.trim() || '';
-          if (headingText.length < 3 || headingText.length > 100) return;
+        if (specSection) {
+          const boldElements = specSection.querySelectorAll('strong, b, h3, h4, h5');
           
-          // Skip if it's the main "Specifications" heading
-          if (headingText.toLowerCase() === 'specifications') return;
-          
-          // Skip FAQ-like questions
-          const headingLower = headingText.toLowerCase();
-          const isFaqLike = headingText.includes('?') ||
-                           headingLower.startsWith('how do') ||
-                           headingLower.startsWith('how to') ||
-                           headingLower.startsWith('what is') ||
-                           headingLower.startsWith('what\'s') ||
-                           headingLower.startsWith('what if') ||
-                           headingLower.startsWith('can i') ||
-                           headingLower.startsWith('is there') ||
-                           headingLower.startsWith('how does') ||
-                           headingLower.startsWith('how many') ||
-                           headingLower.startsWith('why ') ||
-                           headingLower.startsWith('when ') ||
-                           headingLower.startsWith('where ');
-          
-          if (isFaqLike) {
-            // This is an FAQ - extract it with answer
-            let answerEl = boldEl.parentElement?.nextElementSibling;
-            if (!answerEl) {
-              // Try getting next sibling of the bold element's grandparent
-              answerEl = boldEl.closest('p')?.nextElementSibling || null;
-            }
-            let answerText = '';
-            if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
-                            answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
-              answerText = answerEl.textContent?.trim() || '';
-            }
-            if (headingText.length > 5 && answerText.length > 10) {
-              faqs.push({ question: headingText, answer: answerText });
-            }
-            return;
-          }
-          
-          // Look for the UL/OL that follows this bold element
-          // The list might be a sibling of the bold element's parent (typically a <p>)
-          let searchEl: Element | null = boldEl.parentElement;
-          if (searchEl && searchEl.tagName !== 'P' && searchEl.tagName !== 'DIV') {
-            searchEl = boldEl.closest('p, div');
-          }
-          
-          let foundList: Element | null = null;
-          let searchCount = 0;
-          
-          while (searchEl && searchCount < 5) {
-            const nextSibling = searchEl.nextElementSibling;
-            if (!nextSibling) break;
+          Array.from(boldElements).forEach((boldEl) => {
+            const headingText = boldEl.textContent?.trim() || '';
+            if (headingText.length < 3 || headingText.length > 100) return;
             
-            if (nextSibling.tagName === 'UL' || nextSibling.tagName === 'OL') {
-              foundList = nextSibling;
-              break;
-            }
-            // If we hit another bold heading, stop
-            if (nextSibling.querySelector('strong, b') || nextSibling.tagName === 'STRONG' || nextSibling.tagName === 'B') {
-              break;
-            }
-            searchEl = nextSibling;
-            searchCount++;
-          }
-          
-          if (foundList) {
-            const items = foundList.querySelectorAll('li');
-            const allItems: string[] = [];
+            if (headingText.toLowerCase() === 'specifications') return;
             
-            Array.from(items).forEach((item) => {
-              const text = item.textContent?.trim() || '';
-              if (text.length > 3) {
-                allItems.push(text);
+            const headingLower = headingText.toLowerCase();
+            const isFaqLike = headingText.includes('?') ||
+                             headingLower.startsWith('how do') ||
+                             headingLower.startsWith('how to') ||
+                             headingLower.startsWith('what is') ||
+                             headingLower.startsWith('what\'s') ||
+                             headingLower.startsWith('what if') ||
+                             headingLower.startsWith('can i') ||
+                             headingLower.startsWith('is there') ||
+                             headingLower.startsWith('how does') ||
+                             headingLower.startsWith('how many') ||
+                             headingLower.startsWith('why ') ||
+                             headingLower.startsWith('when ') ||
+                             headingLower.startsWith('where ');
+            
+            if (isFaqLike) {
+              let answerEl = boldEl.parentElement?.nextElementSibling;
+              if (!answerEl) {
+                answerEl = boldEl.closest('p')?.nextElementSibling || null;
               }
-            });
+              let answerText = '';
+              if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
+                              answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
+                answerText = answerEl.textContent?.trim() || '';
+              }
+              if (headingText.length > 5 && answerText.length > 10) {
+                result.faqs.push({ question: headingText, answer: answerText });
+              }
+              return;
+            }
             
-            if (allItems.length > 0) {
-              specifications[headingText] = allItems.map(item => '• ' + item).join('\n');
+            let searchEl: Element | null = boldEl.parentElement;
+            if (searchEl && searchEl.tagName !== 'P' && searchEl.tagName !== 'DIV') {
+              searchEl = boldEl.closest('p, div');
             }
-          }
-        });
-      }
-      
-      // Fallback: If no specs found, try walking through all elements after "Specifications" text
-      if (Object.keys(specifications).length === 0) {
-        const walker = document.createTreeWalker(
-          document.body,
-          NodeFilter.SHOW_ELEMENT,
-          null
-        );
-        
-        let foundSpecsHeader = false;
-        let currentHeading = '';
-        let currentItems: string[] = [];
-        
-        while (walker.nextNode()) {
-          const node = walker.currentNode as Element;
-          const text = node.textContent?.trim().toLowerCase() || '';
-          
-          // Start capturing after we find "Specifications"
-          if (!foundSpecsHeader && (node.tagName === 'H2' || node.tagName === 'H3' || node.tagName === 'STRONG') && text === 'specifications') {
-            foundSpecsHeader = true;
-            continue;
-          }
-          
-          if (!foundSpecsHeader) continue;
-          
-          // Stop at FAQs or Related Products
-          if (text === 'faqs' || text === 'faq' || text === 'related products' || text === 'reviews') {
-            if (currentHeading && currentItems.length > 0) {
-              specifications[currentHeading] = currentItems.map(item => '• ' + item).join('\n');
+            
+            let foundList: Element | null = null;
+            let searchCount = 0;
+            
+            while (searchEl && searchCount < 5) {
+              const nextSibling = searchEl.nextElementSibling;
+              if (!nextSibling) break;
+              
+              if (nextSibling.tagName === 'UL' || nextSibling.tagName === 'OL') {
+                foundList = nextSibling;
+                break;
+              }
+              if (nextSibling.querySelector('strong, b') || nextSibling.tagName === 'STRONG' || nextSibling.tagName === 'B') {
+                break;
+              }
+              searchEl = nextSibling;
+              searchCount++;
             }
-            break;
-          }
+            
+            if (foundList) {
+              const items = foundList.querySelectorAll('li');
+              const allItems: string[] = [];
+              
+              Array.from(items).forEach((item) => {
+                const text = item.textContent?.trim() || '';
+                if (text.length > 3) {
+                  allItems.push(text);
+                }
+              });
+              
+              if (allItems.length > 0) {
+                result.specifications[headingText] = allItems.map((item: string) => '• ' + item).join('\n');
+              }
+            }
+          });
+        }
+        
+        if (Object.keys(result.specifications).length === 0) {
+          const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_ELEMENT,
+            null
+          );
           
-          // Check if this is a bold heading
-          if ((node.tagName === 'STRONG' || node.tagName === 'B') && node.textContent) {
-            const headingText = node.textContent.trim();
-            if (headingText.length > 3 && headingText.length < 100 && !headingText.includes('?')) {
-              // Save previous heading if we had items
+          let foundSpecsHeader = false;
+          let currentHeading = '';
+          let currentItems: string[] = [];
+          
+          while (walker.nextNode()) {
+            const node = walker.currentNode as Element;
+            const text = node.textContent?.trim().toLowerCase() || '';
+            
+            if (!foundSpecsHeader && (node.tagName === 'H2' || node.tagName === 'H3' || node.tagName === 'STRONG') && text === 'specifications') {
+              foundSpecsHeader = true;
+              continue;
+            }
+            
+            if (!foundSpecsHeader) continue;
+            
+            if (text === 'faqs' || text === 'faq' || text === 'related products' || text === 'reviews') {
               if (currentHeading && currentItems.length > 0) {
-                specifications[currentHeading] = currentItems.map(item => '• ' + item).join('\n');
+                result.specifications[currentHeading] = currentItems.map((item: string) => '• ' + item).join('\n');
               }
-              currentHeading = headingText;
-              currentItems = [];
+              break;
+            }
+            
+            if ((node.tagName === 'STRONG' || node.tagName === 'B') && node.textContent) {
+              const headingText = node.textContent.trim();
+              if (headingText.length > 3 && headingText.length < 100 && !headingText.includes('?')) {
+                if (currentHeading && currentItems.length > 0) {
+                  result.specifications[currentHeading] = currentItems.map((item: string) => '• ' + item).join('\n');
+                }
+                currentHeading = headingText;
+                currentItems = [];
+              }
+            }
+            
+            if (node.tagName === 'LI' && currentHeading) {
+              const itemText = node.textContent?.trim() || '';
+              if (itemText.length > 3) {
+                currentItems.push(itemText);
+              }
             }
           }
           
-          // Capture list items under current heading
-          if (node.tagName === 'LI' && currentHeading) {
-            const itemText = node.textContent?.trim() || '';
-            if (itemText.length > 3) {
-              currentItems.push(itemText);
-            }
+          if (currentHeading && currentItems.length > 0) {
+            result.specifications[currentHeading] = currentItems.map((item: string) => '• ' + item).join('\n');
           }
         }
         
-        // Don't forget the last heading
-        if (currentHeading && currentItems.length > 0) {
-          specifications[currentHeading] = currentItems.map(item => '• ' + item).join('\n');
+        if (faqHeader) {
+          let currentEl: Element | null = faqHeader.nextElementSibling;
+          let depth = 0;
+          
+          while (currentEl && depth < 30) {
+            const elText = currentEl.textContent?.trim().toLowerCase() || '';
+            if (elText === 'related products' || elText === 'reviews' || elText === 'specifications') {
+              break;
+            }
+            
+            const elTag = currentEl.tagName;
+            const isQuestion = elTag === 'STRONG' || elTag === 'H3' || elTag === 'H4' || elTag === 'H5' ||
+                              currentEl.querySelector('strong, b');
+            
+            if (isQuestion) {
+              const questionText = currentEl.textContent?.trim() || '';
+              
+              let answerEl = currentEl.nextElementSibling;
+              let answerText = '';
+              
+              if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
+                              answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
+                answerText = answerEl.textContent?.trim() || '';
+              }
+              
+              if (questionText.length > 5 && answerText.length > 10) {
+                result.faqs.push({ question: questionText, answer: answerText });
+              }
+            }
+            
+            currentEl = currentEl.nextElementSibling;
+            depth++;
+          }
         }
-      }
-      
-      // Extract FAQs - first from dedicated FAQ section, then from question-style headings anywhere
-      if (faqHeader) {
-        let currentEl: Element | null = faqHeader.nextElementSibling;
-        let depth = 0;
         
-        while (currentEl && depth < 30) {
-          const elText = currentEl.textContent?.trim().toLowerCase() || '';
-          if (elText === 'related products' || elText === 'reviews' || elText === 'specifications') {
-            break;
-          }
-          
-          const elTag = currentEl.tagName;
-          const isQuestion = elTag === 'STRONG' || elTag === 'H3' || elTag === 'H4' || elTag === 'H5' ||
-                            currentEl.querySelector('strong, b');
-          
-          if (isQuestion) {
-            const questionText = currentEl.textContent?.trim() || '';
+        if (specSection && result.faqs.length === 0) {
+          const boldElements = specSection.querySelectorAll('strong, b');
+          Array.from(boldElements).forEach((boldEl) => {
+            const headingText = boldEl.textContent?.trim() || '';
+            const hLower = headingText.toLowerCase();
             
-            let answerEl = currentEl.nextElementSibling;
-            let answerText = '';
+            const isQuestion = headingText.includes('?') ||
+                              hLower.startsWith('how do') ||
+                              hLower.startsWith('how to') ||
+                              hLower.startsWith('what is') ||
+                              hLower.startsWith('what\'s') ||
+                              hLower.startsWith('what if') ||
+                              hLower.startsWith('can i') ||
+                              hLower.startsWith('is there') ||
+                              hLower.startsWith('how does') ||
+                              hLower.startsWith('how many') ||
+                              hLower.startsWith('why ') ||
+                              hLower.startsWith('when ') ||
+                              hLower.startsWith('where ');
             
-            if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
-                            answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
-              answerText = answerEl.textContent?.trim() || '';
+            if (isQuestion && headingText.length > 5) {
+              let answerEl = boldEl.parentElement?.nextElementSibling;
+              if (!answerEl) {
+                answerEl = boldEl.closest('p')?.nextElementSibling || null;
+              }
+              let answerText = '';
+              
+              if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
+                              answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
+                answerText = answerEl.textContent?.trim() || '';
+              }
+              
+              if (answerText.length > 10) {
+                result.faqs.push({ question: headingText, answer: answerText });
+              }
             }
-            
-            if (questionText.length > 5 && answerText.length > 10) {
-              faqs.push({ question: questionText, answer: answerText });
-            }
-          }
-          
-          currentEl = currentEl.nextElementSibling;
-          depth++;
+          });
         }
-      }
-      
-      // Also extract FAQs from within/after Specifications (questions mixed with specs)
-      if (specSection && faqs.length === 0) {
-        const boldElements = specSection.querySelectorAll('strong, b');
-        Array.from(boldElements).forEach((boldEl) => {
-          const headingText = boldEl.textContent?.trim() || '';
-          const hLower = headingText.toLowerCase();
-          
-          // Check if this is a question (FAQ)
-          const isQuestion = headingText.includes('?') ||
-                            hLower.startsWith('how do') ||
-                            hLower.startsWith('how to') ||
-                            hLower.startsWith('what is') ||
-                            hLower.startsWith('what\'s') ||
-                            hLower.startsWith('what if') ||
-                            hLower.startsWith('can i') ||
-                            hLower.startsWith('is there') ||
-                            hLower.startsWith('how does') ||
-                            hLower.startsWith('how many') ||
-                            hLower.startsWith('why ') ||
-                            hLower.startsWith('when ') ||
-                            hLower.startsWith('where ');
-          
-          if (isQuestion && headingText.length > 5) {
-            // Get the answer from the next element
-            let answerEl = boldEl.parentElement?.nextElementSibling;
-            if (!answerEl) {
-              answerEl = boldEl.closest('p')?.nextElementSibling || null;
+        
+        if (Object.keys(result.specifications).length === 0) {
+          const specRows = document.querySelectorAll('.specifications tr, .product-attributes tr, .woocommerce-product-attributes tr');
+          specRows.forEach(row => {
+            const cells = row.querySelectorAll('td, th');
+            if (cells.length >= 2) {
+              const key = cells[0].textContent?.trim() || '';
+              const value = cells[1].textContent?.trim() || '';
+              if (key && value && key.length < 100 && value.length < 200) {
+                result.specifications[key] = value;
+              }
             }
-            let answerText = '';
-            
-            if (answerEl && (answerEl.tagName === 'P' || answerEl.tagName === 'DIV' || 
-                            answerEl.tagName === 'UL' || answerEl.tagName === 'OL')) {
-              answerText = answerEl.textContent?.trim() || '';
-            }
-            
-            if (answerText.length > 10) {
-              faqs.push({ question: headingText, answer: answerText });
-            }
-          }
-        });
-      }
-      
-      // Fallback: If no specs found via section method, try table extraction
-      if (Object.keys(specifications).length === 0) {
-        const specRows = document.querySelectorAll('.specifications tr, .product-attributes tr, .woocommerce-product-attributes tr');
-        specRows.forEach(row => {
-          const cells = row.querySelectorAll('td, th');
-          if (cells.length >= 2) {
-            const key = cells[0].textContent?.trim() || '';
-            const value = cells[1].textContent?.trim() || '';
-            if (key && value && key.length < 100 && value.length < 200) {
-              specifications[key] = value;
-            }
-          }
-        });
-      }
+          });
+        }
 
-      // Documents
-      const documents: Array<{name: string, url: string}> = [];
-      const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="document"], a[href*="brochure"], a[href*="manual"]');
-      pdfLinks.forEach(link => {
-        const href = link.getAttribute('href') || '';
-        const name = link.textContent?.trim() || 'Document';
-        if (href && name) {
-          documents.push({ name, url: href });
+        const pdfLinks = document.querySelectorAll('a[href*=".pdf"], a[href*="document"], a[href*="brochure"], a[href*="manual"]');
+        pdfLinks.forEach(link => {
+          const isInNav = link.closest('nav, header, footer, .menu, .et_pb_wc_related_products');
+          if (isInNav) return;
+          const href = link.getAttribute('href') || '';
+          const name = link.textContent?.trim() || 'Document';
+          if (href && name && href !== '#') {
+            result.documents.push({ name, url: href });
+          }
+        });
+        if (result.documents.length === 0) {
+          result.documents.push({ name: 'Product Brochure', url: '#' });
+          result.documents.push({ name: 'User Manual', url: '#' });
+          result.documents.push({ name: 'Technical Specifications', url: '#' });
         }
+
+        const videoEl = document.querySelector('iframe[src*="youtube"], iframe[src*="vimeo"], video source');
+        if (videoEl) {
+          result.videoUrl = videoEl.getAttribute('src') || '';
+        }
+
+        return result;
       });
-      if (documents.length === 0) {
-        documents.push({ name: 'Product Brochure', url: '#' });
-        documents.push({ name: 'User Manual', url: '#' });
-        documents.push({ name: 'Technical Specifications', url: '#' });
+
+      if (!productDetails || productDetails.is404) {
+        console.log(`[Scraper] Skipping ${productUrl} - page not found or invalid`);
+        continue;
       }
 
-      // Videos
-      let videoUrl = '';
-      const videoEl = document.querySelector('iframe[src*="youtube"], iframe[src*="vimeo"], video source');
-      if (videoEl) {
-        videoUrl = videoEl.getAttribute('src') || '';
+      if (!productDetails.name) {
+        console.log(`[Scraper] Skipping ${productUrl} - could not extract product name`);
+        continue;
       }
 
-      // SKU
-      const skuEl = document.querySelector('.sku, [class*="sku"]');
-      const sku = skuEl?.textContent?.trim() || '';
+      console.log(`[Scraper] Extracted product: ${productDetails.name}`);
+      console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features`);
+      console.log(`[Scraper] Downloading ${productDetails.images.length} image(s) locally...`);
 
-      return {
-        name,
-        description,
-        price,
-        category,
-        imageUrl: mainImageUrl,
-        images,
-        keyFeatures,
-        specifications,
-        faqs,
-        documents,
-        videoUrl,
-        sku
-      };
-    });
+      const slug = slugify(productDetails.name);
 
-      if (productDetails) {
-        console.log(`[Scraper] Extracted product: ${productDetails.name}`);
-        console.log(`[Scraper] Found ${productDetails.keyFeatures.length} key features`);
-        console.log(`[Scraper] Downloading ${productDetails.images.length + 1} image(s) locally...`);
+      const localMainImage = productDetails.imageUrl ? await downloadImage(productDetails.imageUrl, slug, 0) : '';
 
-        const slug = slugify(productDetails.name);
-
-        const localMainImage = await downloadImage(productDetails.imageUrl, slug, 0);
-
-        const localImages: string[] = [];
-        for (let i = 0; i < productDetails.images.length; i++) {
-          const localPath = await downloadImage(productDetails.images[i], slug, i + 1);
-          localImages.push(localPath);
-        }
-
-        console.log(`[Scraper] Saved ${localImages.filter(p => p.startsWith('/')).length} image(s) locally`);
-
-        products.push({
-          name: productDetails.name,
-          description: productDetails.description,
-          price: sanitizePrice(productDetails.price),
-          currency: 'USD',
-          category: productDetails.category,
-          sku: productDetails.sku || generateUniqueSKU(),
-          imageUrl: localMainImage,
-          images: localImages,
-          videoUrl: productDetails.videoUrl || null,
-          keyFeatures: productDetails.keyFeatures,
-          documents: productDetails.documents,
-          specifications: productDetails.specifications,
-          faqs: productDetails.faqs,
-          status: 'active'
-        });
+      const localImages: string[] = [];
+      for (let i = 0; i < productDetails.images.length; i++) {
+        const localPath = await downloadImage(productDetails.images[i], slug, i + 1);
+        localImages.push(localPath);
       }
+
+      console.log(`[Scraper] Saved ${localImages.filter(p => p.startsWith('/')).length} image(s) locally`);
+
+      products.push({
+        name: productDetails.name,
+        description: productDetails.description,
+        price: sanitizePrice(productDetails.price),
+        currency: 'USD',
+        category: productDetails.category,
+        sku: productDetails.sku || generateUniqueSKU(),
+        imageUrl: localMainImage,
+        images: localImages,
+        videoUrl: productDetails.videoUrl || null,
+        keyFeatures: productDetails.keyFeatures,
+        documents: productDetails.documents,
+        specifications: productDetails.specifications,
+        faqs: productDetails.faqs,
+        status: 'active',
+        sellerName: productDetails.sellerName || null,
+        sellerLocation: productDetails.sellerLocation || null,
+        warrantyTerm: productDetails.warrantyTerm || null,
+        regulatoryApproval: productDetails.regulatoryApproval || null,
+        minimumOrderQuantity: productDetails.minimumOrderQuantity,
+        shippingWeightKg: productDetails.shippingWeightKg,
+        shippingLengthCm: productDetails.shippingLengthCm,
+        shippingWidthCm: productDetails.shippingWidthCm,
+        shippingDepthCm: productDetails.shippingDepthCm,
+      });
     }
 
     console.log(`[Scraper] Successfully scraped ${products.length} product(s) with detailed information`);
