@@ -790,6 +790,9 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           const classMatch = blurbClasses.match(/et_pb_blurb_\d+/);
           if (classMatch && blurbLinkMap[classMatch[0]]) {
             pdfUrl = blurbLinkMap[classMatch[0]];
+            if (pdfUrl.startsWith('https://viaglobalhealth.comhttps://')) {
+              pdfUrl = pdfUrl.replace('https://viaglobalhealth.com', '');
+            }
             if (pdfUrl.startsWith('/')) {
               pdfUrl = 'https://viaglobalhealth.com' + pdfUrl;
             }
@@ -852,11 +855,8 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           });
         }
 
-        if (result.documents.length === 0) {
-          result.documents.push({ name: 'Product Brochure', url: '#' });
-          result.documents.push({ name: 'User Manual', url: '#' });
-          result.documents.push({ name: 'Technical Specifications', url: '#' });
-        }
+        result.documents = result.documents.filter(d => d.url && d.url !== '#');
+        result.regulatoryCertificates = result.regulatoryCertificates.filter(c => c.url && c.url !== '#');
 
         const videoIframes = document.querySelectorAll('iframe[src*="youtube"], iframe[src*="vimeo"]');
         for (const iframe of Array.from(videoIframes)) {

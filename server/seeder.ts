@@ -96,6 +96,63 @@ async function applyEnrichedProductData() {
   }
 }
 
+async function fixBrokenDocumentUrls() {
+  try {
+    const allProducts = await db.select().from(products);
+    let fixed = 0;
+    for (const p of allProducts) {
+      const docs = (p.documents as any[] | null) || [];
+      const certs = (p.regulatoryCertificates as any[] | null) || [];
+      
+      const newDocs = docs.filter((d: any) => {
+        const url = d?.url || '';
+        return !url.startsWith('http');
+      });
+      
+      const newCerts = certs.filter((c: any) => {
+        const url = c?.url || '';
+        if (url === '#' || url === '') return false;
+        if (url.startsWith('https://viaglobalhealth.comhttps://')) return false;
+        if (url.startsWith('http')) {
+          if (p.sku === 'HTU-110C' && (c.name || '').includes('FDA')) {
+            c.url = '/documents/products/htu-110c/cert-fda-certificate.pdf';
+            return true;
+          }
+          return false;
+        }
+        return true;
+      });
+      
+      const studies = (p.studiesAndTrials as any[] | null) || [];
+      const newStudies = studies.filter((s: any) => {
+        const url = s?.url || '';
+        if (url.startsWith('http')) {
+          if (url === 'https://viaglobalhealth.com/wp-content/uploads/2020/06/LifeWrap-NASG-Case-Study-USA-2015.pdf') {
+            s.url = '/documents/products/lifewrap_lg/case-study-usa-2015.pdf';
+            return true;
+          }
+          return false;
+        }
+        return true;
+      });
+      
+      if (newDocs.length !== docs.length || newCerts.length !== certs.length || newStudies.length !== studies.length) {
+        await db.update(products).set({
+          documents: newDocs,
+          regulatoryCertificates: newCerts,
+          studiesAndTrials: newStudies,
+        }).where(eq(products.id, p.id));
+        fixed++;
+      }
+    }
+    if (fixed > 0) {
+      log(`Fixed broken document/certificate URLs in ${fixed} products`, "seeder");
+    }
+  } catch (error) {
+    log(`Error fixing broken document URLs: ${error}`, "seeder");
+  }
+}
+
 async function ensurePocketColposcope() {
   try {
     const existing = await db.select({ id: products.id }).from(products)
@@ -122,6 +179,7 @@ export async function seedDatabase() {
   await ensureProductPackaging();
   await applyEnrichedProductData();
   await ensurePocketColposcope();
+  await fixBrokenDocumentUrls();
 
   try {
     const existingProducts = await db.select().from(products).limit(1);
