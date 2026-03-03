@@ -137,10 +137,12 @@ async function fixBrokenDocumentUrls() {
         return true;
       });
       
-      if ((p.sku === 'SKU: VIA_ESU-110' || p.sku === 'VIA_ESU-110') && newCerts.length === 0) {
+      const esuNeedsFixing = (p.sku === 'SKU: VIA_ESU-110' || p.sku === 'VIA_ESU-110') && 
+        (newCerts.length === 0 || newCerts.some((c: any) => !c.url));
+      if (esuNeedsFixing) {
         newCerts = [
-          { name: "ISO 13485", url: "", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-0.png" },
-          { name: "US FDA", url: "", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-1.png" }
+          { name: "ISO 13485", url: "/documents/products/via_esu-110/cert-iso-13485.pdf", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-0.png" },
+          { name: "US FDA", url: "/documents/products/via_esu-110/cert-fda.pdf", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-1.png" }
         ];
       }
 
