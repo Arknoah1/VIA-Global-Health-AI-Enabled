@@ -96,11 +96,32 @@ async function applyEnrichedProductData() {
   }
 }
 
+async function ensurePocketColposcope() {
+  try {
+    const existing = await db.select({ id: products.id }).from(products)
+      .where(eq(products.sku, "calla_pocket_colp")).limit(1);
+    if (existing.length > 0) {
+      return;
+    }
+    const seedPath = join(process.cwd(), "server", "seed-colposcope.json");
+    if (!existsSync(seedPath)) {
+      log("Pocket Colposcope seed file not found, skipping", "seeder");
+      return;
+    }
+    const data = JSON.parse(readFileSync(seedPath, "utf-8"));
+    await db.insert(products).values(data);
+    log("Seeded Pocket Colposcope product", "seeder");
+  } catch (error) {
+    log(`Error seeding Pocket Colposcope: ${error}`, "seeder");
+  }
+}
+
 export async function seedDatabase() {
   await seedCustomerSegments();
   await fixExternalImageUrls();
   await ensureProductPackaging();
   await applyEnrichedProductData();
+  await ensurePocketColposcope();
 
   try {
     const existingProducts = await db.select().from(products).limit(1);
