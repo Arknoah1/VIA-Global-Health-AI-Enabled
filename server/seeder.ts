@@ -191,6 +191,9 @@ async function ensurePocketColposcope() {
       return;
     }
     const data = JSON.parse(readFileSync(seedPath, "utf-8"));
+    if (data.scrapedAt && typeof data.scrapedAt === "string") {
+      data.scrapedAt = new Date(data.scrapedAt);
+    }
     await db.insert(products).values(data);
     log("Seeded Pocket Colposcope product", "seeder");
   } catch (error) {
