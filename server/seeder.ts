@@ -146,7 +146,8 @@ async function fixBrokenDocumentUrls() {
         ];
       }
 
-      if (newDocs.length !== docs.length || newCerts.length !== certs.length || newStudies.length !== studies.length) {
+      const needsUpdate = newDocs.length !== docs.length || newCerts.length !== certs.length || newStudies.length !== studies.length || esuNeedsFixing;
+      if (needsUpdate) {
         await db.update(products).set({
           documents: newDocs,
           regulatoryCertificates: newCerts,
