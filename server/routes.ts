@@ -5,6 +5,8 @@ import { scrapeViaGlobalHealth } from "./scraper";
 import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema, insertProformaInvoiceSchema, insertTrainingTranscriptSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
+import { writeFileSync, readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.session && req.session.isAdmin) {
@@ -75,6 +77,106 @@ function invalidateCache() {
   cache.productsByCategory.clear();
 }
 
+async function updateProductManifests() {
+  try {
+    const allProducts = await storage.getAllProducts();
+    const manifests = allProducts.map(p => ({
+      sku: p.sku || '',
+      name: p.name,
+      documents: ((p.documents as any[]) || []).map((d: any) => ({
+        name: d.name || '',
+        url: d.url || '',
+        thumbnailUrl: d.thumbnailUrl || ''
+      })),
+      regulatoryCertificates: ((p.regulatoryCertificates as any[]) || []).map((c: any) => ({
+        name: c.name || '',
+        url: c.url || '',
+        thumbnailUrl: c.thumbnailUrl || ''
+      }))
+    }));
+    const manifestPath = join(process.cwd(), "server", "product-manifests.json");
+    writeFileSync(manifestPath, JSON.stringify(manifests, null, 2));
+    console.log(`[Manifest] Updated product manifests for ${manifests.length} products`);
+  } catch (error) {
+    console.error("[Manifest] Error updating manifests:", error);
+  }
+}
+
+async function validateProductFiles() {
+  const allProducts = await storage.getAllProducts();
+  const issues: Array<{sku: string, name: string, field: string, problem: string}> = [];
+  const valid: string[] = [];
+  const publicDir = join(process.cwd(), "client", "public");
+  const distDir = join(process.cwd(), "dist", "public");
+
+  for (const p of allProducts) {
+    const sku = p.sku || 'unknown';
+    let hasIssue = false;
+
+    if (p.imageUrl && p.imageUrl.startsWith('/')) {
+      const imgPath = join(publicDir, p.imageUrl);
+      const distImgPath = join(distDir, p.imageUrl);
+      if (!existsSync(imgPath) && !existsSync(distImgPath)) {
+        issues.push({ sku, name: p.name, field: 'imageUrl', problem: `Main image missing: ${p.imageUrl}` });
+        hasIssue = true;
+      }
+    }
+
+    const docs = (p.documents as any[]) || [];
+    for (const doc of docs) {
+      if (doc.url && doc.url.startsWith('/')) {
+        const filePath = join(publicDir, doc.url);
+        if (!existsSync(filePath)) {
+          issues.push({ sku, name: p.name, field: 'documents', problem: `Document file missing: ${doc.name} (${doc.url})` });
+          hasIssue = true;
+        }
+      }
+      if (doc.thumbnailUrl && doc.thumbnailUrl.startsWith('/')) {
+        const thumbPath = join(publicDir, doc.thumbnailUrl);
+        if (!existsSync(thumbPath)) {
+          issues.push({ sku, name: p.name, field: 'documents', problem: `Document thumbnail missing: ${doc.name} (${doc.thumbnailUrl})` });
+          hasIssue = true;
+        }
+      }
+    }
+
+    const certs = (p.regulatoryCertificates as any[]) || [];
+    for (const cert of certs) {
+      if (cert.url && cert.url.startsWith('/')) {
+        const filePath = join(publicDir, cert.url);
+        if (!existsSync(filePath)) {
+          issues.push({ sku, name: p.name, field: 'regulatoryCertificates', problem: `Certificate file missing: ${cert.name} (${cert.url})` });
+          hasIssue = true;
+        }
+      }
+      if (cert.thumbnailUrl && cert.thumbnailUrl.startsWith('/')) {
+        const thumbPath = join(publicDir, cert.thumbnailUrl);
+        if (!existsSync(thumbPath)) {
+          issues.push({ sku, name: p.name, field: 'regulatoryCertificates', problem: `Certificate thumbnail missing: ${cert.name} (${cert.thumbnailUrl})` });
+          hasIssue = true;
+        }
+      }
+    }
+
+    const images = (p.images as string[]) || [];
+    for (const img of images) {
+      if (img && img.startsWith('/')) {
+        const imgPath = join(publicDir, img);
+        if (!existsSync(imgPath)) {
+          issues.push({ sku, name: p.name, field: 'images', problem: `Gallery image missing: ${img}` });
+          hasIssue = true;
+        }
+      }
+    }
+
+    if (!hasIssue) {
+      valid.push(sku);
+    }
+  }
+
+  return { valid, issues, totalProducts: allProducts.length };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -111,6 +213,47 @@ export async function registerRoutes(
 
   app.get("/api/admin/check", (req, res) => {
     res.json({ authenticated: !!(req.session && req.session.isAdmin) });
+  });
+
+  app.post("/api/admin/sync-manifests", requireAdmin, async (req, res) => {
+    try {
+      const manifestPath = join(process.cwd(), "server", "product-manifests.json");
+      let oldManifests: any[] = [];
+      if (existsSync(manifestPath)) {
+        try { oldManifests = JSON.parse(readFileSync(manifestPath, "utf-8")); } catch {}
+      }
+
+      await updateProductManifests();
+
+      const newManifests: any[] = JSON.parse(readFileSync(manifestPath, "utf-8"));
+
+      const oldMap = new Map(oldManifests.map((m: any) => [m.sku, m]));
+      const changes: any[] = [];
+      for (const nm of newManifests) {
+        const om = oldMap.get(nm.sku);
+        if (!om || JSON.stringify(om) !== JSON.stringify(nm)) {
+          changes.push({ sku: nm.sku, name: nm.name, documentsCount: nm.documents.length, certificatesCount: nm.regulatoryCertificates.length });
+        }
+      }
+
+      res.json({
+        success: true,
+        totalProducts: newManifests.length,
+        changed: changes.length,
+        changes
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Manifest sync failed" });
+    }
+  });
+
+  app.get("/api/admin/validate-products", requireAdmin, async (req, res) => {
+    try {
+      const report = await validateProductFiles();
+      res.json({ success: true, ...report });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Validation failed" });
+    }
   });
 
   // Get all products (with optional search) - with caching
@@ -208,6 +351,8 @@ export async function registerRoutes(
       console.log(`[API] Saved ${saved.length} products to database`);
       
       invalidateCache();
+
+      updateProductManifests();
       
       res.json({ 
         success: true, 
@@ -253,6 +398,9 @@ export async function registerRoutes(
     try {
       const updated = await storage.updateProduct(req.params.id, req.body);
       invalidateCache();
+      if (req.body.documents || req.body.regulatoryCertificates) {
+        updateProductManifests();
+      }
       res.json(updated);
     } catch (error) {
       console.error("Error updating product:", error);

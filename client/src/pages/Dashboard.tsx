@@ -17,7 +17,12 @@ import {
   Download, 
   LayoutGrid,
   List,
-  Trash2
+  Trash2,
+  ShieldCheck,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -38,6 +43,8 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState("");
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [validationResult, setValidationResult] = useState<{valid: any[], issues: any[], totalProducts: number} | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -114,6 +121,40 @@ export default function Dashboard() {
         description: "Failed to delete the product. Please try again.",
         variant: "destructive",
       });
+    },
+  });
+
+  const validateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/admin/validate-products");
+      if (!response.ok) throw new Error("Failed to validate");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setValidationResult(data);
+      setShowValidation(true);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to run validation.", variant: "destructive" });
+    },
+  });
+
+  const syncManifestsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/admin/sync-manifests", { method: "POST" });
+      if (!response.ok) throw new Error("Failed to sync");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Manifests Synced",
+        description: data.changed > 0
+          ? `Updated ${data.changed} product(s) in manifest file.`
+          : "All products already up to date in manifest.",
+      });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to sync manifests.", variant: "destructive" });
     },
   });
 
@@ -220,12 +261,77 @@ export default function Dashboard() {
                 </div>
               </AlertDialogContent>
             </AlertDialog>
+            <Button
+              data-testid="button-validate-products"
+              variant="outline"
+              size="sm"
+              onClick={() => validateMutation.mutate()}
+              disabled={validateMutation.isPending}
+            >
+              {validateMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
+              Validate
+            </Button>
+            <Button
+              data-testid="button-sync-manifests"
+              variant="outline"
+              size="sm"
+              onClick={() => syncManifestsMutation.mutate()}
+              disabled={syncManifestsMutation.isPending}
+            >
+              {syncManifestsMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Sync Manifests
+            </Button>
             <Button onClick={() => setIsScraperOpen(true)} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               New Scrape
             </Button>
           </div>
         </header>
+
+        {showValidation && validationResult && (
+          <div className="mx-6 mt-4 border rounded-lg bg-card p-4" data-testid="panel-validation-results">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {validationResult.issues.length === 0 ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                )}
+                <h3 className="font-semibold text-sm">
+                  Product Validation — {validationResult.totalProducts} products checked
+                </h3>
+              </div>
+              <Button data-testid="button-close-validation" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowValidation(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {validationResult.issues.length === 0 ? (
+              <p className="text-sm text-green-600" data-testid="text-validation-success">
+                All products passed validation. All local files exist and are accessible.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {validationResult.issues.map((issue: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2 text-sm border-l-2 border-amber-400 pl-3 py-1" data-testid={`validation-issue-${idx}`}>
+                    <div>
+                      <span className="font-medium">{issue.sku || issue.name}</span>
+                      <span className="text-muted-foreground ml-2">{issue.field}</span>
+                      <p className="text-muted-foreground text-xs">{issue.problem}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="p-6 pb-0 space-y-4 shrink-0">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">

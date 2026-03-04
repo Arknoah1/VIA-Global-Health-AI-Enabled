@@ -96,71 +96,85 @@ async function applyEnrichedProductData() {
   }
 }
 
-async function fixBrokenDocumentUrls() {
+interface ManifestEntry {
+  sku: string;
+  name: string;
+  documents: Array<{name: string, url: string, thumbnailUrl: string}>;
+  regulatoryCertificates: Array<{name: string, url: string, thumbnailUrl: string}>;
+}
+
+function loadProductManifests(): ManifestEntry[] {
+  const manifestPath = join(process.cwd(), "server", "product-manifests.json");
+  if (!existsSync(manifestPath)) {
+    log("Product manifests file not found, skipping sync", "seeder");
+    return [];
+  }
   try {
-    const allProducts = await db.select().from(products);
-    let fixed = 0;
+    return JSON.parse(readFileSync(manifestPath, "utf-8"));
+  } catch (e) {
+    log(`Failed to parse product manifests: ${e}`, "seeder");
+    return [];
+  }
+}
+
+function normalizeSku(sku: string): string {
+  return (sku || '').replace(/^SKU:\s*/i, '').trim().toLowerCase();
+}
+
+function docCertHash(items: any[]): string {
+  return JSON.stringify((items || []).map((i: any) => ({
+    name: i.name || '',
+    url: i.url || '',
+    thumbnailUrl: i.thumbnailUrl || ''
+  })));
+}
+
+async function syncProductManifests() {
+  try {
+    const manifests = loadProductManifests();
+    if (manifests.length === 0) return;
+
+    const manifestMap = new Map<string, ManifestEntry>();
+    for (const m of manifests) {
+      manifestMap.set(normalizeSku(m.sku), m);
+    }
+
+    const allProducts = await db.select({
+      id: products.id,
+      sku: products.sku,
+      name: products.name,
+      documents: products.documents,
+      regulatoryCertificates: products.regulatoryCertificates,
+    }).from(products);
+
+    let updated = 0;
+    let alreadyCurrent = 0;
+
     for (const p of allProducts) {
-      const docs = (p.documents as any[] | null) || [];
-      const certs = (p.regulatoryCertificates as any[] | null) || [];
-      
-      const newDocs = docs.filter((d: any) => {
-        const url = d?.url || '';
-        return !url.startsWith('http');
-      });
-      
-      let newCerts = certs.filter((c: any) => {
-        const url = c?.url || '';
-        if (url === '#') { c.url = ''; }
-        if (url.startsWith('https://viaglobalhealth.comhttps://')) return false;
-        if (url.startsWith('http')) {
-          if (p.sku === 'HTU-110C' && (c.name || '').includes('FDA')) {
-            c.url = '/documents/products/htu-110c/cert-fda-certificate.pdf';
-            return true;
-          }
-          return false;
-        }
-        if (!url && !c.thumbnailUrl) return false;
-        return true;
-      });
-      
-      const studies = (p.studiesAndTrials as any[] | null) || [];
-      const newStudies = studies.filter((s: any) => {
-        const url = s?.url || '';
-        if (url.startsWith('http')) {
-          if (url === 'https://viaglobalhealth.com/wp-content/uploads/2020/06/LifeWrap-NASG-Case-Study-USA-2015.pdf') {
-            s.url = '/documents/products/lifewrap_lg/case-study-usa-2015.pdf';
-            return true;
-          }
-          return false;
-        }
-        return true;
-      });
-      
-      const esuNeedsFixing = (p.sku === 'SKU: VIA_ESU-110' || p.sku === 'VIA_ESU-110') && 
-        (newCerts.length === 0 || newCerts.some((c: any) => !c.url));
-      if (esuNeedsFixing) {
-        newCerts = [
-          { name: "ISO 13485", url: "/documents/products/via_esu-110/cert-iso-13485.pdf", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-0.png" },
-          { name: "US FDA", url: "/documents/products/via_esu-110/cert-fda.pdf", thumbnailUrl: "/images/products/thumbnails/via_esu-110-cert-thumb-1.png" }
-        ];
+      const manifest = manifestMap.get(normalizeSku(p.sku || ''));
+      if (!manifest) continue;
+
+      const currentDocs = (p.documents as any[] | null) || [];
+      const currentCerts = (p.regulatoryCertificates as any[] | null) || [];
+
+      const docsMatch = docCertHash(currentDocs) === docCertHash(manifest.documents);
+      const certsMatch = docCertHash(currentCerts) === docCertHash(manifest.regulatoryCertificates);
+
+      if (docsMatch && certsMatch) {
+        alreadyCurrent++;
+        continue;
       }
 
-      const needsUpdate = newDocs.length !== docs.length || newCerts.length !== certs.length || newStudies.length !== studies.length || esuNeedsFixing;
-      if (needsUpdate) {
-        await db.update(products).set({
-          documents: newDocs,
-          regulatoryCertificates: newCerts,
-          studiesAndTrials: newStudies,
-        }).where(eq(products.id, p.id));
-        fixed++;
-      }
+      await db.update(products).set({
+        documents: manifest.documents,
+        regulatoryCertificates: manifest.regulatoryCertificates,
+      }).where(eq(products.id, p.id));
+      updated++;
     }
-    if (fixed > 0) {
-      log(`Fixed broken document/certificate URLs in ${fixed} products`, "seeder");
-    }
+
+    log(`Synced products from manifest (${updated} updated, ${alreadyCurrent} already current)`, "seeder");
   } catch (error) {
-    log(`Error fixing broken document URLs: ${error}`, "seeder");
+    log(`Error syncing product manifests: ${error}`, "seeder");
   }
 }
 
@@ -190,7 +204,7 @@ export async function seedDatabase() {
   await ensureProductPackaging();
   await applyEnrichedProductData();
   await ensurePocketColposcope();
-  await fixBrokenDocumentUrls();
+  await syncProductManifests();
 
   try {
     const existingProducts = await db.select().from(products).limit(1);

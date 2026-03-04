@@ -95,7 +95,25 @@ async function downloadDocument(url: string, sku: string, filename: string): Pro
     return relPath;
   }
   if (result === url) return url;
-  return `/documents/products/${sku}/${filename}`;
+
+  const localPath = `/documents/products/${sku}/${filename}`;
+  const absolutePath = join(process.cwd(), 'client', 'public', localPath);
+  try {
+    const { readFileSync, unlinkSync } = await import('fs');
+    const fileBuffer = readFileSync(absolutePath);
+    const header = fileBuffer.slice(0, 5).toString('ascii');
+    if (filename.endsWith('.pdf') && header !== '%PDF-') {
+      const headerPreview = fileBuffer.slice(0, 50).toString('utf-8').trim();
+      console.log(`[Scraper] WARNING: Downloaded file is not a valid PDF (got "${headerPreview.substring(0, 30)}"): ${filename}`);
+      unlinkSync(absolutePath);
+      scrapeStats.failedValidations.push(`${sku}/${filename} (not a valid PDF)`);
+      return url;
+    }
+  } catch (err) {
+    console.log(`[Scraper] Warning: Could not validate downloaded file ${filename}: ${err}`);
+  }
+
+  return localPath;
 }
 
 async function downloadThumbnail(url: string, filename: string): Promise<string> {
@@ -134,7 +152,7 @@ interface ScrapedRawData {
   specifications: Record<string, string>;
   faqs: Array<{question: string, answer: string}>;
   documents: Array<{name: string, url: string, thumbnailUrl?: string}>;
-  regulatoryCertificates: Array<{name: string, url: string, thumbnailUrl?: string}>;
+  regulatoryCertificates: Array<{name: string, url: string, thumbnailUrl?: string, displayOnly?: boolean}>;
   videos: Array<{title: string, url: string}>;
   videoUrl: string;
   sku: string;
@@ -150,11 +168,30 @@ interface ScrapedRawData {
   is404: boolean;
 }
 
+const scrapeStats = {
+  productsFound: 0,
+  imagesDownloaded: 0,
+  docsDownloaded: 0,
+  certsDownloaded: 0,
+  failedValidations: [] as string[],
+  skippedUrls: [] as string[],
+};
+
+function resetScrapeStats() {
+  scrapeStats.productsFound = 0;
+  scrapeStats.imagesDownloaded = 0;
+  scrapeStats.docsDownloaded = 0;
+  scrapeStats.certsDownloaded = 0;
+  scrapeStats.failedValidations = [];
+  scrapeStats.skippedUrls = [];
+}
+
 export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProduct[]> {
   let browser;
   const products: InsertProduct[] = [];
   const timestamp = Date.now();
   let productIndex = 0;
+  resetScrapeStats();
 
   function generateUniqueSKU(): string {
     return `VIA-${timestamp}-${productIndex++}`;
@@ -224,7 +261,7 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           specifications: {} as Record<string, string>,
           faqs: [] as Array<{question: string, answer: string}>,
           documents: [] as Array<{name: string, url: string, thumbnailUrl?: string}>,
-          regulatoryCertificates: [] as Array<{name: string, url: string, thumbnailUrl?: string}>,
+          regulatoryCertificates: [] as Array<{name: string, url: string, thumbnailUrl?: string, displayOnly?: boolean}>,
           videos: [] as Array<{title: string, url: string}>,
           videoUrl: '',
           sku: '',
@@ -243,12 +280,22 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
         const h1El = document.querySelector('h1.product_title, .et_pb_wc_title h1, h1');
         const h1Text = h1El?.textContent?.trim() || '';
         const titleTag = document.title || '';
+        const hasWooCommerceStructure = !!(
+          document.querySelector('.et_pb_wc_title') ||
+          document.querySelector('#et-boc') ||
+          document.querySelector('.product_title') ||
+          document.querySelector('.et_pb_wc_images') ||
+          document.querySelector('.et_pb_wc_price') ||
+          document.querySelector('.et_pb_wc_meta')
+        );
         if (
-          h1Text.toLowerCase().includes('not found') ||
-          h1Text.toLowerCase().includes('404') ||
-          titleTag.toLowerCase().includes('not found') ||
-          titleTag.toLowerCase().includes('404') ||
-          document.querySelector('.error-404, .not-found')
+          !hasWooCommerceStructure && (
+            h1Text.toLowerCase().includes('not found') ||
+            h1Text.toLowerCase().includes('404') ||
+            titleTag.toLowerCase().includes('not found') ||
+            titleTag.toLowerCase().includes('404') ||
+            document.querySelector('.error-404, .not-found')
+          )
         ) {
           result.is404 = true;
           return result;
@@ -855,8 +902,13 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           });
         }
 
-        result.documents = result.documents.filter(d => d.url && d.url !== '#');
-        result.regulatoryCertificates = result.regulatoryCertificates.filter(c => c.url && c.url !== '#');
+        result.documents = result.documents.filter((d: any) => d.url && d.url !== '#');
+        result.regulatoryCertificates = result.regulatoryCertificates.map((c: any) => {
+          if (!c.url || c.url === '#') {
+            return { ...c, url: '', displayOnly: true };
+          }
+          return c;
+        });
 
         const videoIframes = document.querySelectorAll('iframe[src*="youtube"], iframe[src*="vimeo"]');
         for (const iframe of Array.from(videoIframes)) {
@@ -884,11 +936,13 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
 
       if (!productDetails || productDetails.is404) {
         console.log(`[Scraper] Skipping ${productUrl} - page not found or invalid`);
+        scrapeStats.skippedUrls.push(`${productUrl} (404/invalid)`);
         continue;
       }
 
       if (!productDetails.name) {
         console.log(`[Scraper] Skipping ${productUrl} - could not extract product name`);
+        scrapeStats.skippedUrls.push(`${productUrl} (no product name)`);
         continue;
       }
 
@@ -907,7 +961,9 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
         localImages.push(localPath);
       }
 
-      console.log(`[Scraper] Saved ${localImages.filter(p => p.startsWith('/')).length} image(s) locally`);
+      const savedImages = localImages.filter(p => p.startsWith('/')).length;
+      scrapeStats.imagesDownloaded += savedImages;
+      console.log(`[Scraper] Saved ${savedImages} image(s) locally`);
 
       console.log(`[Scraper] Downloading ${productDetails.documents.length} document(s) and ${productDetails.regulatoryCertificates.length} certificate(s)...`);
 
@@ -930,13 +986,14 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
         localDocuments.push({ name: doc.name, url: localUrl, thumbnailUrl: localThumb });
       }
 
-      const localCertificates: Array<{name: string, url: string, thumbnailUrl?: string}> = [];
+      const localCertificates: Array<{name: string, url: string, thumbnailUrl?: string, displayOnly?: boolean}> = [];
       for (let i = 0; i < productDetails.regulatoryCertificates.length; i++) {
         const cert = productDetails.regulatoryCertificates[i];
         let localUrl = cert.url;
         let localThumb = cert.thumbnailUrl;
+        const isDisplayOnly = cert.displayOnly === true;
         
-        if (cert.url && cert.url.startsWith('http') && cert.url.includes('.pdf')) {
+        if (!isDisplayOnly && cert.url && cert.url.startsWith('http') && cert.url.includes('.pdf')) {
           const certFilename = 'cert-' + slugify(cert.name) + '.pdf';
           localUrl = await downloadDocument(cert.url, sku, certFilename);
         }
@@ -946,10 +1003,19 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
           localThumb = await downloadThumbnail(cert.thumbnailUrl, thumbFilename);
         }
         
-        localCertificates.push({ name: cert.name, url: localUrl, thumbnailUrl: localThumb });
+        const certEntry: {name: string, url: string, thumbnailUrl?: string, displayOnly?: boolean} = { name: cert.name, url: localUrl, thumbnailUrl: localThumb };
+        if (isDisplayOnly) {
+          certEntry.displayOnly = true;
+        }
+        localCertificates.push(certEntry);
       }
 
-      console.log(`[Scraper] Downloaded ${localDocuments.filter(d => d.url.startsWith('/')).length} document(s) and ${localCertificates.filter(c => c.url.startsWith('/')).length} certificate(s) locally`);
+      const savedDocs = localDocuments.filter(d => d.url.startsWith('/')).length;
+      const savedCerts = localCertificates.filter(c => c.url.startsWith('/')).length;
+      scrapeStats.docsDownloaded += savedDocs;
+      scrapeStats.certsDownloaded += savedCerts;
+      scrapeStats.productsFound++;
+      console.log(`[Scraper] Downloaded ${savedDocs} document(s) and ${savedCerts} certificate(s) locally`);
 
       products.push({
         name: productDetails.name,
@@ -980,7 +1046,22 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
       });
     }
 
-    console.log(`[Scraper] Successfully scraped ${products.length} product(s) with detailed information`);
+    console.log(`\n[Scraper] ========== SCRAPE SUMMARY ==========`);
+    console.log(`[Scraper] Products found:       ${scrapeStats.productsFound}`);
+    console.log(`[Scraper] Images downloaded:     ${scrapeStats.imagesDownloaded}`);
+    console.log(`[Scraper] Documents downloaded:  ${scrapeStats.docsDownloaded}`);
+    console.log(`[Scraper] Certificates downloaded: ${scrapeStats.certsDownloaded}`);
+    if (scrapeStats.failedValidations.length > 0) {
+      console.log(`[Scraper] Failed validations (${scrapeStats.failedValidations.length}):`);
+      scrapeStats.failedValidations.forEach(f => console.log(`[Scraper]   - ${f}`));
+    } else {
+      console.log(`[Scraper] Failed validations:    0`);
+    }
+    if (scrapeStats.skippedUrls.length > 0) {
+      console.log(`[Scraper] Skipped URLs (${scrapeStats.skippedUrls.length}):`);
+      scrapeStats.skippedUrls.forEach(u => console.log(`[Scraper]   - ${u}`));
+    }
+    console.log(`[Scraper] =====================================\n`);
     return products;
 
   } catch (error) {
