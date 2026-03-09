@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { injectSeoMeta } from "./seo";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
@@ -26,10 +27,16 @@ export function serveStatic(app: Express) {
     },
   }));
 
-  app.use("*", (_req, res) => {
+  app.use("*", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
-    res.sendFile(path.resolve(distPath, "index.html"));
+
+    const htmlPath = path.resolve(distPath, "index.html");
+    let html = fs.readFileSync(htmlPath, "utf-8");
+
+    html = await injectSeoMeta(html, req.originalUrl);
+
+    res.send(html);
   });
 }

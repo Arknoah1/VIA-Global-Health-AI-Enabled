@@ -52,19 +52,42 @@ export default function ProductPage() {
   useEffect(() => {
     if (product) {
       trackProductView({ name: product.name, category: product.category, sku: product.sku, slug });
+      const siteUrl = window.location.origin;
+      const canonicalUrl = `${siteUrl}/products/${slug}`;
+      const absoluteImage = product.imageUrl?.startsWith("http")
+        ? product.imageUrl
+        : `${siteUrl}${product.imageUrl}`;
+      const desc = product.description.slice(0, 160);
+
       document.title = `${product.name} | VIA Global Health`;
-      const metaDesc = document.querySelector('meta[name="description"]');
-      if (metaDesc) {
-        metaDesc.setAttribute("content", product.description.slice(0, 160));
+
+      const updateMeta = (selector: string, attr: string, value: string) => {
+        const el = document.querySelector(selector);
+        if (el) el.setAttribute(attr, value);
+      };
+
+      updateMeta('meta[name="description"]', "content", desc);
+      updateMeta('meta[property="og:title"]', "content", `${product.name} | VIA Global Health`);
+      updateMeta('meta[property="og:description"]', "content", desc);
+      updateMeta('meta[property="og:image"]', "content", absoluteImage);
+      updateMeta('meta[property="og:url"]', "content", canonicalUrl);
+      updateMeta('meta[name="twitter:title"]', "content", `${product.name} | VIA Global Health`);
+      updateMeta('meta[name="twitter:description"]', "content", desc);
+      updateMeta('meta[name="twitter:image"]', "content", absoluteImage);
+
+      let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+      if (!canonical) {
+        canonical = document.createElement("link");
+        canonical.rel = "canonical";
+        document.head.appendChild(canonical);
       }
-      const ogTitle = document.querySelector('meta[property="og:title"]');
-      if (ogTitle) ogTitle.setAttribute("content", `${product.name} | VIA Global Health`);
-      const ogDesc = document.querySelector('meta[property="og:description"]');
-      if (ogDesc) ogDesc.setAttribute("content", product.description.slice(0, 160));
-      const ogImage = document.querySelector('meta[property="og:image"]');
-      if (ogImage && product.imageUrl) ogImage.setAttribute("content", product.imageUrl);
+      canonical.href = canonicalUrl;
     }
-  }, [product]);
+    return () => {
+      const canonical = document.querySelector('link[rel="canonical"]');
+      if (canonical) canonical.remove();
+    };
+  }, [product, slug]);
 
   if (isLoading) {
     return (
@@ -136,37 +159,7 @@ export default function ProductPage() {
           </div>
         </div>
 
-        {/* Product Content */}
         <ProductContent product={product} relatedProducts={relatedProducts} />
-
-        {/* JSON-LD Structured Data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              name: product.name,
-              description: product.description,
-              sku: product.sku,
-              image: product.imageUrl,
-              brand: {
-                "@type": "Brand",
-                name: "VIA Global Health"
-              },
-              category: product.category,
-              offers: {
-                "@type": "Offer",
-                availability: "https://schema.org/InStock",
-                priceCurrency: "USD",
-                seller: {
-                  "@type": "Organization",
-                  name: "VIA Global Health"
-                }
-              }
-            })
-          }}
-        />
       </main>
 
       <Footer />

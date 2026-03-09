@@ -121,6 +121,24 @@ Preferred communication style: Simple, everyday language.
     3. All-routes average for the product when destination is outside known regions
     4. Volumetric weight fallback: computes chargeable weight from product dimensions × $/kg rate by origin country (China $10.65, India $19.29, Vietnam $36.14, USA $50.42) when no logistics data exists for the product at all. Also resolves product by name when productId is missing.
 
+### SEO & SEM
+- **Server-Side Meta Injection**: `server/seo.ts` intercepts HTML-serving requests and injects page-specific `<title>`, `<meta description>`, OG tags, Twitter Card tags, canonical URLs, and JSON-LD structured data before the HTML reaches the browser/crawler
+  - Used by both `server/static.ts` (production) and `server/vite.ts` (development)
+  - Product pages get Product schema with manufacturer, weight, offers
+  - Home page gets Organization schema
+  - Catalog, About, Contact pages get page-specific meta
+- **Dynamic Sitemap**: `GET /sitemap.xml` route in `server/routes.ts` generates XML sitemap with all public pages and product URLs
+- **robots.txt**: Allows all public paths, blocks `/admin` and `/api/`, references sitemap
+- **Admin Protection**: `/admin/*` routes return `X-Robots-Tag: noindex, nofollow` header; public pages have no blocking signals
+- **Client-Side SEO**: `ProductSEO.tsx` component manages JSON-LD structured data and meta tag updates for SPA navigation; `ProductPage.tsx` manages canonical URLs and absolute OG image URLs
+- **No Duplicate JSON-LD**: Server injects once; client `ProductSEO` component manages one script tag that updates on navigation
+
+### Product Data Manifest System
+- **Manifest File**: `server/product-manifests.json` — canonical JSON source of truth for all product document/certificate data
+- **Seeder Sync**: `syncProductManifests()` in `server/seeder.ts` reads manifest on every startup and applies to DB using content comparison
+- **Admin Endpoints**: `POST /api/admin/sync-manifests` (writes DB state to manifest), `GET /api/admin/validate-products` (checks all local file paths exist)
+- **Auto-Update**: Scrape route and PATCH endpoint auto-call `updateProductManifests()` after changes
+
 ### Build System
 - **Client**: Vite builds to `dist/public`
 - **Server**: esbuild bundles to `dist/index.cjs`

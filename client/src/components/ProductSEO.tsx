@@ -1,9 +1,15 @@
 import { useEffect } from "react";
 import { Product } from "@/lib/types";
+import { slugify } from "@/lib/slugify";
 
 interface ProductSEOProps {
   products: Product[];
   selectedProduct?: Product | null;
+}
+
+function absoluteImageUrl(imageUrl: string): string {
+  if (imageUrl.startsWith("http")) return imageUrl;
+  return `${window.location.origin}${imageUrl}`;
 }
 
 export function ProductSEO({ products, selectedProduct }: ProductSEOProps) {
@@ -14,13 +20,19 @@ export function ProductSEO({ products, selectedProduct }: ProductSEOProps) {
     }
 
     if (selectedProduct) {
-      const productSchema = {
+      const siteUrl = window.location.origin;
+      const productSlug = slugify(selectedProduct.name);
+      const canonicalUrl = `${siteUrl}/products/${productSlug}`;
+      const imageUrl = absoluteImageUrl(selectedProduct.imageUrl);
+
+      const productSchema: any = {
         "@context": "https://schema.org",
         "@type": "Product",
         name: selectedProduct.name,
         description: selectedProduct.description,
         sku: selectedProduct.sku,
-        image: selectedProduct.imageUrl,
+        image: imageUrl,
+        url: canonicalUrl,
         category: selectedProduct.category,
         brand: {
           "@type": "Brand",
@@ -33,24 +45,35 @@ export function ProductSEO({ products, selectedProduct }: ProductSEOProps) {
             : "https://schema.org/OutOfStock",
           priceCurrency: selectedProduct.currency,
           price: (selectedProduct.price / 100).toFixed(2),
+          seller: {
+            "@type": "Organization",
+            name: "VIA Global Health",
+          },
         },
       };
+
+      if ((selectedProduct as any).sellerName) {
+        productSchema.manufacturer = {
+          "@type": "Organization",
+          name: (selectedProduct as any).sellerName,
+        };
+      }
+
+      if ((selectedProduct as any).shippingWeightKg) {
+        productSchema.weight = {
+          "@type": "QuantitativeValue",
+          value: (selectedProduct as any).shippingWeightKg,
+          unitCode: "KGM",
+        };
+      }
 
       const script = document.createElement("script");
       script.id = "product-jsonld";
       script.type = "application/ld+json";
       script.textContent = JSON.stringify(productSchema);
       document.head.appendChild(script);
-
-      document.title = `${selectedProduct.name} | VIA Global Health`;
-      
-      const metaDescription = document.querySelector('meta[name="description"]');
-      if (metaDescription) {
-        metaDescription.setAttribute("content", 
-          selectedProduct.description.slice(0, 160) + (selectedProduct.description.length > 160 ? "..." : "")
-        );
-      }
     } else if (products.length > 0) {
+      const siteUrl = window.location.origin;
       const catalogSchema = {
         "@context": "https://schema.org",
         "@type": "ItemList",
@@ -65,7 +88,8 @@ export function ProductSEO({ products, selectedProduct }: ProductSEOProps) {
             name: product.name,
             description: product.description.slice(0, 200),
             sku: product.sku,
-            image: product.imageUrl,
+            image: absoluteImageUrl(product.imageUrl),
+            url: `${siteUrl}/products/${slugify(product.name)}`,
             category: product.category,
             offers: {
               "@type": "Offer",
@@ -84,8 +108,6 @@ export function ProductSEO({ products, selectedProduct }: ProductSEOProps) {
       script.type = "application/ld+json";
       script.textContent = JSON.stringify(catalogSchema);
       document.head.appendChild(script);
-
-      document.title = "Medical Products Catalog | VIA Global Health";
     }
 
     return () => {
@@ -110,6 +132,7 @@ export function BreadcrumbSEO({ items }: BreadcrumbSEOProps) {
       existingScript.remove();
     }
 
+    const siteUrl = window.location.origin;
     const breadcrumbSchema = {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
@@ -117,7 +140,7 @@ export function BreadcrumbSEO({ items }: BreadcrumbSEOProps) {
         "@type": "ListItem",
         position: index + 1,
         name: item.name,
-        item: item.url,
+        item: item.url ? `${siteUrl}${item.url}` : undefined,
       })),
     };
 

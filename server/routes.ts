@@ -181,9 +181,65 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  app.use((_req, res, next) => {
-    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/admin')) {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
     next();
+  });
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const allProducts = await storage.getAllProducts();
+      const baseUrl = "https://viaglobalhealth.com";
+      const now = new Date().toISOString().split("T")[0];
+
+      const staticPages = [
+        { loc: "/", changefreq: "daily", priority: "1.0", lastmod: now },
+        { loc: "/catalog", changefreq: "daily", priority: "0.8", lastmod: now },
+        { loc: "/about", changefreq: "monthly", priority: "0.5", lastmod: now },
+        { loc: "/contact", changefreq: "monthly", priority: "0.5", lastmod: now },
+        { loc: "/privacy-policy", changefreq: "yearly", priority: "0.3", lastmod: now },
+        { loc: "/return-policy", changefreq: "yearly", priority: "0.3", lastmod: now },
+        { loc: "/track-quote", changefreq: "monthly", priority: "0.4", lastmod: now },
+      ];
+
+      const productEntries = allProducts.map((p) => {
+        const slug = p.name
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, "")
+          .replace(/[\s_]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .replace(/-{2,}/g, "-");
+        const lastmod = p.scrapedAt
+          ? new Date(p.scrapedAt).toISOString().split("T")[0]
+          : now;
+        return { loc: `/products/${slug}`, changefreq: "weekly", priority: "0.7", lastmod };
+      });
+
+      const allEntries = [...staticPages, ...productEntries];
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allEntries
+  .map(
+    (entry) => `  <url>
+    <loc>${baseUrl}${entry.loc}</loc>
+    <lastmod>${entry.lastmod}</lastmod>
+    <changefreq>${entry.changefreq}</changefreq>
+    <priority>${entry.priority}</priority>
+  </url>`
+  )
+  .join("\n")}
+</urlset>`;
+
+      res.set("Content-Type", "application/xml");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(xml);
+    } catch (error) {
+      console.error("Error generating sitemap:", error);
+      res.status(500).send("Failed to generate sitemap");
+    }
   });
 
   app.post("/api/admin/login", (req, res) => {
