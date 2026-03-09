@@ -83,7 +83,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [faqSearchQuery, setFaqSearchQuery] = useState('');
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
-  const [autoOpenDismissed, setAutoOpenDismissed] = useState(false);
+  const [desktopCtaVisible, setDesktopCtaVisible] = useState(true);
+  const desktopCtaRef = useRef<HTMLDivElement>(null);
   const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
   const [chatStep, setChatStep] = useState<'intro' | 'quantity' | 'details' | 'chat'>('intro');
   const [quantity, setQuantity] = useState<string>('');
@@ -178,19 +179,15 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   }, [product?.id]);
 
   useEffect(() => {
-    if (showQuoteDialog || autoOpenDismissed) return;
-    const timer = setTimeout(() => {
-      if (!showQuoteDialog) {
-        setShowQuoteDialog(true);
-      }
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [showQuoteDialog, autoOpenDismissed]);
-
-  const handleCloseQuoteDialogWithDismiss = () => {
-    setAutoOpenDismissed(true);
-    setShowQuoteDialog(false);
-  };
+    const el = desktopCtaRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setDesktopCtaVisible(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
@@ -436,7 +433,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
             )}
 
             {/* Desktop CTA */}
-            <div className="hidden lg:block pt-4">
+            <div ref={desktopCtaRef} className="hidden lg:block pt-4">
               <Button
                 className="w-full h-14 text-base font-semibold bg-teal-600 hover:bg-teal-700 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
                 data-testid="button-request-quote-unified"
@@ -1041,8 +1038,32 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
         </p>
       </div>
 
+      {/* Desktop Sticky CTA — appears when inline CTA scrolls out of view */}
+      {!desktopCtaVisible && (
+        <div className="hidden lg:block fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+          <div className="max-w-screen-xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-sm font-medium text-foreground truncate">{product?.name}</span>
+              {product?.price && (
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  from ${(product.price / 100).toFixed(2)}
+                </span>
+              )}
+            </div>
+            <Button
+              className="h-11 px-8 text-sm font-semibold bg-teal-600 hover:bg-teal-700 shadow-md hover:shadow-lg transition-all duration-300 shrink-0"
+              data-testid="button-request-quote-desktop-sticky"
+              onClick={() => { trackCtaClick("product_detail_sticky", product?.name); setShowQuoteDialog(true); }}
+            >
+              <Stethoscope className="mr-2 h-4 w-4" />
+              Check Bulk Pricing & Availability
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* AI Quote Assistant Dialog */}
-      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialogWithDismiss()}>
+      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && setShowQuoteDialog(false)}>
         <DialogContent className="w-[95vw] sm:max-w-lg h-[90vh] sm:h-[80vh] max-h-[800px] flex flex-col p-0 rounded-t-xl sm:rounded-xl">
           <DialogHeader className="p-3 sm:p-4 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
             <div className="flex items-center justify-between w-full">

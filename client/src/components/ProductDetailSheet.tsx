@@ -125,7 +125,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [faqSearchQuery, setFaqSearchQuery] = useState('');
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
   const [showSupportChat, setShowSupportChat] = useState(false);
-  const [autoOpenDismissed, setAutoOpenDismissed] = useState(false);
   const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
   const [chatStep, setChatStep] = useState<'intro' | 'quantity' | 'details' | 'chat'>('intro');
   const [quantity, setQuantity] = useState<string>('');
@@ -223,21 +222,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       trackProductView({ id: product.id, name: product.name, category: product.category });
     }
   }, [isOpen, product?.id]);
-
-  useEffect(() => {
-    if (!isOpen || showQuoteDialog || autoOpenDismissed) return;
-    const timer = setTimeout(() => {
-      if (!showQuoteDialog) {
-        setShowQuoteDialog(true);
-      }
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [isOpen, showQuoteDialog, autoOpenDismissed]);
-
-  const handleCloseQuoteDialogWithDismiss = () => {
-    setAutoOpenDismissed(true);
-    setShowQuoteDialog(false);
-  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
@@ -928,7 +912,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       </SheetContent>
 
       {/* AI Quote Assistant Dialog - Chat with Amara */}
-      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && handleCloseQuoteDialogWithDismiss()}>
+      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && setShowQuoteDialog(false)}>
         <DialogContent className="w-[95vw] sm:max-w-lg h-[90vh] sm:h-[80vh] max-h-[800px] flex flex-col p-0 rounded-t-xl sm:rounded-xl">
           <DialogHeader className="p-3 sm:p-4 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
             <div className="flex items-center justify-between w-full">
