@@ -15,6 +15,7 @@ const QuoteRequestsPage = lazy(() => import("@/pages/QuoteRequestsPage"));
 const QuoteTrackingPage = lazy(() => import("@/pages/QuoteTrackingPage"));
 const ProductPricingPage = lazy(() => import("@/pages/ProductPricingPage"));
 const TrainingTranscriptsPage = lazy(() => import("@/pages/TrainingTranscriptsPage"));
+const ShippingEstimatorPage = lazy(() => import("@/pages/ShippingEstimatorPage"));
 const AdminLoginPage = lazy(() => import("@/pages/AdminLoginPage"));
 const ProductPage = lazy(() => import("@/pages/ProductPage"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
@@ -81,6 +82,9 @@ function Router() {
         </Route>
         <Route path="/admin/training">
           <AdminGuard><TrainingTranscriptsPage /></AdminGuard>
+        </Route>
+        <Route path="/admin/shipping">
+          <AdminGuard><ShippingEstimatorPage /></AdminGuard>
         </Route>
         <Route component={NotFound} />
       </Switch>

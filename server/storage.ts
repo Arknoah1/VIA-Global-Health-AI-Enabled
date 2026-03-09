@@ -8,7 +8,9 @@ import {
   type ProformaInvoice, type InsertProformaInvoice, proformaInvoices,
   type TrainingTranscript, type InsertTrainingTranscript, trainingTranscripts,
   type SalesInsight, type InsertSalesInsight, salesInsights,
-  type LogisticsLookup, type InsertLogisticsLookup, logisticsLookup
+  type LogisticsLookup, type InsertLogisticsLookup, logisticsLookup,
+  type ShippingDeal, type InsertShippingDeal, shippingDeals,
+  type MarketDataCache, marketDataCache
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
@@ -74,6 +76,14 @@ export interface IStorage {
   getLogisticsForProduct(productType: string): Promise<LogisticsLookup[]>;
   getLogisticsForRoute(productType: string, destinationCountry: string): Promise<LogisticsLookup[]>;
   upsertLogisticsData(data: InsertLogisticsLookup[]): Promise<void>;
+
+  getAllShippingDeals(): Promise<ShippingDeal[]>;
+  getShippingDealsByCountry(country: string): Promise<ShippingDeal[]>;
+  getShippingDealsByProduct(productName: string): Promise<ShippingDeal[]>;
+  upsertShippingDeals(deals: InsertShippingDeal[]): Promise<ShippingDeal[]>;
+
+  getMarketDataCache(key: string): Promise<MarketDataCache | undefined>;
+  setMarketDataCache(key: string, data: any, ttlDays: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -422,6 +432,49 @@ export class DatabaseStorage implements IStorage {
         await tx.insert(logisticsLookup).values(data);
       }
     });
+  }
+
+  async getAllShippingDeals(): Promise<ShippingDeal[]> {
+    return await db.select().from(shippingDeals).orderBy(desc(shippingDeals.syncedAt));
+  }
+
+  async getShippingDealsByCountry(country: string): Promise<ShippingDeal[]> {
+    return await db.select().from(shippingDeals)
+      .where(ilike(shippingDeals.country, country));
+  }
+
+  async getShippingDealsByProduct(productName: string): Promise<ShippingDeal[]> {
+    return await db.select().from(shippingDeals)
+      .where(ilike(shippingDeals.product, `%${productName}%`));
+  }
+
+  async upsertShippingDeals(deals: InsertShippingDeal[]): Promise<ShippingDeal[]> {
+    if (deals.length === 0) return [];
+    await db.delete(shippingDeals);
+    return await db.insert(shippingDeals).values(deals).returning();
+  }
+
+  async getMarketDataCache(key: string): Promise<MarketDataCache | undefined> {
+    const result = await db.select().from(marketDataCache)
+      .where(eq(marketDataCache.key, key))
+      .limit(1);
+    if (result[0] && new Date(result[0].expiresAt) < new Date()) {
+      return undefined;
+    }
+    return result[0];
+  }
+
+  async setMarketDataCache(key: string, data: any, ttlDays: number): Promise<void> {
+    const expiresAt = new Date(Date.now() + ttlDays * 86400000);
+    const existing = await db.select().from(marketDataCache)
+      .where(eq(marketDataCache.key, key)).limit(1);
+    if (existing.length > 0) {
+      await db.update(marketDataCache)
+        .set({ data, fetchedAt: new Date(), expiresAt })
+        .where(eq(marketDataCache.key, key));
+    } else {
+      await db.insert(marketDataCache).values({ key, data, fetchedAt: new Date(), expiresAt });
+    }
   }
 }
 

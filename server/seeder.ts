@@ -3,6 +3,7 @@ import { products, customerSegments } from "@shared/schema";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { eq, like, sql } from "drizzle-orm";
+import { seedShippingDeals } from "./shipping-seeder";
 
 function log(message: string, source = "seeder") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -208,6 +209,7 @@ export async function seedDatabase() {
   await applyEnrichedProductData();
   await ensurePocketColposcope();
   await syncProductManifests();
+  await seedShippingDeals();
 
   try {
     const existingProducts = await db.select().from(products).limit(1);

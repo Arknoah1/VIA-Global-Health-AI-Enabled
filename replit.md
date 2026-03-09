@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
 - `/privacy-policy` - Privacy Policy (exact text from viaglobalhealth.com)
 - `/return-policy` - Return Policy (exact text from viaglobalhealth.com)
 - `/admin/training` - Training transcript management
+- `/admin/shipping` - Shipping estimator with deal history, FRED fuel data, DHL market intelligence
 
 ### Admin Authentication
 - Session-based authentication using `express-session` with PostgreSQL session store (`connect-pg-simple`)
@@ -66,6 +67,10 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/quote-requests/export/markdown` - Export all quote requests as Markdown with full conversation history
 - `GET /api/logistics` - Retrieve all logistics/shipping lookup data
 - `POST /api/logistics/import` - Import logistics lookup data (replaces existing)
+- `POST /api/shipping/estimate` - Generate shipping cost estimate (admin, accepts productId/destination/qty/method/incoterm)
+- `GET /api/shipping/deals` - List all historical shipping deals (admin)
+- `GET /api/shipping/market-data` - Get cached fuel + DHL market data (admin)
+- `POST /api/shipping/refresh-market-data` - Force refresh FRED/DHL caches (admin)
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
@@ -77,6 +82,8 @@ Preferred communication style: Simple, everyday language.
 - `quote_requests` - Customer quote requests with conversation history and AI review (jsonb `ai_review` column)
 - `sales_insights` - Actionable lessons extracted from closed deals by AI, fed back into Amara's system prompt
 - `logistics_lookup` - Shipping cost reference data by product type, destination, and origin country (72 routes, 135 historical shipments); used by Amara and proforma invoices for shipping estimates. Includes chargeable weight per unit.
+- `shipping_deals` - Historical shipping deal data (40 seeded fallback deals from HubSpot); used by shipping estimator for comparable deal analysis
+- `market_data_cache` - Server-side cache for FRED fuel prices (7-day TTL) and DHL market intelligence (28-day TTL)
 - Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type is locked once set. "Not you?" button allows profile reset.
 
 ### Web Scraping
@@ -115,6 +122,7 @@ Preferred communication style: Simple, everyday language.
   - Red flag gatekeeper: Detects blocked email domains (16) and suspicious keywords (12), switches to Public Partner Mode
   - Public Partner Mode: Shares specs but refuses pricing, uses "Soft Pivot" and "Directness" escalation
   - Shipping data: 15% safety buffer applied internally, presented to customers as "within 10% accuracy"
+  - **Shipping Estimate Integration**: When product + destination are known and no estimate exists yet, the message handler auto-generates a shipping estimate via `server/shipping.ts` and injects it into the system prompt. Stored on the quote request's `shippingEstimate` JSONB column. Uses historical deals, FRED fuel prices, and DHL intelligence.
   - **Proforma Invoice Shipping Estimation** (4-tier hybrid approach):
     1. Exact product + destination country match from logistics_lookup
     2. Regional average (e.g., East Africa) for same product when no exact country match

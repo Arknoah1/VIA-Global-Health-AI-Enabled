@@ -1468,6 +1468,82 @@ ${allEntries
     }
   });
 
+  // ===== Shipping Estimator =====
+  app.post("/api/shipping/estimate", requireAdmin, async (req, res) => {
+    try {
+      const { productId, destination, method, incoterm, quoteRequestId } = req.body;
+      const validMethods = ["Air", "Sea", "Courier", "Road"];
+      const validIncoterms = ["DAP", "CIP", "CIF", "Ex-Factory", "DDP", "FOB"];
+      const parsedQty = parseInt(req.body.qty);
+      if (!productId || typeof productId !== "string") {
+        return res.status(400).json({ error: "productId is required and must be a string" });
+      }
+      if (!destination || typeof destination !== "string" || destination.trim().length === 0) {
+        return res.status(400).json({ error: "destination is required and must be a non-empty string" });
+      }
+      if (isNaN(parsedQty) || parsedQty < 1) {
+        return res.status(400).json({ error: "qty is required and must be a positive integer" });
+      }
+      const safeMethod = validMethods.includes(method) ? method : "Air";
+      const safeIncoterm = validIncoterms.includes(incoterm) ? incoterm : "DAP";
+      const { generateShippingEstimate } = await import("./shipping");
+      const estimate = await generateShippingEstimate(productId, destination.trim(), parsedQty, safeMethod, safeIncoterm);
+
+      if (quoteRequestId) {
+        await storage.updateQuoteRequest(quoteRequestId, { shippingEstimate: estimate } as any);
+      }
+
+      res.json(estimate);
+    } catch (error: any) {
+      console.error("Error generating shipping estimate:", error);
+      res.status(500).json({ error: error.message || "Failed to generate shipping estimate" });
+    }
+  });
+
+  app.get("/api/shipping/deals", requireAdmin, async (_req, res) => {
+    try {
+      const deals = await storage.getAllShippingDeals();
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching shipping deals:", error);
+      res.status(500).json({ error: "Failed to fetch shipping deals" });
+    }
+  });
+
+  app.get("/api/shipping/market-data", requireAdmin, async (_req, res) => {
+    try {
+      const { getMarketDataSummary } = await import("./shipping");
+      const data = await getMarketDataSummary();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching market data:", error);
+      res.status(500).json({ error: "Failed to fetch market data" });
+    }
+  });
+
+  app.post("/api/shipping/refresh-market-data", requireAdmin, async (req, res) => {
+    try {
+      const { type } = req.body;
+      const { fetchFredFuelPrice, fetchDhlIntelligence } = await import("./shipping");
+
+      if (type === "fuel" || !type) {
+        await storage.setMarketDataCache("fred_fuel", {}, 0);
+        await fetchFredFuelPrice();
+      }
+      if (type === "dhl" || !type) {
+        await storage.setMarketDataCache("dhl_intel", {}, 0);
+        await fetchDhlIntelligence();
+      }
+
+      const { getMarketDataSummary } = await import("./shipping");
+      const data = await getMarketDataSummary();
+      res.json({ message: "Market data refreshed", ...data });
+    } catch (error) {
+      console.error("Error refreshing market data:", error);
+      res.status(500).json({ error: "Failed to refresh market data" });
+    }
+  });
+
   // ===== Training Transcripts =====
   app.get("/api/training-transcripts", requireAdmin, async (_req, res) => {
     try {
@@ -1826,6 +1902,34 @@ ${allEntries
         relevantLogistics = await storage.getLogisticsLookup();
       }
 
+      // Generate shipping estimate if product + destination are known
+      let shippingEstimateContext: string | null = null;
+      const currentDest = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
+      const hasProduct = quoteRequest.productId;
+      const existingEstimate = quoteRequest.shippingEstimate as any;
+      const currentQty = parseInt(quoteRequest.orderQuantity || "1") || 1;
+
+      const needsRegeneration = hasProduct && currentDest && (
+        !existingEstimate ||
+        existingEstimate.destination !== currentDest ||
+        existingEstimate.qty !== currentQty
+      );
+
+      if (needsRegeneration) {
+        try {
+          const { generateShippingEstimate } = await import("./shipping");
+          const estimate = await generateShippingEstimate(hasProduct, currentDest, currentQty, "Air", "DAP");
+          await storage.updateQuoteRequest(id, { shippingEstimate: estimate } as any);
+          if (estimate.costRange) {
+            shippingEstimateContext = `\n\nLIVE SHIPPING ESTIMATE (just generated for this customer):\nProduct: ${estimate.product.name}\nDestination: ${estimate.destination}\nQuantity: ${estimate.qty} units\nMethod: ${estimate.method}\nConfidence: ${estimate.confidence}\nCost Range: $${estimate.costRange.low.toLocaleString()} – $${estimate.costRange.high.toLocaleString()} (midpoint $${estimate.costRange.mid.toLocaleString()})\n${estimate.weightInfo ? `Chargeable Weight: ${estimate.weightInfo.chargeable} kg (${estimate.weightInfo.driverNote})` : ""}\nUse this estimate when discussing shipping costs. Present the midpoint as the estimate and the range as context. Always add: "This is based on current 2025 freight data; our team will confirm the exact rate in your Proforma invoice."`;
+          }
+        } catch (err) {
+          console.error("[shipping] Failed to generate estimate for Amara context:", err);
+        }
+      } else if (existingEstimate?.costRange) {
+        shippingEstimateContext = `\n\nLIVE SHIPPING ESTIMATE (previously generated for this customer):\nProduct: ${existingEstimate.product?.name || quoteRequest.productName}\nDestination: ${existingEstimate.destination}\nQuantity: ${existingEstimate.qty} units\nMethod: ${existingEstimate.method}\nConfidence: ${existingEstimate.confidence}\nCost Range: $${existingEstimate.costRange.low.toLocaleString()} – $${existingEstimate.costRange.high.toLocaleString()} (midpoint $${existingEstimate.costRange.mid.toLocaleString()})\n${existingEstimate.weightInfo ? `Chargeable Weight: ${existingEstimate.weightInfo.chargeable} kg (${existingEstimate.weightInfo.driverNote})` : ""}\nUse this estimate when discussing shipping costs. Present the midpoint as the estimate and the range as context. Always add: "This is based on current 2025 freight data; our team will confirm the exact rate in your Proforma invoice."`;
+      }
+
       // Build system prompt with existing customer state
       const existingState = {
         firstName: quoteRequest.firstName,
@@ -1846,6 +1950,10 @@ ${allEntries
         systemPrompt = buildPublicModePrompt(productDetails, existingState, customerLanguage, redFlagResult.reason);
       } else {
         systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, relevantLogistics);
+      }
+
+      if (shippingEstimateContext) {
+        systemPrompt += shippingEstimateContext;
       }
 
       // Build messages for OpenAI

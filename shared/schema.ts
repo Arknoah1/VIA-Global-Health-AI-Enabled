@@ -82,6 +82,7 @@ export const quoteRequests = pgTable("quote_requests", {
   referralReason: text("referral_reason"),
   conversation: jsonb("conversation").notNull().default(sql`'[]'::jsonb`),
   aiReview: jsonb("ai_review"),
+  shippingEstimate: jsonb("shipping_estimate"),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -277,6 +278,43 @@ export const insertSalesInsightSchema = createInsertSchema(salesInsights).omit({
 
 export type InsertSalesInsight = z.infer<typeof insertSalesInsightSchema>;
 export type SalesInsight = typeof salesInsights.$inferSelect;
+
+export const shippingDeals = pgTable("shipping_deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  country: text("country").notNull(),
+  product: text("product").notNull(),
+  qty: integer("qty").notNull().default(1),
+  shippingCost: real("shipping_cost").notNull(),
+  method: varchar("method", { length: 20 }),
+  incoterm: varchar("incoterm", { length: 20 }),
+  productValue: real("product_value"),
+  source: varchar("source", { length: 20 }).notNull().default("manual"),
+  dealDate: timestamp("deal_date"),
+  syncedAt: timestamp("synced_at").notNull().defaultNow(),
+});
+
+export const insertShippingDealSchema = createInsertSchema(shippingDeals).omit({
+  id: true,
+  syncedAt: true,
+});
+
+export type InsertShippingDeal = z.infer<typeof insertShippingDealSchema>;
+export type ShippingDeal = typeof shippingDeals.$inferSelect;
+
+export const marketDataCache = pgTable("market_data_cache", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  data: jsonb("data").notNull(),
+  fetchedAt: timestamp("fetched_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const insertMarketDataCacheSchema = createInsertSchema(marketDataCache).omit({
+  id: true,
+});
+
+export type InsertMarketDataCache = z.infer<typeof insertMarketDataCacheSchema>;
+export type MarketDataCache = typeof marketDataCache.$inferSelect;
 
 export const logisticsLookup = pgTable("logistics_lookup", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

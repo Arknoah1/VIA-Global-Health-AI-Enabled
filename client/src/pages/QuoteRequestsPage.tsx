@@ -16,7 +16,8 @@ import {
   X,
   Check,
   Brain,
-  Loader2
+  Loader2,
+  Ship
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -63,10 +64,12 @@ interface QuoteRequest {
   decisionTimeline: string;
   productName: string;
   productSku: string;
+  productId: string;
   conversation: ChatMessage[];
   status: string;
   createdAt: string;
   aiReview?: any;
+  shippingEstimate?: any;
 }
 
 export default function QuoteRequestsPage() {
@@ -244,6 +247,29 @@ export default function QuoteRequestsPage() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to start AI review.", variant: "destructive" });
+    },
+  });
+
+  const [generatingShippingFor, setGeneratingShippingFor] = useState<string | null>(null);
+
+  const generateShippingEstimateMutation = useMutation({
+    mutationFn: async ({ productId, destination, qty, quoteRequestId }: { productId: string; destination: string; qty: number; quoteRequestId: string }) => {
+      const response = await fetch("/api/shipping/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, destination, qty, method: "Air", incoterm: "DAP", quoteRequestId }),
+      });
+      if (!response.ok) throw new Error("Failed to generate shipping estimate");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quoteRequests"] });
+      setGeneratingShippingFor(null);
+      toast({ title: "Shipping Estimate Generated", description: "The estimate has been saved to this quote request." });
+    },
+    onError: () => {
+      setGeneratingShippingFor(null);
+      toast({ title: "Error", description: "Failed to generate shipping estimate.", variant: "destructive" });
     },
   });
 
@@ -503,6 +529,65 @@ export default function QuoteRequestsPage() {
                         </div>
                       </div>
 
+
+                      {/* Shipping Estimate Section */}
+                      {request.shippingEstimate && request.shippingEstimate.costRange ? (
+                        <div className="border rounded-lg p-4 bg-blue-50/50 space-y-3" data-testid={`shipping-estimate-section-${request.id}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Ship className="h-4 w-4 text-blue-600" />
+                              <span className="text-sm font-semibold">Shipping Estimate</span>
+                              <Badge variant={request.shippingEstimate.confidence === "High" ? "default" : request.shippingEstimate.confidence === "Medium" ? "secondary" : "destructive"} className="text-xs">
+                                {request.shippingEstimate.confidence}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{request.shippingEstimate.method} · {request.shippingEstimate.incoterm}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="rounded bg-green-100/50 p-2 text-center">
+                              <div className="text-xs text-muted-foreground">Low</div>
+                              <div className="font-mono text-sm font-semibold text-green-700">${request.shippingEstimate.costRange.low.toLocaleString()}</div>
+                            </div>
+                            <div className="rounded bg-blue-100/50 p-2 text-center">
+                              <div className="text-xs text-muted-foreground">Mid</div>
+                              <div className="font-mono text-sm font-semibold text-blue-700">${request.shippingEstimate.costRange.mid.toLocaleString()}</div>
+                            </div>
+                            <div className="rounded bg-orange-100/50 p-2 text-center">
+                              <div className="text-xs text-muted-foreground">High</div>
+                              <div className="font-mono text-sm font-semibold text-orange-700">${request.shippingEstimate.costRange.high.toLocaleString()}</div>
+                            </div>
+                          </div>
+                          {request.shippingEstimate.weightInfo && (
+                            <div className="text-xs text-muted-foreground">
+                              {request.shippingEstimate.qty}× units · {request.shippingEstimate.weightInfo.chargeable} kg chargeable · {request.shippingEstimate.weightInfo.driverNote}
+                            </div>
+                          )}
+                        </div>
+                      ) : request.productId && request.shippingCountry ? (
+                        <div className="flex items-center gap-2" data-testid={`shipping-estimate-generate-${request.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={generatingShippingFor === request.id}
+                            onClick={() => {
+                              setGeneratingShippingFor(request.id);
+                              generateShippingEstimateMutation.mutate({
+                                productId: request.productId,
+                                destination: request.shippingCountry,
+                                qty: parseInt(request.orderQuantity || "1") || 1,
+                                quoteRequestId: request.id,
+                              });
+                            }}
+                            data-testid={`button-generate-shipping-${request.id}`}
+                          >
+                            {generatingShippingFor === request.id ? (
+                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Estimating…</>
+                            ) : (
+                              <><Ship className="h-4 w-4 mr-2" />Generate Shipping Estimate</>
+                            )}
+                          </Button>
+                        </div>
+                      ) : null}
 
                       {/* Action Buttons */}
                       <div className="flex gap-2 flex-wrap">

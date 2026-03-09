@@ -7,6 +7,7 @@ import {
   MessageSquare,
   DollarSign,
   BookOpen,
+  Ship,
   LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ export function Sidebar() {
     { href: "/admin/quote-requests", icon: MessageSquare, label: "Quote Requests" },
     { href: "/admin/pricing", icon: DollarSign, label: "Pricing & Restrictions" },
     { href: "/admin/training", icon: BookOpen, label: "Training Data" },
+    { href: "/admin/shipping", icon: Ship, label: "Shipping Estimator" },
   ];
 
   // Fetch product count
