@@ -219,8 +219,11 @@ export async function registerRoutes(
 
       const allEntries = [...staticPages, ...productEntries];
 
+      const supportedLangs = ["en", "fr", "pt", "sw", "es"];
+
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${allEntries
   .map(
     (entry) => `  <url>
@@ -228,6 +231,8 @@ ${allEntries
     <lastmod>${entry.lastmod}</lastmod>
     <changefreq>${entry.changefreq}</changefreq>
     <priority>${entry.priority}</priority>
+${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}" href="${baseUrl}${entry.loc}" />`).join("\n")}
+    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${entry.loc}" />
   </url>`
   )
   .join("\n")}
@@ -1544,6 +1549,77 @@ ${allEntries
     }
   });
 
+  // ===== HubSpot CRM Integration =====
+  app.post("/api/shipping/sync-hubspot", requireAdmin, async (_req, res) => {
+    try {
+      const { syncHubspotDeals } = await import("./hubspot-sync");
+      const result = await syncHubspotDeals();
+      res.json(result);
+    } catch (error) {
+      console.error("Error syncing HubSpot deals:", error);
+      res.status(500).json({ error: "Failed to sync HubSpot deals" });
+    }
+  });
+
+  app.get("/api/crm/customer-history", requireAdmin, async (req, res) => {
+    try {
+      const email = req.query.email as string | undefined;
+      const org = req.query.org as string | undefined;
+      if (!email && !org) {
+        return res.status(400).json({ error: "Email or org parameter required" });
+      }
+      const { getCachedDealHistory } = await import("./hubspot-sync");
+      const history = await getCachedDealHistory(email, org);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching CRM history:", error);
+      res.status(500).json({ error: "Failed to fetch CRM history" });
+    }
+  });
+
+  // ===== Exchange Rates (public, cached) =====
+  app.get("/api/exchange-rates", async (_req, res) => {
+    try {
+      const cached = await storage.getMarketDataCache("exchange_rates");
+      if (cached && cached.expiresAt > new Date()) {
+        return res.json(cached.data);
+      }
+
+      const fallbackRates: Record<string, number> = {
+        MXN: 17.15, COP: 3950, PEN: 3.72, GTQ: 7.75, HNL: 24.8,
+        BOB: 6.91, DOP: 57.5, PYG: 7350, CLP: 935, BRL: 4.97,
+        ARS: 880, CRC: 520, HTG: 132, JMD: 155, TTD: 6.78,
+        NIO: 36.7, KES: 153, NGN: 1550, GHS: 15.5, TZS: 2670,
+        UGX: 3820, ETB: 56.5, RWF: 1280, MZN: 63.8, ZAR: 18.5,
+        XOF: 605, XAF: 605, ZMW: 27.5, MWK: 1720, MGA: 4550,
+        CDF: 2750, INR: 83.5, BDT: 110, NPR: 133.5, ZWL: 6400,
+      };
+
+      try {
+        const response = await fetch("https://open.er-api.com/v6/latest/USD");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rates) {
+            const rates: Record<string, number> = {};
+            for (const code of Object.keys(fallbackRates)) {
+              rates[code] = data.rates[code] || fallbackRates[code];
+            }
+            await storage.setMarketDataCache("exchange_rates", rates, 1);
+            return res.json(rates);
+          }
+        }
+      } catch (apiErr) {
+        console.error("[exchange-rates] API fetch failed, using fallback:", apiErr);
+      }
+
+      await storage.setMarketDataCache("exchange_rates", fallbackRates, 1);
+      res.json(fallbackRates);
+    } catch (error) {
+      console.error("Error fetching exchange rates:", error);
+      res.status(500).json({ error: "Failed to fetch exchange rates" });
+    }
+  });
+
   // ===== Training Transcripts =====
   app.get("/api/training-transcripts", requireAdmin, async (_req, res) => {
     try {
@@ -1718,25 +1794,31 @@ ${allEntries
           returning: (name, product, price) => `Welcome back, ${name}! The ${product} is priced at ${price}, with volume discounts available for larger orders. Shipping costs depend on your destination, but I'll calculate that for you shortly.\n\nHow many units are you looking to order? Please also fill in the contact form below so I can finalise your quote and calculate shipping to your country.`,
           new: (product, price) => `Hello! I'm Amara from VIA Global Health. The ${product} is priced at ${price}, with volume discounts available for larger orders. Shipping costs depend on your destination, but I'll calculate that for you shortly.\n\nHow many units are you looking to order? Please also fill in the contact form below so I can finalise your quote and calculate shipping to your country.`,
           returningNoPrice: (name, product) => `Welcome back, ${name}! Great to see you again. I see you're interested in the ${product} — a popular choice among our partners. Which country would you need this shipped to? I can pull up our latest freight estimates for you right away.`,
-          newNoPrice: (product) => `Hello! I'm Amara from VIA Global Health. The ${product} is trusted by healthcare providers across 40+ countries in Africa. Which country would you need this shipped to? I can pull up our latest freight estimates and pricing for you right away.`
+          newNoPrice: (product) => `Hello! I'm Amara from VIA Global Health. The ${product} is trusted by healthcare providers across 40+ countries in Africa and Latin America. Which country would you need this shipped to? I can pull up our latest freight estimates and pricing for you right away.`
         },
         fr: {
           returning: (name, product, price) => `Bienvenue à nouveau, ${name} ! Le ${product} est au prix de ${price}, avec des remises sur volume pour les commandes plus importantes. Les frais d'expédition dépendent de votre destination, mais je les calculerai pour vous sous peu.\n\nCombien d'unités souhaitez-vous commander ? Veuillez également remplir le formulaire ci-dessous pour que je puisse finaliser votre devis et calculer l'expédition vers votre pays.`,
           new: (product, price) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est au prix de ${price}, avec des remises sur volume pour les commandes plus importantes. Les frais d'expédition dépendent de votre destination, mais je les calculerai pour vous sous peu.\n\nCombien d'unités souhaitez-vous commander ? Veuillez également remplir le formulaire ci-dessous pour que je puisse finaliser votre devis et calculer l'expédition vers votre pays.`,
           returningNoPrice: (name, product) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product} — un choix populaire parmi nos partenaires. Dans quel pays souhaitez-vous que cela soit expédié ?`,
-          newNoPrice: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est utilisé par des professionnels de santé dans plus de 40 pays en Afrique. Dans quel pays souhaitez-vous que cela soit expédié ?`
+          newNoPrice: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est utilisé par des professionnels de santé dans plus de 40 pays en Afrique et en Amérique latine. Dans quel pays souhaitez-vous que cela soit expédié ?`
         },
         pt: {
           returning: (name, product, price) => `Bem-vindo(a) de volta, ${name}! O ${product} tem o preço de ${price}, com descontos por volume para pedidos maiores. Os custos de envio dependem do seu destino, mas calcularei isso para você em breve.\n\nQuantas unidades você gostaria de pedir? Por favor, preencha também o formulário abaixo para que eu possa finalizar seu orçamento e calcular o frete para o seu país.`,
           new: (product, price) => `Olá! Sou Amara da VIA Global Health. O ${product} tem o preço de ${price}, com descontos por volume para pedidos maiores. Os custos de envio dependem do seu destino, mas calcularei isso para você em breve.\n\nQuantas unidades você gostaria de pedir? Por favor, preencha também o formulário abaixo para que eu possa finalizar seu orçamento e calcular o frete para o seu país.`,
           returningNoPrice: (name, product) => `Bem-vindo(a) de volta, ${name}! Vejo que está interessado(a) no ${product}. Para qual país você precisaria que isso fosse enviado?`,
-          newNoPrice: (product) => `Olá! Sou Amara da VIA Global Health. O ${product} é confiado por profissionais de saúde em mais de 40 países na África. Para qual país você precisaria que isso fosse enviado?`
+          newNoPrice: (product) => `Olá! Sou Amara da VIA Global Health. O ${product} é confiado por profissionais de saúde em mais de 40 países na África e na América Latina. Para qual país você precisaria que isso fosse enviado?`
         },
         sw: {
           returning: (name, product, price) => `Karibu tena, ${name}! ${product} ina bei ya ${price}, na punguzo la bei kwa maagizo makubwa. Gharama za usafirishaji zinategemea mahali unapopeleka, lakini nitahesabu hilo kwako hivi karibuni.\n\nUnataka kuagiza vitengo vingapi? Tafadhali jaza fomu hapa chini ili niweze kukamilisha bei yako na kuhesabu usafirishaji hadi nchi yako.`,
           new: (product, price) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} ina bei ya ${price}, na punguzo la bei kwa maagizo makubwa. Gharama za usafirishaji zinategemea mahali unapopeleka, lakini nitahesabu hilo kwako hivi karibuni.\n\nUnataka kuagiza vitengo vingapi? Tafadhali jaza fomu hapa chini ili niweze kukamilisha bei yako na kuhesabu usafirishaji hadi nchi yako.`,
           returningNoPrice: (name, product) => `Karibu tena, ${name}! Naona una nia ya ${product}. Ni nchi ipi ungependa hii itumwe?`,
-          newNoPrice: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} inaaminika na watoa huduma za afya katika nchi zaidi ya 40 barani Afrika. Ni nchi ipi ungependa hii itumwe?`
+          newNoPrice: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} inaaminika na watoa huduma za afya katika nchi zaidi ya 40 barani Afrika na Amerika ya Kusini. Ni nchi ipi ungependa hii itumwe?`
+        },
+        es: {
+          returning: (name, product, price) => `¡Bienvenido(a) de nuevo, ${name}! El ${product} tiene un precio de ${price}, con descuentos por volumen disponibles para pedidos más grandes. Los costos de envío dependen de su destino, pero los calcularé para usted en breve.\n\n¿Cuántas unidades desea ordenar? Por favor, complete también el formulario de contacto a continuación para que pueda finalizar su cotización y calcular el envío a su país.`,
+          new: (product, price) => `¡Hola! Soy Amara de VIA Global Health. El ${product} tiene un precio de ${price}, con descuentos por volumen disponibles para pedidos más grandes. Los costos de envío dependen de su destino, pero los calcularé para usted en breve.\n\n¿Cuántas unidades desea ordenar? Por favor, complete también el formulario de contacto a continuación para que pueda finalizar su cotización y calcular el envío a su país.`,
+          returningNoPrice: (name, product) => `¡Bienvenido(a) de nuevo, ${name}! Qué gusto verle otra vez. Veo que está interesado(a) en el ${product} — una opción muy popular entre nuestros socios. ¿A qué país necesitaría que se lo enviemos? Puedo buscar nuestras últimas estimaciones de flete de inmediato.`,
+          newNoPrice: (product) => `¡Hola! Soy Amara de VIA Global Health. El ${product} es de confianza para proveedores de salud en más de 40 países en África y América Latina. ¿A qué país necesitaría que se lo enviemos? Puedo buscar nuestras últimas estimaciones de flete y precios de inmediato.`
         }
       };
       const langGreetings = greetings[lang] || greetings.en;
@@ -1744,19 +1826,23 @@ ${allEntries
         const generalGreetings: Record<string, { returning: (name: string) => string; new: () => string }> = {
           en: {
             returning: (name) => `Welcome back, ${name}! Great to see you again. I'm Amara from VIA Global Health. How can I help you today? Whether you need medical equipment, pharmaceuticals, or want to check pricing on any of our products — I'm here to assist.`,
-            new: () => `Hello! I'm Amara from VIA Global Health. We supply medical equipment and pharmaceuticals to healthcare providers, distributors, and NGOs across Africa. What are you looking for today? I can help with product information, bulk pricing, or anything else you need.`
+            new: () => `Hello! I'm Amara from VIA Global Health. We supply medical equipment and pharmaceuticals to healthcare providers, distributors, and NGOs across Africa and Latin America. What are you looking for today? I can help with product information, bulk pricing, or anything else you need.`
           },
           fr: {
             returning: (name) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je suis Amara de VIA Global Health. Comment puis-je vous aider aujourd'hui ? Que vous ayez besoin d'équipements médicaux, de produits pharmaceutiques ou de vérifier les prix — je suis là pour vous aider.`,
-            new: () => `Bonjour ! Je suis Amara de VIA Global Health. Nous fournissons des équipements médicaux et des produits pharmaceutiques aux prestataires de soins de santé, distributeurs et ONG à travers l'Afrique. Que recherchez-vous aujourd'hui ?`
+            new: () => `Bonjour ! Je suis Amara de VIA Global Health. Nous fournissons des équipements médicaux et des produits pharmaceutiques aux prestataires de soins de santé, distributeurs et ONG à travers l'Afrique et l'Amérique latine. Que recherchez-vous aujourd'hui ?`
           },
           pt: {
             returning: (name) => `Bem-vindo(a) de volta, ${name}! Sou Amara da VIA Global Health. Como posso ajudá-lo(a) hoje? Seja equipamento médico, produtos farmacêuticos ou verificação de preços — estou aqui para ajudar.`,
-            new: () => `Olá! Sou Amara da VIA Global Health. Fornecemos equipamentos médicos e produtos farmacêuticos para profissionais de saúde, distribuidores e ONGs em toda a África. O que você está procurando hoje?`
+            new: () => `Olá! Sou Amara da VIA Global Health. Fornecemos equipamentos médicos e produtos farmacêuticos para profissionais de saúde, distribuidores e ONGs em toda a África e América Latina. O que você está procurando hoje?`
           },
           sw: {
             returning: (name) => `Karibu tena, ${name}! Mimi ni Amara kutoka VIA Global Health. Nawezaje kukusaidia leo? Iwe unahitaji vifaa vya matibabu, dawa, au kuangalia bei — niko hapa kukusaidia.`,
-            new: () => `Habari! Mimi ni Amara kutoka VIA Global Health. Tunasambaza vifaa vya matibabu na dawa kwa watoa huduma za afya, wasambazaji na mashirika yasiyo ya kiserikali kote barani Afrika. Unatafuta nini leo?`
+            new: () => `Habari! Mimi ni Amara kutoka VIA Global Health. Tunasambaza vifaa vya matibabu na dawa kwa watoa huduma za afya, wasambazaji na mashirika yasiyo ya kiserikali kote barani Afrika na Amerika ya Kusini. Unatafuta nini leo?`
+          },
+          es: {
+            returning: (name) => `¡Bienvenido(a) de nuevo, ${name}! Qué gusto verle otra vez. Soy Amara de VIA Global Health. ¿En qué puedo ayudarle hoy? Ya sea que necesite equipos médicos, productos farmacéuticos o consultar precios de cualquiera de nuestros productos — estoy aquí para asistirle.`,
+            new: () => `¡Hola! Soy Amara de VIA Global Health. Suministramos equipos médicos y productos farmacéuticos a proveedores de salud, distribuidores y ONGs en África y América Latina. ¿Qué está buscando hoy? Puedo ayudarle con información de productos, precios por volumen o cualquier otra cosa que necesite.`
           }
         };
         const generalLangGreetings = generalGreetings[lang] || generalGreetings.en;
@@ -1954,6 +2040,25 @@ ${allEntries
 
       if (shippingEstimateContext) {
         systemPrompt += shippingEstimateContext;
+      }
+
+      try {
+        const customerEmail = quoteRequest.email || contactData?.email;
+        const customerOrg = quoteRequest.organizationName || contactData?.organizationName;
+        if (customerEmail || customerOrg) {
+          const { getCachedDealHistory, formatDealHistoryForPrompt } = await import("./hubspot-sync");
+          const crmHistory = await getCachedDealHistory(customerEmail, customerOrg);
+          if (crmHistory && crmHistory.totalDeals > 0) {
+            systemPrompt += formatDealHistoryForPrompt(crmHistory);
+          }
+        }
+      } catch (err) {
+        console.error("[hubspot] CRM history injection failed (non-fatal):", err);
+      }
+
+      const destCountry = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
+      if (destCountry) {
+        systemPrompt += `\n\nLOCAL CURRENCY NOTE: When the customer's destination is ${destCountry}, you may optionally include an approximate local-currency equivalent for context when quoting prices (e.g., "approximately 240,000 MXN at today's rate"). Always clarify that VIA invoices in USD. Do not convert every single price — use it sparingly for total order values or shipping costs to help the customer understand the magnitude.`;
       }
 
       // Build messages for OpenAI
@@ -2222,6 +2327,8 @@ function buildPublicModePrompt(
     ? "Respond entirely in Portuguese."
     : customerLanguage === "sw"
     ? "Respond entirely in Swahili."
+    : customerLanguage === "es"
+    ? "Respond entirely in Spanish. Use professional, warm Latin American Spanish."
     : "Respond in English.";
 
   const customerName = existingState.firstName || "there";
@@ -2278,6 +2385,8 @@ function buildSystemPrompt(
     ? "LANGUAGE INSTRUCTION: The customer is communicating in Portuguese. You MUST respond entirely in Portuguese. Use professional, warm Portuguese appropriate for Lusophone African markets (Mozambique, Angola, etc.). Keep product names and brand names in English but translate everything else."
     : customerLanguage === "sw"
     ? "LANGUAGE INSTRUCTION: The customer is communicating in Swahili. You MUST respond entirely in Swahili (Kiswahili). Use professional, warm Swahili appropriate for East African markets. Keep product names and brand names in English but translate everything else."
+    : customerLanguage === "es"
+    ? "LANGUAGE INSTRUCTION: The customer is communicating in Spanish. You MUST respond entirely in Spanish. Use professional, warm Latin American Spanish appropriate for healthcare markets in Latin America (Mexico, Colombia, Peru, etc.). Keep product names and brand names in English but translate everything else."
     : "LANGUAGE INSTRUCTION: Respond in English. Use British English spelling (e.g., organisation, colour, programme, centre).";
 
   let prompt = `You are Amara Njeri, a Senior Sales Advisor at VIA Global Health based in Nairobi, Kenya. You are a Business Advisor and consultant helping customers navigate global health logistics — not a clerk filling out a form. You lead with data to build trust. You are the first point of contact for customers and represent VIA as a trusted partner in global health solutions.

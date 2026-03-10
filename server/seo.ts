@@ -28,10 +28,22 @@ interface PageMeta {
   jsonLd?: object;
 }
 
+const SUPPORTED_LANGUAGES = ["en", "fr", "pt", "sw", "es"];
+
+function buildHreflangTags(canonicalUrl: string): string[] {
+  const tags: string[] = [];
+  for (const lang of SUPPORTED_LANGUAGES) {
+    tags.push(`<link rel="alternate" hreflang="${lang}" href="${escapeHtml(canonicalUrl)}" />`);
+  }
+  tags.push(`<link rel="alternate" hreflang="x-default" href="${escapeHtml(canonicalUrl)}" />`);
+  return tags;
+}
+
 function buildMetaTags(meta: PageMeta): string {
   const tags = [
     `<meta name="description" content="${escapeHtml(meta.description)}" />`,
     `<link rel="canonical" href="${escapeHtml(meta.canonicalUrl)}" />`,
+    ...buildHreflangTags(meta.canonicalUrl),
     `<meta property="og:title" content="${escapeHtml(meta.title)}" />`,
     `<meta property="og:description" content="${escapeHtml(meta.description)}" />`,
     `<meta property="og:type" content="${escapeHtml(meta.ogType)}" />`,
@@ -166,7 +178,7 @@ const PAGE_META: Record<string, () => PageMeta> = {
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "sales",
-        availableLanguage: ["English", "French", "Spanish"],
+        availableLanguage: ["English", "French", "Portuguese", "Swahili", "Spanish"],
       },
     },
   }),

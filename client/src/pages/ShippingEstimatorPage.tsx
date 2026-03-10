@@ -121,6 +121,21 @@ export default function ShippingEstimatorPage() {
     },
   });
 
+  const hubspotSyncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/shipping/sync-hubspot", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to sync HubSpot deals");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["shipping-deals"] });
+      toast({ title: "HubSpot Sync Complete", description: `${data.synced} deals synced, ${data.errors} errors` });
+    },
+    onError: (err: Error) => {
+      toast({ title: "HubSpot Sync Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const refreshMutation = useMutation({
     mutationFn: async (type?: string) => {
       const res = await fetch("/api/shipping/refresh-market-data", {
@@ -446,6 +461,16 @@ export default function ShippingEstimatorPage() {
                       <CardTitle>Historical Shipping Deals</CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">{deals.length} deals from {[...new Set(deals.map((d: any) => d.country))].length} countries</p>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => hubspotSyncMutation.mutate()}
+                      disabled={hubspotSyncMutation.isPending}
+                      data-testid="button-sync-hubspot"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${hubspotSyncMutation.isPending ? "animate-spin" : ""}`} />
+                      {hubspotSyncMutation.isPending ? "Syncing..." : "Sync HubSpot"}
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>

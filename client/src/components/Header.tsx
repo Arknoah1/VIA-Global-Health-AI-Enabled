@@ -24,7 +24,7 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const languages: Language[] = ["en", "fr", "pt", "sw"];
+  const languages: Language[] = ["en", "fr", "pt", "sw", "es"];
 
   return (
     <header className="bg-white border-b sticky top-0 z-50" data-testid="header-main">

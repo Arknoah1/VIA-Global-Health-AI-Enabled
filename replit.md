@@ -16,14 +16,29 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state, local React state for UI
 - **Styling**: Tailwind CSS v4 with shadcn/ui component library (New York style)
 - **Build Tool**: Vite with custom plugins for Replit integration
-- **Internationalization (i18n)**: Custom React context-based system supporting 4 languages (English, French, Portuguese, Swahili)
+- **Internationalization (i18n)**: Custom React context-based system supporting 5 languages (English, French, Portuguese, Swahili, Spanish)
   - Translation files: `client/src/i18n/translations.ts` (200+ keys per language)
   - Context provider: `client/src/i18n/LanguageProvider.tsx` with `useTranslation()` hook
   - Language persists in localStorage under key `via-language`
+  - Browser auto-detection: first-time visitors get language matched from `navigator.language` (e.g., `es-MX` → Spanish)
   - All public-facing pages and components use `t("key")` for UI text
   - Product data (names, descriptions, categories) stays in English from the database
   - Admin pages remain English-only
   - AI chat (Amara) responds in the user's selected language via `language` parameter in API calls
+  - Hreflang SEO tags in `server/seo.ts` for all 5 languages plus x-default
+  - Sitemap includes xhtml:link alternates for each language
+- **Currency Conversion**: Approximate local-currency notes shown near USD prices
+  - `client/src/lib/currency.ts` maps countries → currency codes/symbols
+  - `GET /api/exchange-rates` endpoint with 24h cache in `market_data_cache` (free API + fallback rates)
+  - ProductDetailSheet shows "≈ X,XXX MXN at today's rate" below estimated totals when shipping country is known
+  - Amara can mention local currency in conversation when destination is known
+- **HubSpot CRM Integration**: `server/hubspot-sync.ts` via Replit Connectors SDK
+  - `syncHubspotDeals()` — syncs deals from HubSpot to `shipping_deals` table (source: "hubspot")
+  - `getHubspotDealHistory(email, orgName)` — queries CRM for returning customer recognition
+  - `getCachedDealHistory()` — 5-minute in-memory cache for CRM lookups
+  - `formatDealHistoryForPrompt()` — injects CRM deal history into Amara's system prompt
+  - Admin endpoints: `POST /api/shipping/sync-hubspot`, `GET /api/crm/customer-history`
+  - Sync button on ShippingEstimatorPage Deal History tab
 
 **Key Pages**:
 - `/` - Homepage with audience-specific content (distributors, providers, NGOs)
@@ -71,6 +86,9 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/shipping/deals` - List all historical shipping deals (admin)
 - `GET /api/shipping/market-data` - Get cached fuel + DHL market data (admin)
 - `POST /api/shipping/refresh-market-data` - Force refresh FRED/DHL caches (admin)
+- `POST /api/shipping/sync-hubspot` - Sync deals from HubSpot CRM (admin)
+- `GET /api/crm/customer-history` - Get HubSpot deal history for customer by email/org (admin)
+- `GET /api/exchange-rates` - Get cached USD→local currency exchange rates (public, 24h cache)
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
@@ -82,8 +100,8 @@ Preferred communication style: Simple, everyday language.
 - `quote_requests` - Customer quote requests with conversation history and AI review (jsonb `ai_review` column)
 - `sales_insights` - Actionable lessons extracted from closed deals by AI, fed back into Amara's system prompt
 - `logistics_lookup` - Shipping cost reference data by product type, destination, and origin country (72 routes, 135 historical shipments); used by Amara and proforma invoices for shipping estimates. Includes chargeable weight per unit.
-- `shipping_deals` - Historical shipping deal data (40 seeded fallback deals from HubSpot); used by shipping estimator for comparable deal analysis
-- `market_data_cache` - Server-side cache for FRED fuel prices (7-day TTL) and DHL market intelligence (28-day TTL)
+- `shipping_deals` - Historical shipping deal data (59 seeded fallback deals covering Africa + Latin America, plus HubSpot-synced deals); used by shipping estimator for comparable deal analysis
+- `market_data_cache` - Server-side cache for FRED fuel prices (7-day TTL), DHL market intelligence (28-day TTL), and exchange rates (24h TTL)
 - Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type is locked once set. "Not you?" button allows profile reset.
 
 ### Web Scraping

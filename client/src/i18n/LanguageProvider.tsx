@@ -9,14 +9,31 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
-function getInitialLanguage(): Language {
+const SUPPORTED_LANGUAGES: Language[] = ["en", "fr", "pt", "sw", "es"];
+
+function isSupported(code: string): code is Language {
+  return SUPPORTED_LANGUAGES.includes(code as Language);
+}
+
+function detectBrowserLanguage(): Language {
   try {
-    const stored = localStorage.getItem("via-language");
-    if (stored && (stored === "en" || stored === "fr" || stored === "pt" || stored === "sw")) {
-      return stored;
+    const navLang = navigator.language || (navigator as any).userLanguage || "";
+    const base = navLang.split("-")[0].toLowerCase();
+    if (isSupported(base)) {
+      return base;
     }
   } catch {}
   return "en";
+}
+
+function getInitialLanguage(): Language {
+  try {
+    const stored = localStorage.getItem("via-language");
+    if (stored && isSupported(stored)) {
+      return stored;
+    }
+  } catch {}
+  return detectBrowserLanguage();
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { ChatContactForm } from "@/components/ChatContactForm";
+import { getCurrencyForCountry, formatLocalCurrency } from "@/lib/currency";
 
 interface ProductDetailSheetProps {
   product: Product | null;
@@ -130,6 +131,8 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const [quantity, setQuantity] = useState<string>('');
   const [priceText, setPriceText] = useState('');
   const [pricingTiers, setPricingTiers] = useState<Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>>([]);
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
+  const [shippingCountry, setShippingCountry] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -222,6 +225,31 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       trackProductView({ id: product.id, name: product.name, category: product.category });
     }
   }, [isOpen, product?.id]);
+
+  useEffect(() => {
+    fetch("/api/exchange-rates")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setExchangeRates(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const profile = getCustomerProfile();
+    if (profile?.shippingCountry) setShippingCountry(profile.shippingCountry);
+  }, [isOpen]);
+
+  const localCurrencyNote = useMemo(() => {
+    if (!shippingCountry || !exchangeRates) return null;
+    const currency = getCurrencyForCountry(shippingCountry);
+    if (!currency || currency.code === "USD") return null;
+    const rate = exchangeRates[currency.code];
+    if (!rate) return null;
+    const qty = parseInt(quantity) || 0;
+    const unitPrice = qty > 0 ? getPriceForQuantity(qty) : null;
+    if (!unitPrice || qty < 1) return null;
+    const totalUsd = qty * unitPrice;
+    return formatLocalCurrency(totalUsd, rate, currency) + " at today's rate";
+  }, [shippingCountry, exchangeRates, quantity, pricingTiers]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
@@ -414,6 +442,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
       const currentProfile = getCustomerProfile() || {};
       saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
+      setShippingCountry(data.country);
       if (responseData.referToAgent) {
         setIsConversationComplete(true);
         trackQuoteSubmitted(quoteRequestId, 1);
@@ -1057,6 +1086,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                           <p className="text-xs text-muted-foreground">Estimated total</p>
                           <p className="text-xl font-bold text-foreground">${(qty * unitPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           <p className="text-xs text-muted-foreground">${unitPrice.toFixed(2)} per unit x {qty} units</p>
+                          {localCurrencyNote && (
+                            <p className="text-[10px] text-muted-foreground/70 mt-1 italic" data-testid="text-local-currency-note">{localCurrencyNote}</p>
+                          )}
                         </>
                       );
                     })()}

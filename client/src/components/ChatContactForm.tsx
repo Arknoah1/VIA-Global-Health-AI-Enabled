@@ -22,12 +22,16 @@ interface ChatContactFormProps {
   };
 }
 
-const africanCountries = [
+const priorityCountries = [
   "Kenya", "Nigeria", "Ghana", "Tanzania", "Uganda", "Ethiopia", "Rwanda",
   "Mozambique", "South Africa", "Senegal", "Cameroon", "Congo (DRC)",
   "Zambia", "Zimbabwe", "Malawi", "Mali", "Burkina Faso", "Niger",
   "Sierra Leone", "Liberia", "Angola", "Benin", "Togo", "Ivory Coast",
-  "Madagascar", "Sudan", "Somalia"
+  "Madagascar", "Sudan", "Somalia",
+  "Mexico", "Colombia", "Peru", "Guatemala", "Honduras", "Ecuador",
+  "Bolivia", "Dominican Republic", "Paraguay", "Chile", "Brazil",
+  "Argentina", "El Salvador", "Costa Rica", "Panama", "Haiti", "Jamaica",
+  "Trinidad and Tobago", "Nicaragua"
 ];
 
 export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatContactFormProps) {
@@ -42,11 +46,11 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
   const filteredCountries = countrySearch.trim()
     ? countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
     : [
-        ...africanCountries
+        ...priorityCountries
           .map(name => countries.find(c => c.name === name))
           .filter(Boolean) as typeof countries[number][],
         { name: "---", code: "divider" },
-        ...countries.filter(c => !africanCountries.includes(c.name))
+        ...countries.filter(c => !priorityCountries.includes(c.name))
       ];
 
   const validate = () => {
