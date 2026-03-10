@@ -1044,11 +1044,6 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
           <div className="max-w-screen-xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <span className="text-sm font-medium text-foreground truncate">{product?.name}</span>
-              {product?.price && (
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  from ${(product.price / 100).toFixed(2)}
-                </span>
-              )}
             </div>
             <Button
               className="h-11 px-8 text-sm font-semibold bg-teal-600 hover:bg-teal-700 shadow-md hover:shadow-lg transition-all duration-300 shrink-0"
