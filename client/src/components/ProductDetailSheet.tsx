@@ -244,12 +244,15 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
     if (!currency || currency.code === "USD") return null;
     const rate = exchangeRates[currency.code];
     if (!rate) return null;
-    const qty = parseInt(quantity) || 0;
-    const unitPrice = qty > 0 ? getPriceForQuantity(qty) : null;
-    if (!unitPrice || qty < 1) return null;
-    const totalUsd = qty * unitPrice;
-    return formatLocalCurrency(totalUsd, rate, currency) + " at today's rate";
-  }, [shippingCountry, exchangeRates, quantity, pricingTiers]);
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    if (!lastAssistant) return null;
+    const totalMatch = lastAssistant.content.match(/\*\*\$([0-9,]+\.?\d*)\*\*/g);
+    if (!totalMatch || totalMatch.length === 0) return null;
+    const lastBoldAmount = totalMatch[totalMatch.length - 1];
+    const usdValue = parseFloat(lastBoldAmount.replace(/\*\*/g, '').replace('$', '').replace(/,/g, ''));
+    if (!usdValue || isNaN(usdValue)) return null;
+    return formatLocalCurrency(usdValue, rate, currency) + " at today's rate";
+  }, [shippingCountry, exchangeRates, messages]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
@@ -1196,14 +1199,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 </div>
               )}
 
-              {localCurrencyNote && (
-                <div className="px-4 pt-2" data-testid="chat-currency-note">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800 italic">
-                    {localCurrencyNote} — VIA invoices in USD
-                  </div>
-                </div>
-              )}
-
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
                   {messages.map((msg, idx) => (
@@ -1237,6 +1232,13 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     </div>
                   )}
 
+                  {localCurrencyNote && (
+                    <div data-testid="chat-currency-note">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800 italic">
+                        {localCurrencyNote} — VIA invoices in USD
+                      </div>
+                    </div>
+                  )}
                   {recommendedProducts.length > 0 && (
                     <div className="pt-2">
                       <p className="text-xs text-muted-foreground mb-2">You might also be interested in:</p>
