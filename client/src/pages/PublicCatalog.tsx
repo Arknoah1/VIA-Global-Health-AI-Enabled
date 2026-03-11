@@ -9,7 +9,6 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
-import { RecommendedProducts } from "@/components/RecommendedProducts";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { trackCatalogView } from "@/lib/analytics";
 import { slugify } from "@/lib/slugify";
@@ -58,9 +57,6 @@ export default function PublicCatalog() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleSelectRecommendedProduct = (product: Product) => {
-    setLocation(`/products/${slugify(product.name)}`);
-  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -125,12 +121,6 @@ export default function PublicCatalog() {
               ))}
             </div>
           </div>
-
-          {/* AI Recommendations */}
-          <RecommendedProducts
-            onSelectProduct={handleSelectRecommendedProduct}
-            allProducts={products}
-          />
 
           {/* Products Grid */}
           {isLoading ? (
