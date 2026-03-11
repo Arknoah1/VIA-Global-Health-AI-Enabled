@@ -81,11 +81,42 @@ function calcFuelMultiplier(currentPrice: number | null): { multiplier: number; 
   };
 }
 
+const REGION_MAP: Record<string, string[]> = {
+  "East Africa": ["kenya", "tanzania", "uganda", "ethiopia", "rwanda", "burundi", "south sudan", "somalia", "djibouti", "eritrea"],
+  "Southern Africa": ["south africa", "zimbabwe", "zambia", "mozambique", "malawi", "botswana", "namibia", "lesotho", "eswatini", "madagascar"],
+  "West Africa": ["nigeria", "ghana", "senegal", "mali", "burkina faso", "niger", "ivory coast", "côte d'ivoire", "guinea", "sierra leone", "liberia", "togo", "benin", "gambia", "guinea-bissau", "cape verde", "mauritania"],
+  "Central Africa": ["democratic republic of the congo", "drc", "cameroon", "chad", "central african republic", "republic of the congo", "gabon", "equatorial guinea"],
+  "North Africa": ["egypt", "morocco", "tunisia", "algeria", "libya", "sudan"],
+  "South Asia": ["india", "bangladesh", "nepal", "sri lanka", "pakistan", "afghanistan", "bhutan", "maldives"],
+  "Southeast Asia": ["vietnam", "cambodia", "myanmar", "laos", "thailand", "philippines", "indonesia", "malaysia", "timor-leste"],
+  "Central America & Caribbean": ["haiti", "guatemala", "honduras", "el salvador", "nicaragua", "costa rica", "panama", "dominican republic", "jamaica", "trinidad and tobago"],
+  "South America": ["brazil", "colombia", "peru", "bolivia", "ecuador", "paraguay", "chile", "argentina", "uruguay", "venezuela", "guyana", "suriname"],
+  "Middle East": ["yemen", "iraq", "syria", "jordan", "lebanon", "palestine", "oman", "saudi arabia", "united arab emirates"],
+  "Pacific Islands": ["papua new guinea", "fiji", "solomon islands", "vanuatu", "samoa", "tonga", "kiribati"],
+};
+
+function getRegion(country: string): string | null {
+  const c = country.toLowerCase();
+  for (const [region, countries] of Object.entries(REGION_MAP)) {
+    if (countries.includes(c)) return region;
+  }
+  return null;
+}
+
+function getRegionCountries(country: string): string[] {
+  const c = country.toLowerCase();
+  for (const countries of Object.values(REGION_MAP)) {
+    if (countries.includes(c)) return countries;
+  }
+  return [c];
+}
+
 function findSimilarDeals(
   country: string,
   product: Product,
   qty: number,
-  deals: ShippingDeal[]
+  deals: ShippingDeal[],
+  method: string = "Air"
 ): { baseEstimate: number | null; confidence: "High" | "Medium" | "Low"; source: string; comparables: ShippingDeal[] } {
   const shortName = product.name.toLowerCase();
   const kws = shortName.split(" ").filter(k => k.length > 3);
@@ -95,22 +126,41 @@ function findSimilarDeals(
   const productDeals = deals.filter(d => match(d) && d.shippingCost > 0);
   const exactDeals = countryDeals.filter(d => match(d));
 
-  const rateEst = (ds: ShippingDeal[]): number => {
-    const rates = ds.map(d => {
+  const regionCountries = getRegionCountries(country);
+  const region = getRegion(country);
+  const regionalProductDeals = productDeals.filter(d =>
+    d.country && regionCountries.includes(d.country.toLowerCase()) &&
+    d.country.toLowerCase() !== country.toLowerCase()
+  );
+
+  const rateEst = (ds: ShippingDeal[], targetMethod?: string): number => {
+    const methodMatches = targetMethod ? ds.filter(d => (d.method || "Air") === targetMethod) : [];
+    const source = methodMatches.length > 0 ? methodMatches : ds;
+
+    const rates = source.map(d => {
       const w = calcChargeableWeight(product, d.qty, d.method || "Air");
       return w?.chargeable && w.chargeable > 0 ? d.shippingCost / w.chargeable : null;
     }).filter((r): r is number => r !== null);
     const avg = rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : null;
-    const w = calcChargeableWeight(product, qty, "Air");
+    const w = calcChargeableWeight(product, qty, targetMethod || "Air");
     if (avg && w) return Math.round(avg * w.chargeable);
-    return Math.round(ds.reduce((s, d) => s + d.shippingCost, 0) / ds.length);
+    return Math.round(source.reduce((s, d) => s + d.shippingCost, 0) / source.length);
   };
 
   if (exactDeals.length) {
-    return { baseEstimate: rateEst(exactDeals), confidence: "High", source: `${exactDeals.length} exact match(es): same product & country`, comparables: exactDeals.slice(0, 5) };
+    return { baseEstimate: rateEst(exactDeals, method), confidence: "High", source: `${exactDeals.length} exact match(es): same product & country`, comparables: exactDeals.slice(0, 5) };
+  }
+  if (regionalProductDeals.length) {
+    const regionLabel = region || "nearby countries";
+    return {
+      baseEstimate: rateEst(regionalProductDeals, method),
+      confidence: "Medium",
+      source: `${regionalProductDeals.length} deal(s) for same product in ${regionLabel} (${regionalProductDeals.map(d => d.country).filter((v, i, a) => a.indexOf(v) === i).join(", ")})`,
+      comparables: regionalProductDeals.slice(0, 5),
+    };
   }
   if (productDeals.length) {
-    return { baseEstimate: rateEst(productDeals), confidence: "Medium", source: `${productDeals.length} deals for same product (different destinations)`, comparables: productDeals.slice(0, 5) };
+    return { baseEstimate: rateEst(productDeals, method), confidence: "Medium", source: `${productDeals.length} deals for same product (different destinations)`, comparables: productDeals.slice(0, 5) };
   }
   if (countryDeals.length) {
     return {
@@ -202,7 +252,7 @@ export async function generateShippingEstimate(
 
   const weightInfo = calcChargeableWeight(product, qty, method);
   const allDeals = await storage.getAllShippingDeals();
-  const historical = findSimilarDeals(destination, product, qty, allDeals);
+  const historical = findSimilarDeals(destination, product, qty, allDeals, method);
 
   const fuelRaw = await fetchFredFuelPrice();
   const surcharge = calcFuelMultiplier(fuelRaw.price);
@@ -222,6 +272,7 @@ ${weightInfo ? `Chargeable weight: ${weightInfo.chargeable}kg (${weightInfo.driv
 
 DATA INPUTS:
 - Historical estimate: ${historical.baseEstimate ? `$${historical.baseEstimate}` : "N/A"} (${historical.confidence} confidence, ${historical.source})
+- Region: ${getRegion(destination) || "Unknown"} (regional data used when no exact country match exists)
 - Fuel multiplier: ${surcharge.multiplier} (fuel ${surcharge.label})
 - DHL multiplier: ${dhlMultiplier} (${dhlIntel?.reportMonth || "no report"})
 - Combined adjusted: ${fuelAdjEstimate ? `$${fuelAdjEstimate}` : "N/A"}
