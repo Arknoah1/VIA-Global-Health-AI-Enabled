@@ -364,6 +364,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const sendQuantityToAI = async (quantityMessage: string, contactInfo?: { firstName: string; lastName: string; email: string; shippingCountry: string }) => {
     if (!quoteRequestId || !product) return;
     setIsLoading(true);
+    const interimStart = Date.now();
     try {
       const messageBody: Record<string, unknown> = {
         message: quantityMessage,
@@ -388,6 +389,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       });
       if (!response.ok) throw new Error('Failed to send message');
       const data = await response.json();
+      const elapsed = Date.now() - interimStart;
+      const minDisplay = 1500;
+      if (elapsed < minDisplay) await new Promise(r => setTimeout(r, minDisplay - elapsed));
       setMessages(prev => {
         const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
         return [...withoutInterim, { role: 'assistant' as const, content: data.message }];
@@ -427,6 +431,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${data.country}...` }
     ]);
     setIsLoading(true);
+    const interimStart = Date.now();
     try {
       const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
         method: 'POST',
@@ -453,6 +458,9 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
       });
       if (!response.ok) throw new Error('Failed to send message');
       const responseData = await response.json();
+      const elapsed = Date.now() - interimStart;
+      const minDisplay = 1500;
+      if (elapsed < minDisplay) await new Promise(r => setTimeout(r, minDisplay - elapsed));
       setMessages(prev => {
         const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
         return [...withoutInterim, { role: 'assistant' as const, content: responseData.message }];
