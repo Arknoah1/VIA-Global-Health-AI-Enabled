@@ -231,8 +231,8 @@ Return ONLY valid JSON (no markdown):
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("No JSON in DHL response");
     const parsed = JSON.parse(match[0]);
-    await storage.setMarketDataCache("dhl_intel", parsed, 28);
-    log(`DHL intel cached: ${parsed.reportMonth}`);
+    await storage.setMarketDataCache("dhl_intel", parsed, 7);
+    log(`DHL intel cached: ${parsed.reportMonth} (7-day TTL)`);
     return parsed;
   } catch (e: any) {
     log(`DHL intel fetch failed: ${e.message}`);
