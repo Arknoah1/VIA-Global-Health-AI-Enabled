@@ -30,13 +30,14 @@ Preferred communication style: Simple, everyday language.
 - **Currency Conversion**: Approximate local-currency notes shown near USD prices
   - `client/src/lib/currency.ts` maps countries → currency codes/symbols
   - `GET /api/exchange-rates` endpoint with 24h cache in `market_data_cache` (free API + fallback rates)
-  - ProductDetailSheet shows "≈ X,XXX MXN at today's rate" below estimated totals when shipping country is known
+  - ProductDetailSheet shows "≈ X,XXX MXN at today's rate" in both Step 2 (quantity) and Step 4 (chat) as a blue info banner
   - Amara can mention local currency in conversation when destination is known
 - **HubSpot CRM Integration**: `server/hubspot-sync.ts` via Replit Connectors SDK
   - `syncHubspotDeals()` — syncs deals from HubSpot to `shipping_deals` table (source: "hubspot")
   - `getHubspotDealHistory(email, orgName)` — queries CRM for returning customer recognition
   - `getCachedDealHistory()` — 5-minute in-memory cache for CRM lookups
   - `formatDealHistoryForPrompt()` — injects CRM deal history into Amara's system prompt
+  - CRM lookup + shipping estimate run in parallel with 3-second timeout (non-blocking)
   - Admin endpoints: `POST /api/shipping/sync-hubspot`, `GET /api/crm/customer-history`
   - Sync button on ShippingEstimatorPage Deal History tab
 

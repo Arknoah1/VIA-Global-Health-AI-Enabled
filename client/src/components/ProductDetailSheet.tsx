@@ -1184,7 +1184,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
 
           {chatStep === 'chat' && (
             <>
-              {/* Special Pricing Banner */}
               {specialPricingEligible && (
                 <div className="px-4 pt-2">
                   <Alert className="bg-green-50 border-green-200">
@@ -1193,6 +1192,14 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                       You may qualify for special pricing! We'll include this in your quote.
                     </AlertDescription>
                   </Alert>
+                </div>
+              )}
+
+              {localCurrencyNote && (
+                <div className="px-4 pt-2" data-testid="chat-currency-note">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800 italic">
+                    {localCurrencyNote} — VIA invoices in USD
+                  </div>
                 </div>
               )}
 

@@ -1988,34 +1988,6 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         relevantLogistics = await storage.getLogisticsLookup();
       }
 
-      // Generate shipping estimate if product + destination are known
-      let shippingEstimateContext: string | null = null;
-      const currentDest = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
-      const hasProduct = quoteRequest.productId;
-      const existingEstimate = quoteRequest.shippingEstimate as any;
-      const currentQty = parseInt(quoteRequest.orderQuantity || "1") || 1;
-
-      const needsRegeneration = hasProduct && currentDest && (
-        !existingEstimate ||
-        existingEstimate.destination !== currentDest ||
-        existingEstimate.qty !== currentQty
-      );
-
-      if (needsRegeneration) {
-        try {
-          const { generateShippingEstimate } = await import("./shipping");
-          const estimate = await generateShippingEstimate(hasProduct, currentDest, currentQty, "Air", "DAP");
-          await storage.updateQuoteRequest(id, { shippingEstimate: estimate } as any);
-          if (estimate.costRange) {
-            shippingEstimateContext = `\n\nLIVE SHIPPING ESTIMATE (just generated for this customer):\nProduct: ${estimate.product.name}\nDestination: ${estimate.destination}\nQuantity: ${estimate.qty} units\nMethod: ${estimate.method}\nConfidence: ${estimate.confidence}\nCost Range: $${estimate.costRange.low.toLocaleString()} – $${estimate.costRange.high.toLocaleString()} (midpoint $${estimate.costRange.mid.toLocaleString()})\n${estimate.weightInfo ? `Chargeable Weight: ${estimate.weightInfo.chargeable} kg (${estimate.weightInfo.driverNote})` : ""}\nUse this estimate when discussing shipping costs. Present the midpoint as the estimate and the range as context. Always add: "This is based on current 2025 freight data; our team will confirm the exact rate in your Proforma invoice."`;
-          }
-        } catch (err) {
-          console.error("[shipping] Failed to generate estimate for Amara context:", err);
-        }
-      } else if (existingEstimate?.costRange) {
-        shippingEstimateContext = `\n\nLIVE SHIPPING ESTIMATE (previously generated for this customer):\nProduct: ${existingEstimate.product?.name || quoteRequest.productName}\nDestination: ${existingEstimate.destination}\nQuantity: ${existingEstimate.qty} units\nMethod: ${existingEstimate.method}\nConfidence: ${existingEstimate.confidence}\nCost Range: $${existingEstimate.costRange.low.toLocaleString()} – $${existingEstimate.costRange.high.toLocaleString()} (midpoint $${existingEstimate.costRange.mid.toLocaleString()})\n${existingEstimate.weightInfo ? `Chargeable Weight: ${existingEstimate.weightInfo.chargeable} kg (${existingEstimate.weightInfo.driverNote})` : ""}\nUse this estimate when discussing shipping costs. Present the midpoint as the estimate and the range as context. Always add: "This is based on current 2025 freight data; our team will confirm the exact rate in your Proforma invoice."`;
-      }
-
       // Build system prompt with existing customer state
       const existingState = {
         firstName: quoteRequest.firstName,
@@ -2038,27 +2010,65 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, relevantLogistics);
       }
 
-      if (shippingEstimateContext) {
-        systemPrompt += shippingEstimateContext;
-      }
+      // Run async lookups in parallel with a 3-second timeout
+      const currentDest = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
+      const hasProduct = quoteRequest.productId;
+      const existingEstimate = quoteRequest.shippingEstimate as any;
+      const currentQty = parseInt(quoteRequest.orderQuantity || "1") || 1;
 
-      try {
+      const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
+        Promise.race([promise, new Promise<null>(resolve => setTimeout(() => resolve(null), ms))]);
+
+      const shippingTask = (async (): Promise<string | null> => {
+        const needsRegeneration = hasProduct && currentDest && (
+          !existingEstimate ||
+          existingEstimate.destination !== currentDest ||
+          existingEstimate.qty !== currentQty
+        );
+        if (needsRegeneration) {
+          try {
+            const { generateShippingEstimate } = await import("./shipping");
+            const estimate = await generateShippingEstimate(hasProduct, currentDest, currentQty, "Air", "DAP");
+            await storage.updateQuoteRequest(id, { shippingEstimate: estimate } as any);
+            if (estimate.costRange) {
+              return `\n\nLIVE SHIPPING ESTIMATE (just generated for this customer):\nProduct: ${estimate.product.name}\nDestination: ${estimate.destination}\nQuantity: ${estimate.qty} units\nMethod: ${estimate.method}\nConfidence: ${estimate.confidence}\nCost Range: $${estimate.costRange.low.toLocaleString()} – $${estimate.costRange.high.toLocaleString()} (midpoint $${estimate.costRange.mid.toLocaleString()})\n${estimate.weightInfo ? `Chargeable Weight: ${estimate.weightInfo.chargeable} kg (${estimate.weightInfo.driverNote})` : ""}\nUse this estimate when discussing shipping costs. Present the midpoint as the estimate and the range as context. Always add: "This is based on current 2025 freight data; our team will confirm the exact rate in your Proforma invoice."`;
+            }
+          } catch (err) {
+            console.error("[shipping] Failed to generate estimate for Amara context:", err);
+          }
+        } else if (existingEstimate?.costRange) {
+          return `\n\nLIVE SHIPPING ESTIMATE (previously generated for this customer):\nProduct: ${existingEstimate.product?.name || quoteRequest.productName}\nDestination: ${existingEstimate.destination}\nQuantity: ${existingEstimate.qty} units\nMethod: ${existingEstimate.method}\nConfidence: ${existingEstimate.confidence}\nCost Range: $${existingEstimate.costRange.low.toLocaleString()} – $${existingEstimate.costRange.high.toLocaleString()} (midpoint $${existingEstimate.costRange.mid.toLocaleString()})\n${existingEstimate.weightInfo ? `Chargeable Weight: ${existingEstimate.weightInfo.chargeable} kg (${existingEstimate.weightInfo.driverNote})` : ""}\nUse this estimate when discussing shipping costs. Present the midpoint as the estimate and the range as context. Always add: "This is based on current 2025 freight data; our team will confirm the exact rate in your Proforma invoice."`;
+        }
+        return null;
+      })();
+
+      const crmTask = (async (): Promise<string | null> => {
         const customerEmail = quoteRequest.email || contactData?.email;
         const customerOrg = quoteRequest.organizationName || contactData?.organizationName;
         if (customerEmail || customerOrg) {
-          const { getCachedDealHistory, formatDealHistoryForPrompt } = await import("./hubspot-sync");
-          const crmHistory = await getCachedDealHistory(customerEmail, customerOrg);
-          if (crmHistory && crmHistory.totalDeals > 0) {
-            systemPrompt += formatDealHistoryForPrompt(crmHistory);
+          try {
+            const { getCachedDealHistory, formatDealHistoryForPrompt } = await import("./hubspot-sync");
+            const crmHistory = await getCachedDealHistory(customerEmail, customerOrg);
+            if (crmHistory && crmHistory.totalDeals > 0) {
+              return formatDealHistoryForPrompt(crmHistory);
+            }
+          } catch (err) {
+            console.error("[hubspot] CRM history injection failed (non-fatal):", err);
           }
         }
-      } catch (err) {
-        console.error("[hubspot] CRM history injection failed (non-fatal):", err);
-      }
+        return null;
+      })();
 
-      const destCountry = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
-      if (destCountry) {
-        systemPrompt += `\n\nLOCAL CURRENCY NOTE: When the customer's destination is ${destCountry}, you may optionally include an approximate local-currency equivalent for context when quoting prices (e.g., "approximately 240,000 MXN at today's rate"). Always clarify that VIA invoices in USD. Do not convert every single price — use it sparingly for total order values or shipping costs to help the customer understand the magnitude.`;
+      const [shippingResult, crmResult] = await Promise.all([
+        withTimeout(shippingTask, 3000),
+        withTimeout(crmTask, 3000),
+      ]);
+
+      if (shippingResult) systemPrompt += shippingResult;
+      if (crmResult) systemPrompt += crmResult;
+
+      if (currentDest) {
+        systemPrompt += `\n\nLOCAL CURRENCY NOTE: When the customer's destination is ${currentDest}, you may optionally include an approximate local-currency equivalent for context when quoting prices (e.g., "approximately 240,000 MXN at today's rate"). Always clarify that VIA invoices in USD. Do not convert every single price — use it sparingly for total order values or shipping costs to help the customer understand the magnitude.`;
       }
 
       // Build messages for OpenAI
@@ -2610,7 +2620,7 @@ THE 2-STRIKE RULE: If a customer ignores your question about their organisation 
 - This breaks the loop and keeps the sale moving forward. Do not get stuck repeating the same question.
 
 IMPORTANT GUIDELINES:
-1. Keep responses concise (2-3 sentences max)
+1. RESPONSE FORMAT — Keep every reply to 2-3 short paragraphs maximum. Separate distinct topics (pricing, shipping, follow-up questions) with a blank line. Never combine a pricing breakdown and a question in the same paragraph. Use bullet points for lists of 3+ items. Avoid long walls of text.
 2. Lead with value — always give information before asking for information
 3. Never provide clinical or medical advice — if asked, say you'll connect them with a specialist
 4. Weave in trust signals naturally (years in business, partnerships, global reach)
