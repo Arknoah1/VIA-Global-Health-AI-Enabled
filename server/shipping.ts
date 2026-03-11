@@ -203,6 +203,27 @@ export async function fetchFredFuelPrice(): Promise<{ price: number | null; date
   }
 }
 
+async function scrapeDhlPage(): Promise<string> {
+  const DHL_URL = "https://www.dhl.com/us-en/home/global-forwarding/latest-news-and-webinars/air-freight-market-update.html";
+  const resp = await fetch(DHL_URL, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; VIAGlobalHealth/1.0)" },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) throw new Error(`DHL HTTP ${resp.status}`);
+  const html = await resp.text();
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+    .replace(/<header[\s\S]*?<\/header>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.slice(0, 8000);
+}
+
 export async function fetchDhlIntelligence(): Promise<any | null> {
   const cached = await storage.getMarketDataCache("dhl_intel");
   if (cached) {
@@ -210,16 +231,29 @@ export async function fetchDhlIntelligence(): Promise<any | null> {
   }
 
   try {
-    const DHL_URL = "https://www.dhl.com/us-en/home/global-forwarding/latest-news-and-webinars/air-freight-market-update.html";
+    log("Fetching live DHL Air Freight Market Update...");
+    const pageContent = await scrapeDhlPage();
+    log(`DHL page scraped: ${pageContent.length} chars`);
+
     const VIA_ORIGINS = ["Vietnam", "China", "USA", "India", "South Africa"];
     const VIA_DEST_REGIONS = ["Africa", "Sub-Saharan Africa", "East Africa", "West Africa", "South Asia", "Southeast Asia", "Latin America", "Middle East"];
 
     const prompt = `You are a freight market analyst for VIA Global Health, shipping from ${VIA_ORIGINS.join(", ")} to ${VIA_DEST_REGIONS.join(", ")}.
 
-Analyze the current DHL Global Forwarding Air Freight Market Update from: ${DHL_URL}
+Below is the ACTUAL content scraped from the DHL Global Forwarding Air Freight Market Update page. Analyze this real data:
 
-Return ONLY valid JSON (no markdown):
-{"reportMonth":"Month YYYY","globalDemandTrend":"growing/stable/declining","globalCapacityTrend":"growing/stable/declining","rateOutlook":"rising/stable/falling","overallRateMultiplierSuggestion":1.0,"executiveSummary":"string","keyRisks":["string"]}`;
+---
+${pageContent}
+---
+
+Based on the above content, return ONLY valid JSON (no markdown):
+{"reportMonth":"Month YYYY","globalDemandTrend":"growing/stable/declining","globalCapacityTrend":"growing/stable/declining","rateOutlook":"rising/stable/falling","overallRateMultiplierSuggestion":1.0,"executiveSummary":"string","keyRisks":["string"]}
+
+Rules:
+- reportMonth must match the month/year stated in the scraped content
+- overallRateMultiplierSuggestion should be 0.90-1.15 based on rate outlook
+- executiveSummary should be 2-3 sentences summarizing the market conditions
+- keyRisks should list 3-5 specific risks mentioned or implied in the content`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
