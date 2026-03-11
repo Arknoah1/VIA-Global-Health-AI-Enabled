@@ -2173,7 +2173,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
             const { generateShippingEstimate } = await import("./shipping");
             const regenEstimate = await generateShippingEstimate(quoteRequest.productId!, updatedDest, aiExtractedQty, "Air", "DAP");
             await storage.updateQuoteRequest(id, { shippingEstimate: regenEstimate } as any);
-            console.log(`[shipping] Background regen: qty ${updatedEstimate.qty} → ${aiExtractedQty}, new mid=$${regenEstimate.costRange?.mid}`);
+            console.log(`[shipping] Background regen: qty ${updatedEstimate?.qty ?? "none"} → ${aiExtractedQty}, new mid=$${regenEstimate.costRange?.mid}`);
           } catch (err) {
             console.error("[shipping] Background regen failed:", err);
           }
