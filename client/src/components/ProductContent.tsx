@@ -295,7 +295,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       const unitPrice = getPriceForQuantity(qty);
       const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
       const quantityMessage = `I'd like to order ${qty} units${priceInfo}`;
-      setMessages(prev => [...prev, { role: 'user', content: quantityMessage }]);
+      setMessages(prev => [...prev,
+        { role: 'user', content: quantityMessage },
+        { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${profile!.shippingCountry!}...` }
+      ]);
       sendQuantityToAI(quantityMessage, { firstName: profile!.firstName!, lastName: profile!.lastName || '', email: profile!.email!, shippingCountry: profile!.shippingCountry! });
     } else {
       setChatStep('details');
@@ -323,7 +326,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       });
       if (!response.ok) throw new Error('Failed to send message');
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      setMessages(prev => {
+        const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
+        return [...withoutInterim, { role: 'assistant' as const, content: data.message }];
+      });
       if (data.specialPricingEligible) setSpecialPricingEligible(true);
       if (data.recommendedProducts?.length > 0) setRecommendedProducts(data.recommendedProducts);
       if (data.profileUpdate) {
@@ -336,7 +342,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       }
     } catch (error) {
       console.error('Error sending quantity:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting. You can type your message below to retry, or close and reopen the dialog." }]);
+      setMessages(prev => {
+        const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
+        return [...withoutInterim, { role: 'assistant' as const, content: "I'm having trouble connecting. You can type your message below to retry, or close and reopen the dialog." }];
+      });
     } finally {
       setIsLoading(false);
     }
@@ -351,7 +360,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     const unitPrice = getPriceForQuantity(qty);
     const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
     const combinedMessage = `I'd like to order ${qty} units${priceInfo}. My details: ${data.fullName}, ${data.email}, shipping to ${data.country}`;
-    setMessages(prev => [...prev, { role: 'user', content: combinedMessage }]);
+    setMessages(prev => [...prev,
+      { role: 'user', content: combinedMessage },
+      { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${data.country}...` }
+    ]);
     setIsLoading(true);
     try {
       const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
@@ -370,7 +382,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       });
       if (!response.ok) throw new Error('Failed to send message');
       const responseData = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: responseData.message }]);
+      setMessages(prev => {
+        const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
+        return [...withoutInterim, { role: 'assistant' as const, content: responseData.message }];
+      });
       if (responseData.specialPricingEligible) setSpecialPricingEligible(true);
       if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
       const currentProfile = getCustomerProfile() || {};
@@ -381,7 +396,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       }
     } catch (error) {
       console.error('Error submitting step contact form:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting. You can type your message below to retry, or close and reopen the dialog." }]);
+      setMessages(prev => {
+        const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
+        return [...withoutInterim, { role: 'assistant' as const, content: "I'm having trouble connecting. You can type your message below to retry, or close and reopen the dialog." }];
+      });
     } finally {
       setIsLoading(false);
     }

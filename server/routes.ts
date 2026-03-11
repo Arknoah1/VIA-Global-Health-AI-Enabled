@@ -2007,10 +2007,9 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       if (redFlagResult.isRedFlag) {
         systemPrompt = buildPublicModePrompt(productDetails, existingState, customerLanguage, redFlagResult.reason);
       } else {
-        systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, relevantLogistics);
+        systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, []);
       }
 
-      // Run async lookups in parallel with a 3-second timeout
       const currentDest = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
       const hasProduct = quoteRequest.productId;
       const existingEstimate = quoteRequest.shippingEstimate as any;
@@ -2060,11 +2059,24 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       })();
 
       const [shippingResult, crmResult] = await Promise.all([
-        withTimeout(shippingTask, 3000),
-        withTimeout(crmTask, 3000),
+        withTimeout(shippingTask, 12000),
+        withTimeout(crmTask, 5000),
       ]);
 
-      if (shippingResult) systemPrompt += shippingResult;
+      if (shippingResult) {
+        systemPrompt += shippingResult;
+      } else if (relevantLogistics.length > 0 && currentDest) {
+        const destLower = currentDest.toLowerCase();
+        const fallbackRoutes = relevantLogistics.filter(l => l.destinationCountry.toLowerCase() === destLower);
+        if (fallbackRoutes.length > 0) {
+          systemPrompt += `\n\nSHIPPING DATA (approximate historical averages — live estimate unavailable, treat as rough guide only):`;
+          fallbackRoutes.forEach(r => {
+            const bufferedAvg = (r.avgShippingPerUnit * 1.15).toFixed(2);
+            systemPrompt += `\n- ${r.productType} → ${r.destinationCountry}: ~$${bufferedAvg}/unit`;
+          });
+          systemPrompt += `\nThese are rough historical averages. Tell the customer: "I'm working with approximate shipping data — our team will confirm the exact freight cost in your Proforma invoice."`;
+        }
+      }
       if (crmResult) systemPrompt += crmResult;
 
       if (currentDest) {
