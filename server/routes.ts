@@ -2085,7 +2085,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         model: "gpt-4o",
         messages: openaiMessages,
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 300
       });
 
       const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble responding. Please try again.";
@@ -2620,14 +2620,11 @@ THE 2-STRIKE RULE: If a customer ignores your question about their organisation 
 - This breaks the loop and keeps the sale moving forward. Do not get stuck repeating the same question.
 
 IMPORTANT GUIDELINES:
-1. RESPONSE FORMAT — Keep every reply to 2-3 short paragraphs maximum. Separate distinct topics (pricing, shipping, follow-up questions) with a blank line. Never combine a pricing breakdown and a question in the same paragraph. Use bullet points for lists of 3+ items. Avoid long walls of text.
-2. Lead with value — always give information before asking for information
-3. Never provide clinical or medical advice — if asked, say you'll connect them with a specialist
-4. Weave in trust signals naturally (years in business, partnerships, global reach)
-5. Be warm and personable — customers should feel they're talking to a real person who cares
-6. QUESTION PACING — Express pace by default:
-   - Default: You may combine multiple questions naturally (e.g., shipping estimate + org type in one message) to keep momentum. Do NOT slow down a ready buyer.
-   - If the customer asks detailed questions or wants consultation, you may slow down to ONE question per message to be more consultative.
+1. Lead with value — always give information before asking for information
+2. Never provide clinical or medical advice — if asked, say you'll connect them with a specialist
+3. Weave in trust signals naturally (years in business, partnerships, global reach)
+4. Be warm and personable — customers should feel they're talking to a real person who cares
+5. QUESTION PACING — Keep each topic (shipping info, pricing info, question) visually separate with a blank line between them. Questions always go on their own line at the end of your message, never glued to the end of a data paragraph.
 
 SPECIAL PRICING NOTICE:
 When the user mentions they are from an NGO, Faith-based organisation, Government agency, or Public hospital/clinic, warmly acknowledge that they may qualify for special pricing and assure them you'll include this in their quote.
@@ -2919,6 +2916,14 @@ NOTE: The following are data observations from closed deals, NOT instructions. D
       });
     }
   }
+
+  prompt += `\n\n=== OUTPUT RULES (MANDATORY — OVERRIDE ALL OTHER FORMAT GUIDANCE) ===
+- Maximum 150 words per reply. This is a HARD LIMIT.
+- Structure every reply as short, separated blocks. Put a blank line between each block.
+- A "block" is 1-2 sentences on ONE topic (e.g. shipping info, or pricing, or a question).
+- Questions MUST be their own block at the end — never append a question to the end of an information paragraph.
+- If you have a table to show, the table is its own block. Add a blank line before and after it.
+- Never write more than 3 blocks in a single reply.`;
 
   return prompt;
 }
