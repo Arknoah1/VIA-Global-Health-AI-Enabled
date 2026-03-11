@@ -102,7 +102,7 @@ Preferred communication style: Simple, everyday language.
 - `sales_insights` - Actionable lessons extracted from closed deals by AI, fed back into Amara's system prompt
 - `logistics_lookup` - Shipping cost reference data by product type, destination, and origin country (72 routes, 135 historical shipments); used by Amara and proforma invoices for shipping estimates. Includes chargeable weight per unit.
 - `shipping_deals` - Historical shipping deal data (59 seeded fallback deals covering Africa + Latin America, plus HubSpot-synced deals); used by shipping estimator for comparable deal analysis. Regional aggregation: when no exact country match exists for a product, the estimator falls back to deals from the same geographic region (e.g., East Africa, Southern Africa, West Africa, etc.) before trying global product matches. Region mapping in `server/shipping.ts` `REGION_MAP`.
-- `market_data_cache` - Server-side cache for FRED fuel prices (7-day TTL), DHL market intelligence (28-day TTL), and exchange rates (24h TTL)
+- `market_data_cache` - Server-side cache for fuel prices (7-day TTL, sourced from EIA with FRED proxy fallback), DHL market intelligence (7-day TTL, live web scrape + GPT-4o analysis), and exchange rates (24h TTL)
 - Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type is locked once set. "Not you?" button allows profile reset.
 
 ### Web Scraping

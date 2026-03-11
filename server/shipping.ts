@@ -173,6 +173,50 @@ function findSimilarDeals(
   return { baseEstimate: null, confidence: "Low", source: "No comparable deals found", comparables: [] };
 }
 
+async function scrapeEiaFuelPrices(): Promise<{ date: string; value: number }[]> {
+  const EIA_URL = "https://www.eia.gov/dnav/pet/hist/eer_epjk_pf4_rgc_dpgD.htm";
+  const resp = await fetch(EIA_URL, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; VIAGlobalHealth/1.0)" },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!resp.ok) throw new Error(`EIA HTTP ${resp.status}`);
+  const html = await resp.text();
+
+  const observations: { date: string; value: number }[] = [];
+  const months: Record<string, string> = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+
+  const text = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+  const rowPattern = /(\d{4})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\s*(\d{1,2})\s+to\s+\w{3}-\s*\d{1,2}/g;
+  let match;
+  while ((match = rowPattern.exec(text)) !== null) {
+    const year = match[1];
+    const mon = months[match[2]] || "01";
+    const startDay = match[3].padStart(2, "0");
+    const dateStr = `${year}-${mon}-${startDay}`;
+    const after = text.slice(match.index + match[0].length, match.index + match[0].length + 100);
+    const prices = [...after.matchAll(/([\d]+\.[\d]+)/g)].map(m => parseFloat(m[1])).filter(v => v > 0 && v < 10);
+    if (prices.length > 0) {
+      observations.push({ date: dateStr, value: prices[prices.length - 1] });
+    }
+  }
+
+  return observations;
+}
+
+async function fetchFredViaProxy(): Promise<{ date: string; value: number }[]> {
+  const start = new Date();
+  start.setFullYear(start.getFullYear() - 1);
+  const resp = await fetch(`${FRED_PROXY}/v0/observations?series_id=${FRED_SERIES}&observation_start=${start.toISOString().split("T")[0]}&limit=60`, {
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!resp.ok) throw new Error(`FRED HTTP ${resp.status}`);
+  const json = await resp.json();
+  const raw = Array.isArray(json) ? json : (json.observations || []);
+  return raw
+    .filter((o: any) => o.value !== "." && !isNaN(+o.value))
+    .map((o: any) => ({ date: o.date, value: +o.value }));
+}
+
 export async function fetchFredFuelPrice(): Promise<{ price: number | null; date: string | null; history: { date: string; value: number }[] }> {
   const cached = await storage.getMarketDataCache("fred_fuel");
   if (cached) {
@@ -180,27 +224,34 @@ export async function fetchFredFuelPrice(): Promise<{ price: number | null; date
     return { price: data.price, date: data.date, history: data.history || [] };
   }
 
-  try {
-    const start = new Date();
-    start.setFullYear(start.getFullYear() - 1);
-    const resp = await fetch(`${FRED_PROXY}/v0/observations?series_id=${FRED_SERIES}&observation_start=${start.toISOString().split("T")[0]}&limit=60`);
-    if (!resp.ok) throw new Error(`FRED HTTP ${resp.status}`);
-    const json = await resp.json();
-    const raw = Array.isArray(json) ? json : (json.observations || []);
-    const obs = raw
-      .filter((o: any) => o.value !== "." && !isNaN(+o.value))
-      .map((o: any) => ({ date: o.date, value: +o.value }));
-    if (!obs.length) throw new Error("No FRED observations");
-    obs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  let obs: { date: string; value: number }[] = [];
 
-    const result = { price: obs[0].value, date: obs[0].date, history: obs.slice(0, 52).reverse() };
-    await storage.setMarketDataCache("fred_fuel", result, 7);
-    log(`FRED fuel price cached: $${result.price}/gal (${result.date})`);
-    return result;
+  try {
+    obs = await fetchFredViaProxy();
+    log(`FRED proxy returned ${obs.length} observations`);
   } catch (e: any) {
-    log(`FRED fetch failed: ${e.message}`);
+    log(`FRED proxy failed: ${e.message}, trying EIA scrape...`);
+  }
+
+  if (!obs.length) {
+    try {
+      obs = await scrapeEiaFuelPrices();
+      log(`EIA scrape returned ${obs.length} observations`);
+    } catch (e: any) {
+      log(`EIA scrape failed: ${e.message}`);
+    }
+  }
+
+  if (!obs.length) {
+    log("All fuel data sources failed");
     return { price: null, date: null, history: [] };
   }
+
+  obs.sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : 0));
+  const result = { price: obs[0].value, date: obs[0].date, history: obs.slice(0, 52).reverse() };
+  await storage.setMarketDataCache("fred_fuel", result, 7);
+  log(`Fuel price cached: $${result.price}/gal (${result.date})`);
+  return result;
 }
 
 async function scrapeDhlPage(): Promise<string> {
