@@ -319,7 +319,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
         },
         language
       };
-      if (contactInfo) messageBody.contactData = contactInfo;
+      if (contactInfo) messageBody.contactData = { ...contactInfo, orderQuantity: parseInt(quantity) || 1 };
+      else messageBody.contactData = { orderQuantity: parseInt(quantity) || 1 };
       const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -376,7 +377,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: combinedMessage,
-          contactData: { firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country },
+          contactData: { firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, orderQuantity: parseInt(quantity) || 1 },
           productDetails: {
             name: product.name, description: product.description, category: product.category,
             specifications: product.specifications, faqs: product.faqs,

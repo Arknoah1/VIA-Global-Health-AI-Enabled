@@ -1915,6 +1915,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         if (contactData.lastName && !quoteRequest.lastName) contactUpdates.lastName = contactData.lastName;
         if (contactData.email && !quoteRequest.email) contactUpdates.email = contactData.email;
         if (contactData.shippingCountry) contactUpdates.shippingCountry = contactData.shippingCountry;
+        if (contactData.orderQuantity) contactUpdates.orderQuantity = String(contactData.orderQuantity);
         if (Object.keys(contactUpdates).length > 0) {
           await storage.updateQuoteRequest(id, contactUpdates);
         }
@@ -2013,7 +2014,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       const currentDest = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
       const hasProduct = quoteRequest.productId;
       const existingEstimate = quoteRequest.shippingEstimate as any;
-      const currentQty = parseInt(quoteRequest.orderQuantity || "1") || 1;
+      const currentQty = parseInt(contactData?.orderQuantity || quoteRequest.orderQuantity || "1") || 1;
 
       const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
         Promise.race([promise, new Promise<null>(resolve => setTimeout(() => resolve(null), ms))]);
@@ -2159,6 +2160,25 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       }
 
       await storage.updateQuoteRequest(id, updates as any);
+
+      // Post-response: if AI extracted a different quantity, regenerate estimate for next turn
+      const aiExtractedQty = parseInt(flags.orderQuantity || "") || 0;
+      const updatedEstimate = (await storage.getQuoteRequestById(id))?.shippingEstimate as any;
+      const updatedDest = flags.shippingCountry || contactData?.shippingCountry || quoteRequest.shippingCountry;
+      const needsRegen = aiExtractedQty > 0 && quoteRequest.productId && updatedDest &&
+        (!updatedEstimate || Number(updatedEstimate.qty) !== aiExtractedQty);
+      if (needsRegen) {
+        (async () => {
+          try {
+            const { generateShippingEstimate } = await import("./shipping");
+            const regenEstimate = await generateShippingEstimate(quoteRequest.productId!, updatedDest, aiExtractedQty, "Air", "DAP");
+            await storage.updateQuoteRequest(id, { shippingEstimate: regenEstimate } as any);
+            console.log(`[shipping] Background regen: qty ${updatedEstimate.qty} → ${aiExtractedQty}, new mid=$${regenEstimate.costRange?.mid}`);
+          } catch (err) {
+            console.error("[shipping] Background regen failed:", err);
+          }
+        })();
+      }
 
       // Return the authoritative state from the updated quote request
       const isSpecialPricingEligible = flags.specialPricingEligible || quoteRequest.specialPricingEligible || false;
