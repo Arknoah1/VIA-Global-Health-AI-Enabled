@@ -46,10 +46,10 @@ export function getCurrencyForCountry(country: string): { code: string; symbol: 
 export function formatLocalCurrency(usdAmount: number, rate: number, currency: { code: string; symbol: string }): string {
   const localAmount = usdAmount * rate;
   if (localAmount >= 1000000) {
-    return `≈ ${currency.symbol}${(localAmount / 1000000).toFixed(1)}M ${currency.code}`;
+    return `≈ ${currency.symbol} ${(localAmount / 1000000).toFixed(1)}M`;
   }
   if (localAmount >= 1000) {
-    return `≈ ${currency.symbol}${Math.round(localAmount).toLocaleString()} ${currency.code}`;
+    return `≈ ${currency.symbol} ${Math.round(localAmount).toLocaleString()}`;
   }
-  return `≈ ${currency.symbol}${localAmount.toFixed(2)} ${currency.code}`;
+  return `≈ ${currency.symbol} ${localAmount.toFixed(2)}`;
 }
