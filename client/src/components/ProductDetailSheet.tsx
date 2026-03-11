@@ -239,16 +239,25 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   }, [isOpen]);
 
   const localCurrencyNote = useMemo(() => {
-    if (!shippingCountry || !exchangeRates) return null;
+    console.log('[currency-debug] memo running', { shippingCountry, hasRates: !!exchangeRates, quantity, tiersLen: pricingTiers.length });
+    if (!shippingCountry || !exchangeRates) {
+      console.log('[currency-debug] bail: no country or rates', { shippingCountry, hasRates: !!exchangeRates });
+      return null;
+    }
     const currency = getCurrencyForCountry(shippingCountry);
+    console.log('[currency-debug] currency lookup', { shippingCountry, currency });
     if (!currency || currency.code === "USD") return null;
     const rate = exchangeRates[currency.code];
+    console.log('[currency-debug] rate', { code: currency.code, rate });
     if (!rate) return null;
     const qty = parseInt(quantity) || 0;
     const unitPrice = qty > 0 ? getPriceForQuantity(qty) : null;
+    console.log('[currency-debug] pricing', { qty, unitPrice });
     if (!unitPrice || qty < 1) return null;
     const totalUsd = qty * unitPrice;
-    return formatLocalCurrency(totalUsd, rate, currency) + " at today's rate";
+    const result = formatLocalCurrency(totalUsd, rate, currency) + " at today's rate";
+    console.log('[currency-debug] result', result);
+    return result;
   }, [shippingCountry, exchangeRates, quantity, pricingTiers]);
 
   const handleSendMessage = async () => {
