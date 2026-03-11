@@ -239,25 +239,16 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   }, [isOpen]);
 
   const localCurrencyNote = useMemo(() => {
-    console.log('[currency-debug] memo running', { shippingCountry, hasRates: !!exchangeRates, quantity, tiersLen: pricingTiers.length });
-    if (!shippingCountry || !exchangeRates) {
-      console.log('[currency-debug] bail: no country or rates', { shippingCountry, hasRates: !!exchangeRates });
-      return null;
-    }
+    if (!shippingCountry || !exchangeRates) return null;
     const currency = getCurrencyForCountry(shippingCountry);
-    console.log('[currency-debug] currency lookup', { shippingCountry, currency });
     if (!currency || currency.code === "USD") return null;
     const rate = exchangeRates[currency.code];
-    console.log('[currency-debug] rate', { code: currency.code, rate });
     if (!rate) return null;
     const qty = parseInt(quantity) || 0;
     const unitPrice = qty > 0 ? getPriceForQuantity(qty) : null;
-    console.log('[currency-debug] pricing', { qty, unitPrice });
     if (!unitPrice || qty < 1) return null;
     const totalUsd = qty * unitPrice;
-    const result = formatLocalCurrency(totalUsd, rate, currency) + " at today's rate";
-    console.log('[currency-debug] result', result);
-    return result;
+    return formatLocalCurrency(totalUsd, rate, currency) + " at today's rate";
   }, [shippingCountry, exchangeRates, quantity, pricingTiers]);
 
   const handleSendMessage = async () => {
@@ -1205,11 +1196,6 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 </div>
               )}
 
-              <div className="px-4 pt-1" data-testid="chat-currency-debug">
-                <div className="bg-red-100 border border-red-300 rounded px-2 py-1 text-[10px] text-red-800 font-mono">
-                  DEBUG: country="{shippingCountry}" | rates={exchangeRates ? 'loaded' : 'null'} | qty="{quantity}" | tiers={pricingTiers.length} | note={localCurrencyNote || 'null'}
-                </div>
-              </div>
               {localCurrencyNote && (
                 <div className="px-4 pt-2" data-testid="chat-currency-note">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800 italic">
@@ -1236,7 +1222,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                         data-testid={`chat-message-${msg.role}-${idx}`}
                       >
                         {msg.role === 'assistant' ? (
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content.replace(/(?<!\n)\. (?=(Shipping to|Based on|To ensure|For \d|What type|Could you|Would you|May I|This estimate|Your estimated|Our team))/g, '.\n\n')}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content.replace(/\. (?=(Shipping to|Based on|To ensure|For \d|What type|Could you|Would you|May I|This estimate|Your estimated|Our team|We offer|As an? |Here'?s|Let me|Delivery to|When would))/g, '.\n\n')}</ReactMarkdown>
                         ) : (
                           msg.content
                         )}

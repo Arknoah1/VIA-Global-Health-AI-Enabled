@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { ChatContactForm } from "@/components/ChatContactForm";
+import { getCurrencyForCountry, formatLocalCurrency } from "@/lib/currency";
 
 interface ProductContentProps {
   product: Product;
@@ -91,6 +92,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const [priceText, setPriceText] = useState('');
   const [pricingTiers, setPricingTiers] = useState<Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>>([]);
   const [purchasingInfoOpen, setPurchasingInfoOpen] = useState(false);
+  const [shippingCountry, setShippingCountry] = useState<string>('');
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -155,6 +158,18 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       startQuoteSession();
     }
   }, [showQuoteDialog, product]);
+
+  useEffect(() => {
+    fetch("/api/exchange-rates")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setExchangeRates(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const profile = getCustomerProfile();
+    if (profile?.shippingCountry) setShippingCountry(profile.shippingCountry);
+  }, [showQuoteDialog]);
 
   useEffect(() => {
     setMessages([]);
@@ -248,6 +263,23 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     return pricingTiers[0].unitPriceCents / 100;
   };
 
+  const localCurrencyNote = useMemo(() => {
+    if (!shippingCountry || !exchangeRates) return null;
+    const currency = getCurrencyForCountry(shippingCountry);
+    if (!currency || currency.code === "USD") return null;
+    const rate = exchangeRates[currency.code];
+    if (!rate) return null;
+    const qty = parseInt(quantity) || 0;
+    const unitPrice = qty > 0 ? getPriceForQuantity(qty) : null;
+    if (!unitPrice || qty < 1) return null;
+    const totalUsd = qty * unitPrice;
+    return formatLocalCurrency(totalUsd, rate, currency) + " at today's rate";
+  }, [shippingCountry, exchangeRates, quantity, pricingTiers]);
+
+  const formatAiResponse = (content: string) => {
+    return content.replace(/\. (?=(Shipping to|Based on|To ensure|For \d|What type|Could you|Would you|May I|This estimate|Your estimated|Our team|We offer|As an? |Here'?s|Let me|Delivery to|When would))/g, '.\n\n');
+  };
+
   const handleQuantityConfirm = () => {
     const qty = parseInt(quantity);
     if (!qty || qty < 1) return;
@@ -255,6 +287,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     const hasCompleteProfile = !!(profile?.firstName && profile?.email && profile?.shippingCountry);
     if (hasCompleteProfile) {
       setContactFormSubmitted(true);
+      setShippingCountry(profile!.shippingCountry!);
       setChatStep('chat');
       const unitPrice = getPriceForQuantity(qty);
       const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
@@ -309,6 +342,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const handleStepContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
     if (!quoteRequestId || !product) return;
     setContactFormSubmitted(true);
+    setShippingCountry(data.country);
     setChatStep('chat');
     const qty = parseInt(quantity) || 1;
     const unitPrice = getPriceForQuantity(qty);
@@ -1283,6 +1317,13 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
           {/* Step 4: Chat */}
           {chatStep === 'chat' && (
             <>
+              {localCurrencyNote && (
+                <div className="px-4 pt-2" data-testid="chat-currency-note">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800 italic">
+                    {localCurrencyNote} — VIA invoices in USD
+                  </div>
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="chat-messages-container">
                 {messages.map((msg, idx) => (
                   <motion.div
@@ -1298,8 +1339,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                         : 'bg-muted rounded-bl-md'
                     }`}>
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        <div className="prose prose-sm max-w-none dark:prose-invert chat-markdown">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{formatAiResponse(msg.content)}</ReactMarkdown>
                         </div>
                       ) : (
                         <p>{msg.content}</p>
