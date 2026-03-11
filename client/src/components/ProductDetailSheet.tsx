@@ -1205,6 +1205,11 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                 </div>
               )}
 
+              <div className="px-4 pt-1" data-testid="chat-currency-debug">
+                <div className="bg-red-100 border border-red-300 rounded px-2 py-1 text-[10px] text-red-800 font-mono">
+                  DEBUG: country="{shippingCountry}" | rates={exchangeRates ? 'loaded' : 'null'} | qty="{quantity}" | tiers={pricingTiers.length} | note={localCurrencyNote || 'null'}
+                </div>
+              </div>
               {localCurrencyNote && (
                 <div className="px-4 pt-2" data-testid="chat-currency-note">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-800 italic">
