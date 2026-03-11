@@ -404,6 +404,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
   const handleStepContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
     if (!quoteRequestId || !product) return;
     setContactFormSubmitted(true);
+    setShippingCountry(data.country);
     setChatStep('chat');
     const qty = parseInt(quantity) || 1;
     const unitPrice = getPriceForQuantity(qty);
@@ -1221,7 +1222,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                         data-testid={`chat-message-${msg.role}-${idx}`}
                       >
                         {msg.role === 'assistant' ? (
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content.replace(/(?<!\n)\. (?=(Shipping to|Based on|To ensure|For \d|What type|Could you|Would you|May I|This estimate|Your estimated|Our team))/g, '.\n\n')}</ReactMarkdown>
                         ) : (
                           msg.content
                         )}
