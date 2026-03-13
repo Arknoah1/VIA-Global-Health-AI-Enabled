@@ -1,0 +1,62 @@
+Good news — country is already captured in Step 3, which makes recommendation #4 from my last list done. Here's the revised picture:
+
+---
+
+## What This Changes
+
+The 4-step flow now collects: **Product → Quantity → Name + Email + Country → (Step 4, unseen)**. That's a solid foundation. The one glaring gap remains **org type**, and this screen actually reveals *where* to fix it most elegantly.
+
+---
+
+## Revised Recommendations
+
+### 1. Add Org Type to Step 3 — It Belongs Right Here ✅ Easy Win
+
+Step 3 already has the right framing (*"so I can calculate shipping and finalise your quote"*). Org type directly affects the final price, so it belongs on the same screen. Add a simple segmented selector or dropdown between Email and Shipping Country:
+
+> **Organisation Type**
+> `[ NGO / Charity ] [ Government / Public Hospital ] [ Healthcare Provider ] [ Distributor ] [ Private Clinic ]`
+
+This single addition eliminates the most common conversation-killing loop in the dataset — and it fits naturally without making the form feel longer.
+
+---
+
+### 2. The Email Placeholder is Doing Conversion Work for You — Lean Into It
+
+The placeholder `jane@clinic.com` is a subtle but smart signal that this is a professional/institutional context. Consider extending that logic to the **org type field** with a placeholder like *"e.g. NGO, Government Hospital, Distributor"* — it pre-qualifies visitors and helps borderline cases self-select correctly before hitting Amara.
+
+---
+
+### 3. Step 2 Still Needs a Volume Nudge
+
+The bare quantity input remains unchanged — and for high-unit-cost products where freight can exceed product cost at low quantities, this is still a missed opportunity. A single line below the input field:
+
+> *"Most organisations order 5–10 units. Volume discounts applied automatically."*
+
+This sets a social norm anchor and nudges toward order sizes where the economics make sense.
+
+---
+
+### 4. Step 1 Pricing Framing Remains the Priority
+
+Leading with `$2,100.00 per unit` as a hard number still risks filtering out NGO and government buyers — your most eligible segment — before they even enter the funnel. This is now the **highest-impact change that hasn't been addressed** in the UI. Softening it to a range with a subsidy signal costs nothing and could meaningfully improve Step 1 → Step 2 dropoff.
+
+---
+
+### 5. Step 4 is the Unknown Variable
+
+We haven't seen Step 4 yet — but given the flow, it's likely either a confirmation screen or the chat opening. If it's a confirmation screen, that's where a **"your subsidised rate will be applied"** message could reinforce the value of completing the form. If the chat opens directly, Amara should greet them with a near-complete quote in turn one, not a question.
+
+---
+
+## Updated Priority Table
+
+| Priority | Change | Already Done? | Effort |
+|----------|--------|--------------|--------|
+| 1 | Add Org Type to Step 3 | ❌ | Very Low |
+| 2 | Reframe Step 1 pricing | ❌ | Very Low |
+| 3 | Volume nudge on Step 2 | ❌ | Very Low |
+| 4 | Add Country to form | ✅ Done | — |
+| 5 | Amara opens with full quote | Depends on Step 4 | Low |
+
+The form architecture is genuinely good — you're one field away from giving Amara everything she needs to open with a complete, personalised quote every single time.

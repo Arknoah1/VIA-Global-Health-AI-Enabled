@@ -1,0 +1,64 @@
+Seeing the actual UI flow changes the picture meaningfully. Here's my updated analysis:
+
+---
+
+## Updated Recommendations (with UI context)
+
+### 1. ✅ Add Org Type as Step 3 — the Form Already Has Room
+
+The 4-step flow is the perfect place to capture org type, and you have a step slot available right now. Based on the data, missing org type is the **single biggest cause of mid-conversation stalls**. Step 3 should be a simple segmented button or dropdown:
+
+> *"What type of organisation are you purchasing for?"*
+> `[ NGO ] [ Healthcare Provider ] [ Government ] [ Distributor ] [ Private Clinic ] [ Other ]`
+
+This completely eliminates the org-type interrogation loop that killed quotes #58, #60 and many others — before the conversation even starts.
+
+---
+
+### 2. 🔢 Step 2 Should Show a Volume Discount Nudge
+
+The quantity field is completely bare right now — just an empty input box. This is a missed opportunity. For products like the Pocket Colposcope at $2,100/unit, showing a simple tier hint directly below the field would both educate and upsell:
+
+> *"Order 5+ units and save. Volume pricing applied automatically."*
+
+This is especially important given the freight-sticker-shock problem: a customer entering "1" with no context will hit a freight cost that dwarfs their product cost. A nudge here could shift them to a more economical quantity *before* they see a discouraging quote.
+
+---
+
+### 3. 💰 Step 1 Should Not Lead with the Highest Price
+
+"Starting price: **$2,100.00 per unit**" is technically accurate but commercially counterproductive. For NGOs and government buyers — your core segment — the actual price will be significantly lower. Leading with the list price risks filtering out your most eligible buyers before they even click "Get a Quote."
+
+Consider replacing it with a range or a softer anchor:
+
+> *"Pricing from $X — subsidised rates available for NGOs, clinics & government facilities"*
+
+This sets expectation of value differentiation and signals to mission-aligned buyers that this is built for them.
+
+---
+
+### 4. 📬 Steps 3/4 Should Capture Country *Before* the Chat Opens
+
+Shipping country is the other variable Amara is constantly chasing mid-conversation. If it's collected in the pre-chat form (alongside org type), Amara can open the conversation with a fully-loaded, personalised quote in turn one — which is what the prompt architecture is designed to do, but rarely achieves in practice because the data isn't there yet.
+
+The 4-step form could efficiently cover: **(1) Product/Price → (2) Quantity → (3) Org Type + Country → (4) Contact Info** — giving Amara everything she needs before saying hello.
+
+---
+
+### 5. ⚡ "Get a Quote" CTA Should Feel More Immediate
+
+The Step 1 button says "Get a Quote ↓" which is solid, but the step label says "Product & pricing" — making it feel like an information screen rather than a conversion moment. Small copy tweak: rename it **"Your Quote"** and make the CTA **"Start My Quote →"**. This primes the customer that they're about to receive something personalised, not fill out a generic form.
+
+---
+
+**Revised priority order given the UI:**
+
+| Priority | Change | Effort | Impact |
+|----------|--------|--------|--------|
+| 1 | Add Org Type to Step 3 | Low (UI dropdown) | Very High |
+| 2 | Add Country to Step 3 | Low (UI field) | High |
+| 3 | Volume nudge on Step 2 | Low (copy) | Medium-High |
+| 4 | Reframe Step 1 pricing | Low (copy) | Medium |
+| 5 | CTA/label copy tweaks | Very Low | Low-Medium |
+
+The good news: all five changes are UI/copy level — no prompt architecture changes needed to capture the biggest gains.
