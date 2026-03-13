@@ -103,8 +103,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
 
   const chatProgress = useMemo(() => {
     if (chatStep === 'intro') return { step: 1, label: "Product & pricing", total: 4 };
-    if (chatStep === 'quantity') return { step: 2, label: "Order quantity", total: 4 };
-    if (chatStep === 'details') return { step: 3, label: "Your details", total: 4 };
+    if (chatStep === 'details') return { step: 2, label: "Your details", total: 4 };
+    if (chatStep === 'quantity') return { step: 3, label: "Order quantity", total: 4 };
     return { step: 4, label: "Finalising your quote", total: 4 };
   }, [chatStep]);
 
@@ -286,26 +286,36 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     return content.replace(/\. (?=(Shipping to|Based on|To ensure|For \d|What type|Could you|Would you|May I|This estimate|Your estimated|Our team|We offer|As an? |Here'?s|Let me|Delivery to|When would))/g, '.\n\n');
   };
 
+  const fetchOrgPricing = async (organizationType: string) => {
+    if (!quoteRequestId) return;
+    try {
+      const res = await fetch(`/api/quote-requests/${quoteRequestId}/pricing?organizationType=${encodeURIComponent(organizationType)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.pricingTiers) setPricingTiers(data.pricingTiers);
+      if (data.lowestTierPrice) setLowestTierPrice(data.lowestTierPrice);
+    } catch (e) {
+      console.error("Error fetching org-specific pricing:", e);
+    }
+  };
+
   const handleQuantityConfirm = () => {
     const qty = parseInt(quantity);
     if (!qty || qty < 1) return;
     const profile = getCustomerProfile();
-    const hasCompleteProfile = !!(profile?.firstName && profile?.email && profile?.shippingCountry && profile?.organizationType);
-    if (hasCompleteProfile) {
-      setContactFormSubmitted(true);
-      setShippingCountry(profile!.shippingCountry!);
-      setChatStep('chat');
-      const unitPrice = getPriceForQuantity(qty);
-      const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
-      const quantityMessage = `I'd like to order ${qty} units${priceInfo}`;
-      setMessages(prev => [...prev,
-        { role: 'user', content: quantityMessage },
-        { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${profile!.shippingCountry!}...` }
-      ]);
-      sendQuantityToAI(quantityMessage, { firstName: profile!.firstName!, lastName: profile!.lastName || '', email: profile!.email!, shippingCountry: profile!.shippingCountry!, organizationType: profile!.organizationType! });
-    } else {
+    if (!profile?.firstName || !profile?.email || !profile?.shippingCountry || !profile?.organizationType) {
       setChatStep('details');
+      return;
     }
+    setChatStep('chat');
+    const unitPrice = getPriceForQuantity(qty);
+    const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
+    const quantityMessage = `I'd like to order ${qty} units${priceInfo}`;
+    setMessages(prev => [...prev,
+      { role: 'user', content: quantityMessage },
+      { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${profile.shippingCountry}...` }
+    ]);
+    sendQuantityToAI(quantityMessage, { firstName: profile.firstName!, lastName: profile.lastName || '', email: profile.email!, shippingCountry: profile.shippingCountry!, organizationType: profile.organizationType! });
   };
 
   const sendQuantityToAI = async (quantityMessage: string, contactInfo?: { firstName: string; lastName: string; email: string; shippingCountry: string; organizationType?: string }) => {
@@ -363,58 +373,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     if (!quoteRequestId || !product) return;
     setContactFormSubmitted(true);
     setShippingCountry(data.country);
-    setChatStep('chat');
-    const qty = parseInt(quantity) || 1;
-    const unitPrice = getPriceForQuantity(qty);
-    const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
-    const combinedMessage = `I'd like to order ${qty} units${priceInfo}. My details: ${data.fullName}, ${data.email}, shipping to ${data.country}. Organisation type: ${data.organizationType}`;
-    setMessages(prev => [...prev,
-      { role: 'user', content: combinedMessage },
-      { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${data.country}...` }
-    ]);
-    setIsLoading(true);
-    const interimStart = Date.now();
-    try {
-      const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: combinedMessage,
-          contactData: { firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, orderQuantity: parseInt(quantity) || 1, organizationType: data.organizationType },
-          productDetails: {
-            name: product.name, description: product.description, category: product.category,
-            specifications: product.specifications, faqs: product.faqs,
-            unitsPerPack: product.unitsPerPack, packType: product.packType
-          },
-          language
-        })
-      });
-      if (!response.ok) throw new Error('Failed to send message');
-      const responseData = await response.json();
-      const elapsed = Date.now() - interimStart;
-      const minDisplay = 1500;
-      if (elapsed < minDisplay) await new Promise(r => setTimeout(r, minDisplay - elapsed));
-      setMessages(prev => {
-        const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
-        return [...withoutInterim, { role: 'assistant' as const, content: responseData.message }];
-      });
-      if (responseData.specialPricingEligible) setSpecialPricingEligible(true);
-      if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
-      const currentProfile = getCustomerProfile() || {};
-      saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, organizationType: data.organizationType });
-      if (responseData.referToAgent) {
-        setIsConversationComplete(true);
-        trackQuoteSubmitted(quoteRequestId, 1);
-      }
-    } catch (error) {
-      console.error('Error submitting step contact form:', error);
-      setMessages(prev => {
-        const withoutInterim = prev.filter(m => !m.content.startsWith('One moment while I pull up'));
-        return [...withoutInterim, { role: 'assistant' as const, content: "I'm having trouble connecting. You can type your message below to retry, or close and reopen the dialog." }];
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    const currentProfile = getCustomerProfile() || {};
+    saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, organizationType: data.organizationType });
+    await fetchOrgPricing(data.organizationType);
+    setChatStep('quantity');
   };
 
   const handleCloseQuoteDialog = () => {
@@ -1211,10 +1173,21 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   <p className="text-sm text-muted-foreground">Contact us for pricing details</p>
                 )}
                 <Button
-                  onClick={() => setChatStep('quantity')}
+                  onClick={() => {
+                    const profile = getCustomerProfile();
+                    const hasCompleteProfile = !!(profile?.firstName && profile?.email && profile?.shippingCountry && profile?.organizationType);
+                    if (hasCompleteProfile) {
+                      setContactFormSubmitted(true);
+                      setShippingCountry(profile!.shippingCountry!);
+                      fetchOrgPricing(profile!.organizationType!);
+                      setChatStep('quantity');
+                    } else {
+                      setChatStep('details');
+                    }
+                  }}
                   disabled={isLoading}
                   className="w-full max-w-xs h-11 text-sm font-semibold"
-                  data-testid="button-step-continue-to-quantity"
+                  data-testid="button-step-continue-to-details"
                 >
                   Get a Quote
                   <ChevronDown className="h-4 w-4 ml-1" />
@@ -1223,7 +1196,43 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
             </div>
           )}
 
-          {/* Step 2: Quantity */}
+          {/* Step 2: Details */}
+          {chatStep === 'details' && (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex-1 flex flex-col justify-center items-center space-y-4 px-2"
+              >
+                <div className="text-center mb-2">
+                  <h3 className="text-base font-semibold mb-1">Tell us about yourself</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Your organisation type determines your pricing tier.
+                  </p>
+                </div>
+                <div className="w-full flex justify-center">
+                  <ChatContactForm
+                    onSubmit={handleStepContactFormSubmit}
+                    isLoading={isLoading}
+                    defaultValues={{
+                      fullName: (() => {
+                        const p = getCustomerProfile();
+                        return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
+                      })(),
+                      email: getCustomerProfile()?.email || '',
+                      country: getCustomerProfile()?.shippingCountry || '',
+                      organizationType: getCustomerProfile()?.organizationType || ''
+                    }}
+                  />
+                </div>
+                <Button variant="outline" onClick={() => setChatStep('intro')} className="h-11 px-6" data-testid="button-step-back-to-intro">
+                  Back
+                </Button>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Step 3: Quantity */}
           {chatStep === 'quantity' && (
             <div className="flex-1 overflow-y-auto p-4 flex flex-col">
               <motion.div
@@ -1300,7 +1309,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   </div>
                 )}
                 <div className="flex gap-2 w-full max-w-xs">
-                  <Button variant="outline" onClick={() => setChatStep('intro')} className="h-11 px-4" data-testid="button-step-back-to-intro">
+                  <Button variant="outline" onClick={() => setChatStep('details')} className="h-11 px-4" data-testid="button-step-back-to-details">
                     Back
                   </Button>
                   <Button
@@ -1309,46 +1318,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     className="flex-1 h-11 text-sm font-semibold"
                     data-testid="button-step-confirm-quantity"
                   >
-                    Continue
+                    Get My Quote
                     <ChevronDown className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
-              </motion.div>
-            </div>
-          )}
-
-          {/* Step 3: Details */}
-          {chatStep === 'details' && (
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex-1 flex flex-col justify-center items-center space-y-4 px-2"
-              >
-                <div className="text-center mb-2">
-                  <h3 className="text-base font-semibold mb-1">Almost there!</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Fill in your details so I can calculate shipping and finalise your quote.
-                  </p>
-                </div>
-                <div className="w-full flex justify-center">
-                  <ChatContactForm
-                    onSubmit={handleStepContactFormSubmit}
-                    isLoading={isLoading}
-                    defaultValues={{
-                      fullName: (() => {
-                        const p = getCustomerProfile();
-                        return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
-                      })(),
-                      email: getCustomerProfile()?.email || '',
-                      country: getCustomerProfile()?.shippingCountry || '',
-                      organizationType: getCustomerProfile()?.organizationType || ''
-                    }}
-                  />
-                </div>
-                <Button variant="outline" onClick={() => setChatStep('quantity')} className="h-11 px-6" data-testid="button-step-back-to-quantity">
-                  Back
-                </Button>
               </motion.div>
             </div>
           )}

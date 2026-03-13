@@ -123,10 +123,10 @@ Preferred communication style: Simple, everyday language.
 - **Provider**: OpenAI API (via Replit AI integrations)
 - **Use Case**: Powers the conversational quote request flow, helping users specify their needs
 - **Amara Prompt Strategy**: Lane A Express by Default (Senior Sales Advisor persona)
-  - **Stepwise Quote Flow** (ProductDetailSheet): 4-step structured UI before AI chat. Step 1 shows "$X/unit" (single tier) or "From $X/unit" (multi tier) using best segment rate (NGO multiplier 1.0x) with subsidy subtitle. Step 2 includes always-visible volume nudge. Step 3 collects org type via dropdown (NGO, Government, Healthcare Provider, Distributor, Private Clinic, Other). All 4 data points (product, qty, country, org type) trigger immediate quote table via FAST-TRACK RULE. Server greeting is brief intro — no redundant data-collection questions.
+  - **Stepwise Quote Flow** (ProductDetailSheet): 4-step structured UI before AI chat. Step 1 shows "$X/unit" (single tier) or "From $X/unit" (multi tier) using best segment rate (NGO multiplier 1.0x) with subsidy subtitle. Step 2 collects org type via dropdown to determine pricing tier. Step 3 shows quantity input with org-specific pricing (real multiplier). All 4 data points (product, qty, country, org type) trigger immediate quote table via FAST-TRACK RULE.
     - Step 1 (Intro & Price): Product name, starting price from DB pricing tiers, "Get a Quote" button
-    - Step 2 (Quantity): Numeric quantity input with live tier-based pricing calculator, volume discount display
-    - Step 3 (Details): Contact form (name, email, shipping country) — skipped for returning customers with saved profile
+    - Step 2 (Details): Contact form (name, email, org type, shipping country) — skipped for returning customers with saved profile. Org type determines pricing multiplier.
+    - Step 3 (Quantity): Numeric quantity input with org-specific tier-based pricing (fetched via `GET /api/quote-requests/:id/pricing?organizationType=X`), volume discount display
     - Step 4 (Chat): Full AI conversation with Amara; quantity + contact data sent automatically as first message
   - Progress bar in dialog header reflects current step (1-4)
   - Chat text input hidden during steps 1-3; only visible in step 4
@@ -136,7 +136,7 @@ Preferred communication style: Simple, everyday language.
   - Regional Anchor: Provides shipping range across known destinations when specific country not mentioned
   - Organisation type framed as a "discount benefit" ("we offer subsidised rates for NGOs...")
   - Flow: Structured steps (price → quantity → contact+org type) → AI chat (shipping estimate → Combined Order Summary)
-  - Org type collected in Step 3 form (dropdown), persisted early to backend. If all 4 data points known, AI fast-tracks to quote table.
+  - Org type collected in Step 2 form (dropdown), persisted early to backend. Org type determines pricing multiplier for Step 3 quantity display. If all 4 data points known, AI fast-tracks to quote table.
   - 2-Strike Rule: If customer ignores org type question in chat, defaults to "Standard Healthcare Provider" pricing
   - Organisation type is permanently locked once provided (anti-gaming)
   - Red flag gatekeeper: Detects blocked email domains (16) and suspicious keywords (12), switches to Public Partner Mode

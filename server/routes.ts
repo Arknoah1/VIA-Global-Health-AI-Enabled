@@ -1904,6 +1904,52 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
     }
   });
 
+  app.get("/api/quote-requests/:id/pricing", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const organizationType = (req.query.organizationType as string) || "";
+      const quoteRequest = await storage.getQuoteRequestById(id);
+      if (!quoteRequest) {
+        return res.status(404).json({ error: "Quote request not found" });
+      }
+      const productId = quoteRequest.productId;
+      if (!productId) {
+        return res.json({ pricingTiers: [], lowestTierPrice: "" });
+      }
+      let multiplier = 1.25;
+      try {
+        const allSegments = await storage.getAllCustomerSegments();
+        const orgTypeLower = organizationType.toLowerCase();
+        const matchedSegment = allSegments.find(s => {
+          const segName = (s.name || "").toLowerCase();
+          return segName.includes(orgTypeLower) || orgTypeLower.includes(segName.replace(/_/g, " "));
+        });
+        if (matchedSegment) {
+          multiplier = Number(matchedSegment.pricingMultiplier) || 1.25;
+        } else if (orgTypeLower.includes("ngo") || orgTypeLower.includes("non-profit") || orgTypeLower.includes("government")) {
+          const ngoSegment = allSegments.find(s => Number(s.pricingMultiplier) === 1.0);
+          if (ngoSegment) multiplier = 1.0;
+        } else if (orgTypeLower.includes("healthcare") || orgTypeLower.includes("hospital") || orgTypeLower.includes("clinic")) {
+          multiplier = 1.05;
+        } else if (orgTypeLower.includes("distributor") || orgTypeLower.includes("reseller")) {
+          multiplier = 1.1;
+        }
+      } catch (e) {
+        console.error("Error fetching segments for pricing:", e);
+      }
+      const tiers = await storage.getProductPricingTiers(productId);
+      const pricingTiersData = tiers
+        .sort((a, b) => a.minQuantity - b.minQuantity)
+        .map(t => ({ minQuantity: t.minQuantity, maxQuantity: t.maxQuantity, unitPriceCents: Math.round(t.unitPriceCents * multiplier) }));
+      const minUnitPriceCents = tiers.length > 0 ? Math.min(...tiers.map(t => t.unitPriceCents)) : 0;
+      const lowestTierPrice = minUnitPriceCents > 0 ? `$${((minUnitPriceCents * multiplier) / 100).toFixed(2)}` : "";
+      res.json({ pricingTiers: pricingTiersData, lowestTierPrice, multiplier });
+    } catch (error) {
+      console.error("Error fetching org-specific pricing:", error);
+      res.status(500).json({ error: "Failed to fetch pricing" });
+    }
+  });
+
   // Handle AI-powered chat messages
   app.post("/api/quote-requests/:id/messages", async (req, res) => {
     try {
