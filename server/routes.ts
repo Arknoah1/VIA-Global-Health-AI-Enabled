@@ -1236,54 +1236,80 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       const DEFAULT_COST_PER_KG = 25.00;
 
       let shippingCents = 0;
-      if (quoteRequest.productName && quoteRequest.shippingCountry) {
+
+      const storedEstimate = quoteRequest.shippingEstimate as any;
+      if (storedEstimate?.costRange?.mid) {
+        shippingCents = Math.round(storedEstimate.costRange.mid * 100);
+        console.log(`[Invoice] Using Amara's shipping estimate: $${storedEstimate.costRange.mid.toLocaleString()} (range: $${storedEstimate.costRange.low}–$${storedEstimate.costRange.high}, dest: ${storedEstimate.destination}, qty: ${storedEstimate.qty})`);
+      } else if (quoteRequest.productName && quoteRequest.shippingCountry) {
         try {
-          const logisticsResults = await storage.getLogisticsForProduct(quoteRequest.productName);
-          const destLower = quoteRequest.shippingCountry.toLowerCase().trim();
-          const exactMatch = logisticsResults.find(
-            (l) => l.destinationCountry.toLowerCase().trim() === destLower
-          );
-          if (exactMatch) {
-            const shippingPerUnit = exactMatch.avgShippingPerUnit * 1.15;
-            shippingCents = Math.round(shippingPerUnit * quantity * 100);
-            console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (exact match: ${exactMatch.destinationCountry})`);
-          } else if (logisticsResults.length > 0) {
-            const region = getAfricanRegion(quoteRequest.shippingCountry);
-            let regionalMatches: typeof logisticsResults = [];
-            if (region) {
-              const regionCountries = getRegionCountries(region);
-              regionalMatches = logisticsResults.filter(
-                (l) => regionCountries.includes(l.destinationCountry.toLowerCase().trim())
+          if (quoteRequest.productId && quoteRequest.shippingCountry) {
+            try {
+              const { generateShippingEstimate } = await import("./shipping");
+              const liveEstimate = await generateShippingEstimate(
+                quoteRequest.productId,
+                quoteRequest.shippingCountry,
+                quantity,
+                "Air",
+                "DAP"
               );
+              if (liveEstimate?.costRange?.mid) {
+                shippingCents = Math.round(liveEstimate.costRange.mid * 100);
+                console.log(`[Invoice] Generated live shipping estimate: $${liveEstimate.costRange.mid.toLocaleString()} (range: $${liveEstimate.costRange.low}–$${liveEstimate.costRange.high})`);
+              }
+            } catch (liveErr) {
+              console.error("[Invoice] Live shipping estimate failed, falling back to logistics DB:", liveErr);
             }
-            if (regionalMatches.length > 0) {
-              const avgRegional = regionalMatches.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / regionalMatches.length;
-              const shippingPerUnit = avgRegional * 1.15;
+          }
+
+          if (shippingCents === 0) {
+            const logisticsResults = await storage.getLogisticsForProduct(quoteRequest.productName);
+            const destLower = quoteRequest.shippingCountry.toLowerCase().trim();
+            const exactMatch = logisticsResults.find(
+              (l) => l.destinationCountry.toLowerCase().trim() === destLower
+            );
+            if (exactMatch) {
+              const shippingPerUnit = exactMatch.avgShippingPerUnit * 1.15;
               shippingCents = Math.round(shippingPerUnit * quantity * 100);
-              console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (${region} avg across ${regionalMatches.length} routes)`);
+              console.log(`[Invoice] Shipping estimate (logistics DB): $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (exact match: ${exactMatch.destinationCountry})`);
+            } else if (logisticsResults.length > 0) {
+              const region = getAfricanRegion(quoteRequest.shippingCountry);
+              let regionalMatches: typeof logisticsResults = [];
+              if (region) {
+                const regionCountries = getRegionCountries(region);
+                regionalMatches = logisticsResults.filter(
+                  (l) => regionCountries.includes(l.destinationCountry.toLowerCase().trim())
+                );
+              }
+              if (regionalMatches.length > 0) {
+                const avgRegional = regionalMatches.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / regionalMatches.length;
+                const shippingPerUnit = avgRegional * 1.15;
+                shippingCents = Math.round(shippingPerUnit * quantity * 100);
+                console.log(`[Invoice] Shipping estimate (regional avg): $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (${region} avg across ${regionalMatches.length} routes)`);
+              } else {
+                const avgAll = logisticsResults.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / logisticsResults.length;
+                const shippingPerUnit = avgAll * 1.15;
+                shippingCents = Math.round(shippingPerUnit * quantity * 100);
+                console.log(`[Invoice] Shipping estimate (all-routes avg): $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (${logisticsResults.length} routes)`);
+              }
             } else {
-              const avgAll = logisticsResults.reduce((sum, l) => sum + l.avgShippingPerUnit, 0) / logisticsResults.length;
-              const shippingPerUnit = avgAll * 1.15;
-              shippingCents = Math.round(shippingPerUnit * quantity * 100);
-              console.log(`[Invoice] Shipping estimate: $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (all-routes avg across ${logisticsResults.length} routes, no region match)`);
-            }
-          } else {
-            let product = quoteRequest.productId ? await storage.getProductById(quoteRequest.productId) : undefined;
-            if (!product) {
-              const allProducts = await storage.getAllProducts();
-              product = allProducts.find(p => p.name.toLowerCase().includes(quoteRequest.productName!.toLowerCase()) || quoteRequest.productName!.toLowerCase().includes(p.name.toLowerCase()));
-            }
-            if (product?.shippingLengthCm && product.shippingLengthCm > 0 && product?.shippingWidthCm && product.shippingWidthCm > 0 && product?.shippingDepthCm && product.shippingDepthCm > 0) {
-              const volumetricKg = (product.shippingLengthCm * product.shippingWidthCm * product.shippingDepthCm) / 5000;
-              const actualKg = product.shippingWeightKg || 0;
-              const chargeableKg = Math.max(volumetricKg, actualKg);
-              const originKey = (product.pickupCountry || '').toLowerCase().trim();
-              const costPerKg = COST_PER_KG_BY_ORIGIN[originKey] || DEFAULT_COST_PER_KG;
-              const shippingPerUnit = chargeableKg * costPerKg * 1.15;
-              shippingCents = Math.round(shippingPerUnit * quantity * 100);
-              console.log(`[Invoice] Shipping estimate (volumetric fallback): ${chargeableKg.toFixed(1)}kg × $${costPerKg.toFixed(2)}/kg × 1.15 = $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (origin: ${product.pickupCountry})`);
-            } else {
-              console.log(`[Invoice] No logistics data or dimensions for product "${quoteRequest.productName}" — shipping set to $0`);
+              let product = quoteRequest.productId ? await storage.getProductById(quoteRequest.productId) : undefined;
+              if (!product) {
+                const allProducts = await storage.getAllProducts();
+                product = allProducts.find(p => p.name.toLowerCase().includes(quoteRequest.productName!.toLowerCase()) || quoteRequest.productName!.toLowerCase().includes(p.name.toLowerCase()));
+              }
+              if (product?.shippingLengthCm && product.shippingLengthCm > 0 && product?.shippingWidthCm && product.shippingWidthCm > 0 && product?.shippingDepthCm && product.shippingDepthCm > 0) {
+                const volumetricKg = (product.shippingLengthCm * product.shippingWidthCm * product.shippingDepthCm) / 5000;
+                const actualKg = product.shippingWeightKg || 0;
+                const chargeableKg = Math.max(volumetricKg, actualKg);
+                const originKey = (product.pickupCountry || '').toLowerCase().trim();
+                const costPerKg = COST_PER_KG_BY_ORIGIN[originKey] || DEFAULT_COST_PER_KG;
+                const shippingPerUnit = chargeableKg * costPerKg * 1.15;
+                shippingCents = Math.round(shippingPerUnit * quantity * 100);
+                console.log(`[Invoice] Shipping estimate (volumetric fallback): ${chargeableKg.toFixed(1)}kg × $${costPerKg.toFixed(2)}/kg × 1.15 = $${(shippingPerUnit).toFixed(2)}/unit × ${quantity} = $${(shippingCents / 100).toFixed(2)} (origin: ${product.pickupCountry})`);
+              } else {
+                console.log(`[Invoice] No logistics data or dimensions for product "${quoteRequest.productName}" — shipping set to $0`);
+              }
             }
           }
         } catch (err) {
