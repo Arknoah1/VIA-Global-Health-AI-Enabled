@@ -1225,9 +1225,6 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     }}
                   />
                 </div>
-                <Button variant="outline" onClick={() => setChatStep('intro')} className="h-11 px-6" data-testid="button-step-back-to-intro">
-                  Back
-                </Button>
               </motion.div>
             </div>
           )}
