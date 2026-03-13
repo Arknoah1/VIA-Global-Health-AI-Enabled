@@ -1305,20 +1305,15 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     </div>
                   </div>
                 )}
-                <div className="flex gap-2 w-full max-w-xs">
-                  <Button variant="outline" onClick={() => setChatStep('details')} className="h-11 px-4" data-testid="button-step-back-to-details">
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleQuantityConfirm}
-                    disabled={!quantity || parseInt(quantity) < 1}
-                    className="flex-1 h-11 text-sm font-semibold"
-                    data-testid="button-step-confirm-quantity"
-                  >
-                    Get My Quote
-                    <ChevronDown className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleQuantityConfirm}
+                  disabled={!quantity || parseInt(quantity) < 1}
+                  className="w-full max-w-xs h-11 text-sm font-semibold"
+                  data-testid="button-step-confirm-quantity"
+                >
+                  Get My Quote
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
               </motion.div>
             </div>
           )}
