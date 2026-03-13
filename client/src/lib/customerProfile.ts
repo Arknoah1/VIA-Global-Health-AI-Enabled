@@ -26,9 +26,6 @@ export function getCustomerProfile(): CustomerProfile | null {
 export function saveCustomerProfile(updates: Partial<CustomerProfile>): void {
   try {
     const existing = getCustomerProfile() || {};
-    if (existing.organizationType && updates.organizationType && updates.organizationType !== existing.organizationType) {
-      delete updates.organizationType;
-    }
     const merged: CustomerProfile = {
       ...existing,
       ...updates,

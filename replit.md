@@ -103,7 +103,7 @@ Preferred communication style: Simple, everyday language.
 - `logistics_lookup` - Shipping cost reference data by product type, destination, and origin country (72 routes, 135 historical shipments); used by Amara and proforma invoices for shipping estimates. Includes chargeable weight per unit.
 - `shipping_deals` - Historical shipping deal data (59 seeded fallback deals covering Africa + Latin America, plus HubSpot-synced deals); used by shipping estimator for comparable deal analysis. Regional aggregation: when no exact country match exists for a product, the estimator falls back to deals from the same geographic region (e.g., East Africa, Southern Africa, West Africa, etc.) before trying global product matches. Region mapping in `server/shipping.ts` `REGION_MAP`.
 - `market_data_cache` - Server-side cache for fuel prices (7-day TTL, sourced from EIA with FRED proxy fallback), DHL market intelligence (7-day TTL, live web scrape + GPT-4o analysis), and exchange rates (24h TTL)
-- Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type is locked once set. "Not you?" button allows profile reset.
+- Customer profile persistence via localStorage (`client/src/lib/customerProfile.ts`) - remembers name, email, org type, country, import capability between sessions. Org type can be updated when user resubmits the contact form. "Not you?" button allows profile reset.
 
 ### Web Scraping
 - **Tool**: Puppeteer with headless Chromium
@@ -123,7 +123,7 @@ Preferred communication style: Simple, everyday language.
 - **Provider**: OpenAI API (via Replit AI integrations)
 - **Use Case**: Powers the conversational quote request flow, helping users specify their needs
 - **Amara Prompt Strategy**: Lane A Express by Default (Senior Sales Advisor persona)
-  - **Stepwise Quote Flow** (ProductDetailSheet): 4-step structured UI before AI chat
+  - **Stepwise Quote Flow** (ProductDetailSheet): 4-step structured UI before AI chat. Step 1 shows "From $X/unit" using lowest-tier price with subsidy subtitle. Step 2 includes volume nudge. Step 3 collects org type via dropdown (NGO, Government, Healthcare Provider, Distributor, Private Clinic, Other). All 4 data points (product, qty, country, org type) trigger immediate quote table via FAST-TRACK RULE.
     - Step 1 (Intro & Price): Product name, starting price from DB pricing tiers, "Get a Quote" button
     - Step 2 (Quantity): Numeric quantity input with live tier-based pricing calculator, volume discount display
     - Step 3 (Details): Contact form (name, email, shipping country) — skipped for returning customers with saved profile
@@ -135,8 +135,9 @@ Preferred communication style: Simple, everyday language.
   - If customer asks detailed questions, Amara can slow to consultative pace while maintaining momentum
   - Regional Anchor: Provides shipping range across known destinations when specific country not mentioned
   - Organisation type framed as a "discount benefit" ("we offer subsidised rates for NGOs...")
-  - Flow: Structured steps (price → quantity → contact) → AI chat (shipping estimate → org type → Combined Order Summary)
-  - 2-Strike Rule: If customer ignores org type question twice, defaults to "Standard Healthcare Provider" pricing
+  - Flow: Structured steps (price → quantity → contact+org type) → AI chat (shipping estimate → Combined Order Summary)
+  - Org type collected in Step 3 form (dropdown), persisted early to backend. If all 4 data points known, AI fast-tracks to quote table.
+  - 2-Strike Rule: If customer ignores org type question in chat, defaults to "Standard Healthcare Provider" pricing
   - Organisation type is permanently locked once provided (anti-gaming)
   - Red flag gatekeeper: Detects blocked email domains (16) and suspicious keywords (12), switches to Public Partner Mode
   - Public Partner Mode: Shares specs but refuses pricing, uses "Soft Pivot" and "Directness" escalation

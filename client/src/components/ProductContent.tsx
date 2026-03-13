@@ -90,6 +90,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const [chatStep, setChatStep] = useState<'intro' | 'quantity' | 'details' | 'chat'>('intro');
   const [quantity, setQuantity] = useState<string>('');
   const [priceText, setPriceText] = useState('');
+  const [lowestTierPrice, setLowestTierPrice] = useState('');
   const [pricingTiers, setPricingTiers] = useState<Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>>([]);
   const [purchasingInfoOpen, setPurchasingInfoOpen] = useState(false);
   const [shippingCountry, setShippingCountry] = useState<string>('');
@@ -142,6 +143,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       setMessages([{ role: 'assistant', content: data.message }]);
       trackQuoteStarted(product.name);
       if (data.priceText) setPriceText(data.priceText);
+      if (data.lowestTierPrice) setLowestTierPrice(data.lowestTierPrice);
       if (data.pricingTiers) setPricingTiers(data.pricingTiers);
       setChatStep('intro');
     } catch (error) {
@@ -182,6 +184,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setChatStep('intro');
     setQuantity('');
     setPriceText('');
+    setLowestTierPrice('');
     setPricingTiers([]);
   }, [product?.id]);
 
@@ -287,7 +290,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     const qty = parseInt(quantity);
     if (!qty || qty < 1) return;
     const profile = getCustomerProfile();
-    const hasCompleteProfile = !!(profile?.firstName && profile?.email && profile?.shippingCountry);
+    const hasCompleteProfile = !!(profile?.firstName && profile?.email && profile?.shippingCountry && profile?.organizationType);
     if (hasCompleteProfile) {
       setContactFormSubmitted(true);
       setShippingCountry(profile!.shippingCountry!);
@@ -299,13 +302,13 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
         { role: 'user', content: quantityMessage },
         { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${profile!.shippingCountry!}...` }
       ]);
-      sendQuantityToAI(quantityMessage, { firstName: profile!.firstName!, lastName: profile!.lastName || '', email: profile!.email!, shippingCountry: profile!.shippingCountry! });
+      sendQuantityToAI(quantityMessage, { firstName: profile!.firstName!, lastName: profile!.lastName || '', email: profile!.email!, shippingCountry: profile!.shippingCountry!, organizationType: profile!.organizationType! });
     } else {
       setChatStep('details');
     }
   };
 
-  const sendQuantityToAI = async (quantityMessage: string, contactInfo?: { firstName: string; lastName: string; email: string; shippingCountry: string }) => {
+  const sendQuantityToAI = async (quantityMessage: string, contactInfo?: { firstName: string; lastName: string; email: string; shippingCountry: string; organizationType?: string }) => {
     if (!quoteRequestId || !product) return;
     setIsLoading(true);
     const interimStart = Date.now();
@@ -356,7 +359,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     }
   };
 
-  const handleStepContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string }) => {
+  const handleStepContactFormSubmit = async (data: { fullName: string; email: string; country: string; firstName: string; lastName: string; organizationType: string }) => {
     if (!quoteRequestId || !product) return;
     setContactFormSubmitted(true);
     setShippingCountry(data.country);
@@ -364,7 +367,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     const qty = parseInt(quantity) || 1;
     const unitPrice = getPriceForQuantity(qty);
     const priceInfo = unitPrice ? ` (${qty} units at $${unitPrice.toFixed(2)}/unit = $${(qty * unitPrice).toFixed(2)})` : ` (${qty} units)`;
-    const combinedMessage = `I'd like to order ${qty} units${priceInfo}. My details: ${data.fullName}, ${data.email}, shipping to ${data.country}`;
+    const combinedMessage = `I'd like to order ${qty} units${priceInfo}. My details: ${data.fullName}, ${data.email}, shipping to ${data.country}. Organisation type: ${data.organizationType}`;
     setMessages(prev => [...prev,
       { role: 'user', content: combinedMessage },
       { role: 'assistant', content: `One moment while I pull up the latest shipping rates for ${data.country}...` }
@@ -377,7 +380,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: combinedMessage,
-          contactData: { firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, orderQuantity: parseInt(quantity) || 1 },
+          contactData: { firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, orderQuantity: parseInt(quantity) || 1, organizationType: data.organizationType },
           productDetails: {
             name: product.name, description: product.description, category: product.category,
             specifications: product.specifications, faqs: product.faqs,
@@ -398,7 +401,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       if (responseData.specialPricingEligible) setSpecialPricingEligible(true);
       if (responseData.recommendedProducts?.length > 0) setRecommendedProducts(responseData.recommendedProducts);
       const currentProfile = getCustomerProfile() || {};
-      saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country });
+      saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, organizationType: data.organizationType });
       if (responseData.referToAgent) {
         setIsConversationComplete(true);
         trackQuoteSubmitted(quoteRequestId, 1);
@@ -430,6 +433,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setChatStep('intro');
     setQuantity('');
     setPriceText('');
+    setLowestTierPrice('');
     setPricingTiers([]);
     setContactFormSubmitted(false);
   };
@@ -1192,12 +1196,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 </div>
                 {priceText ? (
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 w-full max-w-xs" data-testid="step-price-display">
-                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Starting price</p>
-                    <p className="text-2xl font-bold text-primary">{priceText.split(' ')[0]}</p>
-                    <p className="text-xs text-muted-foreground">{priceText.split(' ').slice(1).join(' ')}</p>
-                    {pricingTiers.length > 1 && (
-                      <p className="text-xs text-primary/70 mt-1">Volume discounts available</p>
-                    )}
+                    <p className="text-2xl font-bold text-primary">From {lowestTierPrice || priceText.split(' ')[0]}/unit</p>
+                    <p className="text-xs text-muted-foreground mt-1">Subsidised rates available for NGOs, clinics & government facilities</p>
                   </div>
                 ) : isLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1248,6 +1248,11 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     data-testid="input-step-quantity"
                     autoFocus
                   />
+                  {pricingTiers.length > 1 && (
+                    <p className="text-xs text-muted-foreground text-center mt-2" data-testid="volume-nudge">
+                      Larger orders unlock lower per-unit pricing
+                    </p>
+                  )}
                 </div>
                 {quantity && parseInt(quantity) > 0 && pricingTiers.length > 0 && (
                   <motion.div
@@ -1333,7 +1338,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                         return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
                       })(),
                       email: getCustomerProfile()?.email || '',
-                      country: getCustomerProfile()?.shippingCountry || ''
+                      country: getCustomerProfile()?.shippingCountry || '',
+                      organizationType: getCustomerProfile()?.organizationType || ''
                     }}
                   />
                 </div>

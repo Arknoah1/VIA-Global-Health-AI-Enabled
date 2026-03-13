@@ -2,9 +2,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, User, Mail, MapPin } from "lucide-react";
+import { Send, User, Mail, MapPin, Building2 } from "lucide-react";
 import { countries } from "@/lib/countries";
 import { motion } from "framer-motion";
+
+const ORG_TYPES = [
+  { value: "ngo", label: "NGO / Charity" },
+  { value: "government", label: "Government / Public Hospital" },
+  { value: "healthcare_provider", label: "Healthcare Provider" },
+  { value: "distributor", label: "Distributor" },
+  { value: "private_clinic", label: "Private Clinic" },
+  { value: "other", label: "Other" },
+];
 
 interface ChatContactFormProps {
   onSubmit: (data: {
@@ -13,12 +22,14 @@ interface ChatContactFormProps {
     country: string;
     firstName: string;
     lastName: string;
+    organizationType: string;
   }) => void;
   isLoading?: boolean;
   defaultValues?: {
     fullName?: string;
     email?: string;
     country?: string;
+    organizationType?: string;
   };
 }
 
@@ -38,6 +49,7 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
   const [fullName, setFullName] = useState(defaultValues?.fullName || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
   const [country, setCountry] = useState(defaultValues?.country || "");
+  const [organizationType, setOrganizationType] = useState(defaultValues?.organizationType || "");
   const [countrySearch, setCountrySearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -66,6 +78,9 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       newErrors.email = "Please enter a valid email address";
     }
+    if (!organizationType) {
+      newErrors.organizationType = "Please select your organisation type";
+    }
     if (!country) {
       newErrors.country = "Please select your country";
     }
@@ -82,8 +97,10 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
     const lastName = nameParts.slice(1).join(" ");
     
     setSubmitted(true);
-    onSubmit({ fullName: fullName.trim(), email: email.trim(), country, firstName, lastName });
+    onSubmit({ fullName: fullName.trim(), email: email.trim(), country, firstName, lastName, organizationType });
   };
+
+  const orgLabel = ORG_TYPES.find(o => o.value === organizationType)?.label || organizationType;
 
   if (submitted) {
     return (
@@ -99,7 +116,7 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <span className="font-medium">{fullName} | {email} | {country}</span>
+          <span className="font-medium">{fullName} | {orgLabel} | {country}</span>
         </div>
       </motion.div>
     );
@@ -142,6 +159,24 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
             data-testid="input-contact-email"
           />
           {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
+        </div>
+        <div>
+          <Label htmlFor="chat-org-type" className="text-xs flex items-center gap-1.5 mb-1">
+            <Building2 className="h-3 w-3" /> Organisation Type
+          </Label>
+          <select
+            id="chat-org-type"
+            value={organizationType}
+            onChange={(e) => setOrganizationType(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            data-testid="select-contact-org-type"
+          >
+            <option value="">e.g. NGO, Government, Distributor</option>
+            {ORG_TYPES.map(org => (
+              <option key={org.value} value={org.value}>{org.label}</option>
+            ))}
+          </select>
+          {errors.organizationType && <p className="text-xs text-destructive mt-1">{errors.organizationType}</p>}
         </div>
         <div className="relative">
           <Label htmlFor="chat-country" className="text-xs flex items-center gap-1.5 mb-1">

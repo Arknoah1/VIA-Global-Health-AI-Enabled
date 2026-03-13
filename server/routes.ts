@@ -1770,8 +1770,8 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         console.error("Error fetching default segment:", e);
       }
 
-      // Fetch product pricing for Lane A Express greeting (apply default multiplier)
       let priceText = "";
+      let lowestTierPrice = "";
       if (productId) {
         try {
           const pricingTiers = await storage.getProductPricingTiers(productId);
@@ -1781,6 +1781,8 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
             const price = ((baseTier.unitPriceCents * defaultMultiplier) / 100).toFixed(2);
             const maxQtyLabel = baseTier.maxQuantity ? `${baseTier.minQuantity}-${baseTier.maxQuantity} units` : "per unit";
             priceText = `$${price} ${maxQtyLabel}`;
+            const minUnitPriceCents = Math.min(...pricingTiers.map(t => t.unitPriceCents));
+            lowestTierPrice = `$${((minUnitPriceCents * defaultMultiplier) / 100).toFixed(2)}`;
           }
         } catch (e) {
           console.error("Error fetching pricing for greeting:", e);
@@ -1884,6 +1886,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         quoteRequestId: quoteRequest.id,
         message: greeting,
         priceText,
+        lowestTierPrice,
         pricingTiers: pricingTiersData,
         productName: productName || null
       });
@@ -1916,6 +1919,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         if (contactData.email && !quoteRequest.email) contactUpdates.email = contactData.email;
         if (contactData.shippingCountry) contactUpdates.shippingCountry = contactData.shippingCountry;
         if (contactData.orderQuantity) contactUpdates.orderQuantity = String(contactData.orderQuantity);
+        if (contactData.organizationType) contactUpdates.organizationType = contactData.organizationType;
         if (Object.keys(contactUpdates).length > 0) {
           await storage.updateQuoteRequest(id, contactUpdates);
         }
@@ -2435,11 +2439,13 @@ function buildSystemPrompt(
 
 ${languageInstruction}
 
-CONTEXT: The customer has already seen the product price, entered a quantity, and submitted name/email/shipping country via the UI. Check CUSTOMER STATE below — do NOT re-ask for anything already known. When country is known, give the shipping estimate IMMEDIATELY in your first response.
+CONTEXT: The customer has already seen the product price, entered a quantity, and submitted name/email/shipping country/organisation type via the UI. Check CUSTOMER STATE below — do NOT re-ask for anything already known. When country is known, give the shipping estimate IMMEDIATELY in your first response.
+
+FAST-TRACK RULE: When ALL of product, quantity, country, AND org type are already in CUSTOMER STATE, your FIRST response MUST be the QUOTE TABLE with segment-adjusted pricing and shipping estimate. Do NOT ask any questions before presenting the table. Skip straight to the quote and close with proforma handoff.
 
 CONVERSATION FLOW:
 1. Country known → give shipping estimate from SHIPPING DATA below (e.g. "Shipping to Kenya is ~$X per unit based on recent freight data")
-2. Ask org type as a benefit: "We offer subsidised rates for NGOs, clinics, and government facilities — what type of organisation do you represent?"
+2. If org type not yet known → ask as a benefit: "We offer subsidised rates for NGOs, clinics, and government facilities — what type of organisation do you represent?"
 3. Org type known → recalculate price: BASE PRICE (cents) × segment multiplier ÷ 100. If lower than default, present as benefit: "As an NGO, your rate is $X.XX per unit"
 4. Present order summary table (see QUOTE TABLE below), then close with proforma handoff
 
