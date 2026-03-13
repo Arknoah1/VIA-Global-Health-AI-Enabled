@@ -1759,15 +1759,23 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       // Create initial quote request
       const quoteRequest = await storage.createQuoteRequest(initialData as any);
 
-      // Fetch default segment multiplier for initial pricing (before org type is known)
       let defaultMultiplier = 1.25;
+      let bestSegmentMultiplier = 1.0;
       try {
         const defaultSegment = await storage.getCustomerSegmentByName("default_segment");
         if (defaultSegment) {
           defaultMultiplier = Number(defaultSegment.pricingMultiplier) || 1.25;
         }
+        const allSegments = await storage.getAllCustomerSegments();
+        const eligibleMultipliers = allSegments
+          .filter(s => s.isEligibleForQuotes)
+          .map(s => Number(s.pricingMultiplier))
+          .filter(m => m > 0);
+        if (eligibleMultipliers.length > 0) {
+          bestSegmentMultiplier = Math.min(...eligibleMultipliers);
+        }
       } catch (e) {
-        console.error("Error fetching default segment:", e);
+        console.error("Error fetching segments:", e);
       }
 
       let priceText = "";
@@ -1782,7 +1790,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
             const maxQtyLabel = baseTier.maxQuantity ? `${baseTier.minQuantity}-${baseTier.maxQuantity} units` : "per unit";
             priceText = `$${price} ${maxQtyLabel}`;
             const minUnitPriceCents = Math.min(...pricingTiers.map(t => t.unitPriceCents));
-            lowestTierPrice = `$${((minUnitPriceCents * defaultMultiplier) / 100).toFixed(2)}`;
+            lowestTierPrice = `$${((minUnitPriceCents * bestSegmentMultiplier) / 100).toFixed(2)}`;
           }
         } catch (e) {
           console.error("Error fetching pricing for greeting:", e);
@@ -1793,34 +1801,34 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       let greeting: string;
       const greetings: Record<string, { returning: (name: string, product: string, price: string) => string; new: (product: string, price: string) => string; returningNoPrice: (name: string, product: string) => string; newNoPrice: (product: string) => string }> = {
         en: {
-          returning: (name, product, price) => `Welcome back, ${name}! The ${product} is priced at ${price}, with volume discounts available for larger orders. Shipping costs depend on your destination, but I'll calculate that for you shortly.\n\nHow many units are you looking to order? Please also fill in the contact form below so I can finalise your quote and calculate shipping to your country.`,
-          new: (product, price) => `Hello! I'm Amara from VIA Global Health. The ${product} is priced at ${price}, with volume discounts available for larger orders. Shipping costs depend on your destination, but I'll calculate that for you shortly.\n\nHow many units are you looking to order? Please also fill in the contact form below so I can finalise your quote and calculate shipping to your country.`,
-          returningNoPrice: (name, product) => `Welcome back, ${name}! Great to see you again. I see you're interested in the ${product} — a popular choice among our partners. Which country would you need this shipped to? I can pull up our latest freight estimates for you right away.`,
-          newNoPrice: (product) => `Hello! I'm Amara from VIA Global Health. The ${product} is trusted by healthcare providers across 40+ countries in Africa and Latin America. Which country would you need this shipped to? I can pull up our latest freight estimates and pricing for you right away.`
+          returning: (name, product, price) => `Welcome back, ${name}! I'm ready to put together your quote for the ${product}. Let me pull up the latest pricing and shipping rates for you.`,
+          new: (product, price) => `Hi! I'm Amara from VIA Global Health. I'm ready to help you with a quote for the ${product}. Let's get started.`,
+          returningNoPrice: (name, product) => `Welcome back, ${name}! Great to see you again. I'm ready to help with your ${product} quote.`,
+          newNoPrice: (product) => `Hi! I'm Amara from VIA Global Health. The ${product} is trusted by healthcare providers across 40+ countries. Let's get your quote started.`
         },
         fr: {
-          returning: (name, product, price) => `Bienvenue à nouveau, ${name} ! Le ${product} est au prix de ${price}, avec des remises sur volume pour les commandes plus importantes. Les frais d'expédition dépendent de votre destination, mais je les calculerai pour vous sous peu.\n\nCombien d'unités souhaitez-vous commander ? Veuillez également remplir le formulaire ci-dessous pour que je puisse finaliser votre devis et calculer l'expédition vers votre pays.`,
-          new: (product, price) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est au prix de ${price}, avec des remises sur volume pour les commandes plus importantes. Les frais d'expédition dépendent de votre destination, mais je les calculerai pour vous sous peu.\n\nCombien d'unités souhaitez-vous commander ? Veuillez également remplir le formulaire ci-dessous pour que je puisse finaliser votre devis et calculer l'expédition vers votre pays.`,
-          returningNoPrice: (name, product) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je vois que vous êtes intéressé(e) par le ${product} — un choix populaire parmi nos partenaires. Dans quel pays souhaitez-vous que cela soit expédié ?`,
-          newNoPrice: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est utilisé par des professionnels de santé dans plus de 40 pays en Afrique et en Amérique latine. Dans quel pays souhaitez-vous que cela soit expédié ?`
+          returning: (name, product, price) => `Bienvenue à nouveau, ${name} ! Je suis prête à préparer votre devis pour le ${product}. Je vais chercher les derniers tarifs et frais d'expédition.`,
+          new: (product, price) => `Bonjour ! Je suis Amara de VIA Global Health. Je suis prête à vous aider avec un devis pour le ${product}. Commençons.`,
+          returningNoPrice: (name, product) => `Bienvenue à nouveau, ${name} ! Ravie de vous revoir. Je suis prête à vous aider avec votre devis pour le ${product}.`,
+          newNoPrice: (product) => `Bonjour ! Je suis Amara de VIA Global Health. Le ${product} est utilisé par des professionnels de santé dans plus de 40 pays. Commençons votre devis.`
         },
         pt: {
-          returning: (name, product, price) => `Bem-vindo(a) de volta, ${name}! O ${product} tem o preço de ${price}, com descontos por volume para pedidos maiores. Os custos de envio dependem do seu destino, mas calcularei isso para você em breve.\n\nQuantas unidades você gostaria de pedir? Por favor, preencha também o formulário abaixo para que eu possa finalizar seu orçamento e calcular o frete para o seu país.`,
-          new: (product, price) => `Olá! Sou Amara da VIA Global Health. O ${product} tem o preço de ${price}, com descontos por volume para pedidos maiores. Os custos de envio dependem do seu destino, mas calcularei isso para você em breve.\n\nQuantas unidades você gostaria de pedir? Por favor, preencha também o formulário abaixo para que eu possa finalizar seu orçamento e calcular o frete para o seu país.`,
-          returningNoPrice: (name, product) => `Bem-vindo(a) de volta, ${name}! Vejo que está interessado(a) no ${product}. Para qual país você precisaria que isso fosse enviado?`,
-          newNoPrice: (product) => `Olá! Sou Amara da VIA Global Health. O ${product} é confiado por profissionais de saúde em mais de 40 países na África e na América Latina. Para qual país você precisaria que isso fosse enviado?`
+          returning: (name, product, price) => `Bem-vindo(a) de volta, ${name}! Estou pronta para preparar seu orçamento do ${product}. Vou buscar os preços e fretes mais recentes.`,
+          new: (product, price) => `Olá! Sou Amara da VIA Global Health. Estou pronta para ajudá-lo(a) com um orçamento do ${product}. Vamos começar.`,
+          returningNoPrice: (name, product) => `Bem-vindo(a) de volta, ${name}! Estou pronta para ajudar com seu orçamento do ${product}.`,
+          newNoPrice: (product) => `Olá! Sou Amara da VIA Global Health. O ${product} é confiado por profissionais de saúde em mais de 40 países. Vamos começar seu orçamento.`
         },
         sw: {
-          returning: (name, product, price) => `Karibu tena, ${name}! ${product} ina bei ya ${price}, na punguzo la bei kwa maagizo makubwa. Gharama za usafirishaji zinategemea mahali unapopeleka, lakini nitahesabu hilo kwako hivi karibuni.\n\nUnataka kuagiza vitengo vingapi? Tafadhali jaza fomu hapa chini ili niweze kukamilisha bei yako na kuhesabu usafirishaji hadi nchi yako.`,
-          new: (product, price) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} ina bei ya ${price}, na punguzo la bei kwa maagizo makubwa. Gharama za usafirishaji zinategemea mahali unapopeleka, lakini nitahesabu hilo kwako hivi karibuni.\n\nUnataka kuagiza vitengo vingapi? Tafadhali jaza fomu hapa chini ili niweze kukamilisha bei yako na kuhesabu usafirishaji hadi nchi yako.`,
-          returningNoPrice: (name, product) => `Karibu tena, ${name}! Naona una nia ya ${product}. Ni nchi ipi ungependa hii itumwe?`,
-          newNoPrice: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} inaaminika na watoa huduma za afya katika nchi zaidi ya 40 barani Afrika na Amerika ya Kusini. Ni nchi ipi ungependa hii itumwe?`
+          returning: (name, product, price) => `Karibu tena, ${name}! Niko tayari kuandaa bei yako ya ${product}. Nitakutafutia bei na gharama za usafirishaji za hivi karibuni.`,
+          new: (product, price) => `Habari! Mimi ni Amara kutoka VIA Global Health. Niko tayari kukusaidia na bei ya ${product}. Tuanze.`,
+          returningNoPrice: (name, product) => `Karibu tena, ${name}! Niko tayari kukusaidia na bei yako ya ${product}.`,
+          newNoPrice: (product) => `Habari! Mimi ni Amara kutoka VIA Global Health. ${product} inaaminika na watoa huduma za afya katika nchi zaidi ya 40. Tuanze bei yako.`
         },
         es: {
-          returning: (name, product, price) => `¡Bienvenido(a) de nuevo, ${name}! El ${product} tiene un precio de ${price}, con descuentos por volumen disponibles para pedidos más grandes. Los costos de envío dependen de su destino, pero los calcularé para usted en breve.\n\n¿Cuántas unidades desea ordenar? Por favor, complete también el formulario de contacto a continuación para que pueda finalizar su cotización y calcular el envío a su país.`,
-          new: (product, price) => `¡Hola! Soy Amara de VIA Global Health. El ${product} tiene un precio de ${price}, con descuentos por volumen disponibles para pedidos más grandes. Los costos de envío dependen de su destino, pero los calcularé para usted en breve.\n\n¿Cuántas unidades desea ordenar? Por favor, complete también el formulario de contacto a continuación para que pueda finalizar su cotización y calcular el envío a su país.`,
-          returningNoPrice: (name, product) => `¡Bienvenido(a) de nuevo, ${name}! Qué gusto verle otra vez. Veo que está interesado(a) en el ${product} — una opción muy popular entre nuestros socios. ¿A qué país necesitaría que se lo enviemos? Puedo buscar nuestras últimas estimaciones de flete de inmediato.`,
-          newNoPrice: (product) => `¡Hola! Soy Amara de VIA Global Health. El ${product} es de confianza para proveedores de salud en más de 40 países en África y América Latina. ¿A qué país necesitaría que se lo enviemos? Puedo buscar nuestras últimas estimaciones de flete y precios de inmediato.`
+          returning: (name, product, price) => `¡Bienvenido(a) de nuevo, ${name}! Estoy lista para preparar su cotización del ${product}. Voy a buscar los precios y costos de envío más recientes.`,
+          new: (product, price) => `¡Hola! Soy Amara de VIA Global Health. Estoy lista para ayudarle con una cotización del ${product}. Comencemos.`,
+          returningNoPrice: (name, product) => `¡Bienvenido(a) de nuevo, ${name}! Estoy lista para ayudarle con su cotización del ${product}.`,
+          newNoPrice: (product) => `¡Hola! Soy Amara de VIA Global Health. El ${product} es de confianza para proveedores de salud en más de 40 países. Comencemos su cotización.`
         }
       };
       const langGreetings = greetings[lang] || greetings.en;

@@ -123,7 +123,7 @@ Preferred communication style: Simple, everyday language.
 - **Provider**: OpenAI API (via Replit AI integrations)
 - **Use Case**: Powers the conversational quote request flow, helping users specify their needs
 - **Amara Prompt Strategy**: Lane A Express by Default (Senior Sales Advisor persona)
-  - **Stepwise Quote Flow** (ProductDetailSheet): 4-step structured UI before AI chat. Step 1 shows "From $X/unit" using lowest-tier price with subsidy subtitle. Step 2 includes volume nudge. Step 3 collects org type via dropdown (NGO, Government, Healthcare Provider, Distributor, Private Clinic, Other). All 4 data points (product, qty, country, org type) trigger immediate quote table via FAST-TRACK RULE.
+  - **Stepwise Quote Flow** (ProductDetailSheet): 4-step structured UI before AI chat. Step 1 shows "$X/unit" (single tier) or "From $X/unit" (multi tier) using best segment rate (NGO multiplier 1.0x) with subsidy subtitle. Step 2 includes always-visible volume nudge. Step 3 collects org type via dropdown (NGO, Government, Healthcare Provider, Distributor, Private Clinic, Other). All 4 data points (product, qty, country, org type) trigger immediate quote table via FAST-TRACK RULE. Server greeting is brief intro — no redundant data-collection questions.
     - Step 1 (Intro & Price): Product name, starting price from DB pricing tiers, "Get a Quote" button
     - Step 2 (Quantity): Numeric quantity input with live tier-based pricing calculator, volume discount display
     - Step 3 (Details): Contact form (name, email, shipping country) — skipped for returning customers with saved profile
