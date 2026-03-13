@@ -2020,6 +2020,24 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
           countryCode: r.countryCode,
           restrictionReason: r.restrictionReason
         }));
+
+        const salesRestrictions = productDetails ? (await storage.getProductById(quoteRequest.productId))?.salesRestrictions as { cantShipTo?: string[]; cantSellTo?: string[] } | null : null;
+        if (salesRestrictions) {
+          const existingNames = new Set(restrictedCountries.map(r => r.countryName.toLowerCase()));
+          const addFromList = (list: string[], reason: string) => {
+            for (const entry of list) {
+              const countries = entry.includes(",") ? entry.split(",").map(c => c.trim()) : [entry.trim()];
+              for (const country of countries) {
+                if (country && !existingNames.has(country.toLowerCase())) {
+                  existingNames.add(country.toLowerCase());
+                  restrictedCountries.push({ countryName: country, countryCode: "", restrictionReason: reason });
+                }
+              }
+            }
+          };
+          if (salesRestrictions.cantShipTo?.length) addFromList(salesRestrictions.cantShipTo, "Shipping restriction");
+          if (salesRestrictions.cantSellTo?.length) addFromList(salesRestrictions.cantSellTo, "Sales restriction");
+        }
       }
 
       // Get customer segments for eligibility and pricing rules
@@ -2072,6 +2090,33 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       const hasProduct = quoteRequest.productId;
       const existingEstimate = quoteRequest.shippingEstimate as any;
       const currentQty = parseInt(contactData?.orderQuantity || quoteRequest.orderQuantity || "1") || 1;
+
+      if (currentDest && restrictedCountries.length > 0) {
+        const destLower = currentDest.toLowerCase();
+        const matchedRestriction = restrictedCountries.find(r =>
+          r.countryName.toLowerCase() === destLower ||
+          r.countryCode.toLowerCase() === destLower
+        );
+        if (matchedRestriction) {
+          const productName = productDetails?.name || quoteRequest.productName || "this product";
+          const blockMessage = customerLanguage === "fr"
+            ? `Je suis désolée, mais nous ne pouvons pas expédier le ${productName} vers ${matchedRestriction.countryName} en raison de : ${matchedRestriction.restrictionReason}. Veuillez contacter info@viaglobalhealth.com pour discuter d'options alternatives.`
+            : customerLanguage === "es"
+            ? `Lo siento, pero no podemos enviar el ${productName} a ${matchedRestriction.countryName} debido a: ${matchedRestriction.restrictionReason}. Por favor contacte a info@viaglobalhealth.com para discutir opciones alternativas.`
+            : customerLanguage === "pt"
+            ? `Lamento, mas não podemos enviar o ${productName} para ${matchedRestriction.countryName} devido a: ${matchedRestriction.restrictionReason}. Entre em contato com info@viaglobalhealth.com para discutir opções alternativas.`
+            : customerLanguage === "sw"
+            ? `Samahani, hatuwezi kutuma ${productName} kwenda ${matchedRestriction.countryName} kwa sababu ya: ${matchedRestriction.restrictionReason}. Tafadhali wasiliana na info@viaglobalhealth.com kujadili chaguo mbadala.`
+            : `I'm sorry, but we're unable to ship the ${productName} to ${matchedRestriction.countryName} due to ${matchedRestriction.restrictionReason.toLowerCase()}. This restriction is set by the manufacturer's distribution agreement for this region.\n\nPlease contact us at **info@viaglobalhealth.com** if you'd like to discuss alternative options or explore other products we can ship to ${matchedRestriction.countryName}.`;
+          await storage.createQuoteRequestMessage({
+            quoteRequestId: id,
+            role: "assistant",
+            content: blockMessage,
+            messageType: "restriction_block"
+          });
+          return res.json({ message: blockMessage, restrictedCountry: true });
+        }
+      }
 
       const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
         Promise.race([promise, new Promise<null>(resolve => setTimeout(() => resolve(null), ms))]);
@@ -2596,10 +2641,16 @@ CUSTOMER STATE:`;
   }
 
   if (restrictedCountries.length > 0) {
-    prompt += `\n\nRESTRICTED (cannot ship):`;
+    prompt += `\n\nRESTRICTED COUNTRIES — HARD BLOCK (you MUST refuse to quote if shipping country matches):`;
     restrictedCountries.forEach(r => {
-      prompt += `\n- ${r.countryName}: ${r.restrictionReason}`;
+      prompt += `\n- ${r.countryName} (${r.countryCode}): ${r.restrictionReason}`;
     });
+    prompt += `\nIf the customer's shipping country is in this list, you MUST:`;
+    prompt += `\n1. STOP immediately — do NOT calculate or show any pricing, shipping estimate, or quote table`;
+    prompt += `\n2. Apologise and explain: "Unfortunately, we are unable to ship the [product] to [country] due to [reason]."`;
+    prompt += `\n3. Suggest they contact info@viaglobalhealth.com for alternative options or to discuss their needs`;
+    prompt += `\n4. If they have other products or a different destination, offer to help with those instead`;
+    prompt += `\nThis rule overrides the FAST-TRACK RULE. Never generate a quote for a restricted country.`;
   }
 
   const destCountry = existingState.shippingCountry;
