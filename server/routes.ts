@@ -1993,14 +1993,13 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         relevantLogistics = await storage.getLogisticsLookup();
       }
 
-      // Build system prompt with existing customer state
       const existingState = {
-        firstName: quoteRequest.firstName,
-        lastName: quoteRequest.lastName,
-        email: quoteRequest.email,
-        organizationType: quoteRequest.organizationType,
+        firstName: contactData?.firstName || quoteRequest.firstName,
+        lastName: contactData?.lastName || quoteRequest.lastName,
+        email: contactData?.email || quoteRequest.email,
+        organizationType: contactData?.organizationType || quoteRequest.organizationType,
         organizationName: quoteRequest.organizationName,
-        shippingCountry: quoteRequest.shippingCountry,
+        shippingCountry: contactData?.shippingCountry || quoteRequest.shippingCountry,
         importCapability: quoteRequest.importAssistance,
       };
       const customerLanguage = language || "en";

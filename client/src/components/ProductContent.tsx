@@ -1198,6 +1198,9 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 w-full max-w-xs" data-testid="step-price-display">
                     <p className="text-2xl font-bold text-primary">From {lowestTierPrice || priceText.split(' ')[0]}/unit</p>
                     <p className="text-xs text-muted-foreground mt-1">Subsidised rates available for NGOs, clinics & government facilities</p>
+                    {pricingTiers.length > 1 && (
+                      <p className="text-xs text-primary/70 mt-1">Volume discounts available</p>
+                    )}
                   </div>
                 ) : isLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
