@@ -63,7 +63,6 @@ function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-        <Route path="/" component={HomePage} />
         <Route path="/catalog" component={PublicCatalog} />
         <Route path="/products/:slug" component={ProductPage} />
         <Route path="/about" component={AboutPage} />
@@ -71,9 +70,6 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/return-policy" component={ReturnPolicyPage} />
-        <Route path="/admin">
-          <AdminGuard><Dashboard /></AdminGuard>
-        </Route>
         <Route path="/admin/quote-requests">
           <AdminGuard><QuoteRequestsPage /></AdminGuard>
         </Route>
@@ -86,6 +82,10 @@ function Router() {
         <Route path="/admin/shipping">
           <AdminGuard><ShippingEstimatorPage /></AdminGuard>
         </Route>
+        <Route path="/admin">
+          <AdminGuard><Dashboard /></AdminGuard>
+        </Route>
+        <Route path="/" component={HomePage} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
