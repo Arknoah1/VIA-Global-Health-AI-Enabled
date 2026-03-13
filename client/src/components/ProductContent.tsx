@@ -1253,7 +1253,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   />
                   {pricingTiers.length > 1 && (
                     <p className="text-xs text-muted-foreground text-center mt-2" data-testid="volume-nudge">
-                      Larger orders unlock lower per-unit pricing
+                      Most buyers order 50-500+ units — volume discounts applied automatically
                     </p>
                   )}
                 </div>
