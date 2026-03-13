@@ -59,6 +59,26 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminDashboardPage() {
+  return <AdminGuard><Dashboard /></AdminGuard>;
+}
+
+function AdminQuoteRequestsPageWrapped() {
+  return <AdminGuard><QuoteRequestsPage /></AdminGuard>;
+}
+
+function AdminPricingPageWrapped() {
+  return <AdminGuard><ProductPricingPage /></AdminGuard>;
+}
+
+function AdminTrainingPageWrapped() {
+  return <AdminGuard><TrainingTranscriptsPage /></AdminGuard>;
+}
+
+function AdminShippingPageWrapped() {
+  return <AdminGuard><ShippingEstimatorPage /></AdminGuard>;
+}
+
 function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -70,21 +90,11 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/contact" component={ContactPage} />
         <Route path="/return-policy" component={ReturnPolicyPage} />
-        <Route path="/admin/quote-requests">
-          <AdminGuard><QuoteRequestsPage /></AdminGuard>
-        </Route>
-        <Route path="/admin/pricing">
-          <AdminGuard><ProductPricingPage /></AdminGuard>
-        </Route>
-        <Route path="/admin/training">
-          <AdminGuard><TrainingTranscriptsPage /></AdminGuard>
-        </Route>
-        <Route path="/admin/shipping">
-          <AdminGuard><ShippingEstimatorPage /></AdminGuard>
-        </Route>
-        <Route path="/admin">
-          <AdminGuard><Dashboard /></AdminGuard>
-        </Route>
+        <Route path="/admin/quote-requests" component={AdminQuoteRequestsPageWrapped} />
+        <Route path="/admin/pricing" component={AdminPricingPageWrapped} />
+        <Route path="/admin/training" component={AdminTrainingPageWrapped} />
+        <Route path="/admin/shipping" component={AdminShippingPageWrapped} />
+        <Route path="/admin" component={AdminDashboardPage} />
         <Route path="/" component={HomePage} />
         <Route component={NotFound} />
       </Switch>
