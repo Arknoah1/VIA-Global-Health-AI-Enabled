@@ -26,6 +26,17 @@ function detectBrowserLanguage(): Language {
   return "en";
 }
 
+function detectUtmLanguage(): Language | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const campaign = (params.get("utm_campaign") || "").toLowerCase();
+    if (campaign.includes("spanish") || campaign.includes("espanol") || campaign.includes("español")) {
+      return "es";
+    }
+  } catch {}
+  return null;
+}
+
 function getInitialLanguage(): Language {
   try {
     const stored = localStorage.getItem("via-language");
@@ -33,6 +44,8 @@ function getInitialLanguage(): Language {
       return stored;
     }
   } catch {}
+  const utm = detectUtmLanguage();
+  if (utm) return utm;
   return detectBrowserLanguage();
 }
 

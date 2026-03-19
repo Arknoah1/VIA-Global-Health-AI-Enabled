@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Send, User, Mail, MapPin, Loader2 } from "lucide-react";
 import { countries } from "@/lib/countries";
 import { motion } from "framer-motion";
+import { useTranslation } from "@/i18n/LanguageProvider";
 
 interface ChatContactFormProps {
   onSubmit: (data: {
@@ -37,6 +38,7 @@ const priorityCountries = [
 ];
 
 export function ChatContactForm({ onSubmit, isLoading, organizationType, defaultValues }: ChatContactFormProps) {
+  const { t } = useTranslation();
   const [fullName, setFullName] = useState(defaultValues?.fullName || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
   const [country, setCountry] = useState(defaultValues?.country || "");
@@ -92,17 +94,17 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
     const newErrors: Record<string, string> = {};
     const trimmedName = fullName.trim();
     if (!trimmedName) {
-      newErrors.fullName = "Please enter your full name";
+      newErrors.fullName = t("quote.chat.errorFullName");
     } else if (!trimmedName.includes(" ")) {
-      newErrors.fullName = "Please enter both first and last name";
+      newErrors.fullName = t("quote.chat.errorFullNameLastname");
     }
     if (!email.trim()) {
-      newErrors.email = "Please enter your email";
+      newErrors.email = t("quote.chat.errorEmail");
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = t("quote.chat.errorEmailInvalid");
     }
     if (!country) {
-      newErrors.country = "Please select your shipping country";
+      newErrors.country = t("quote.chat.errorCountry");
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -148,13 +150,13 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <Label htmlFor="chat-fullname" className="text-sm flex items-center gap-1.5 mb-1.5 font-medium">
-            <User className="h-3.5 w-3.5 text-muted-foreground" /> Full Name
+            <User className="h-3.5 w-3.5 text-muted-foreground" /> {t("quote.chat.fullName")}
           </Label>
           <Input
             id="chat-fullname"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="e.g. Jane Doe"
+            placeholder={t("quote.chat.fullNamePlaceholder")}
             className="h-12 text-base"
             data-testid="input-contact-fullname"
             autoComplete="name"
@@ -164,14 +166,14 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
 
         <div>
           <Label htmlFor="chat-email" className="text-sm flex items-center gap-1.5 mb-1.5 font-medium">
-            <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Email Address
+            <Mail className="h-3.5 w-3.5 text-muted-foreground" /> {t("quote.chat.emailAddress")}
           </Label>
           <Input
             id="chat-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="e.g. jane@clinic.com"
+            placeholder={t("quote.chat.emailPlaceholder")}
             className="h-12 text-base"
             data-testid="input-contact-email"
             autoComplete="email"
@@ -181,7 +183,7 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
 
         <div className="relative">
           <Label htmlFor="chat-country" className="text-sm flex items-center gap-1.5 mb-1.5 font-medium">
-            <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Shipping Country
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> {t("quote.chat.shippingCountry")}
             {geoLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
           </Label>
           <div className="relative">
@@ -194,7 +196,7 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
                 setShowDropdown(true);
               }}
               onFocus={() => setShowDropdown(true)}
-              placeholder="Search or select country..."
+              placeholder={t("quote.chat.countryPlaceholder")}
               className="h-12 text-base"
               data-testid="input-contact-country"
               autoComplete="off"
@@ -222,7 +224,7 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
                   );
                 })}
                 {filteredCountries.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">No countries found</p>
+                  <p className="px-3 py-2 text-xs text-muted-foreground">{t("quote.chat.noCountriesFound")}</p>
                 )}
               </div>
             )}
@@ -237,7 +239,7 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
           data-testid="button-submit-contact-form"
         >
           <Send className="h-4 w-4 mr-2" />
-          Get My Quote →
+          {t("quote.chat.getMyQuote")}
         </Button>
       </form>
     </motion.div>

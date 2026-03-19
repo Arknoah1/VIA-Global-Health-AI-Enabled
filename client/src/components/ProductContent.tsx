@@ -1162,9 +1162,9 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 {priceText ? (
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 w-full max-w-xs" data-testid="step-price-display">
                     <p className="text-2xl font-bold text-primary">{pricingTiers.length > 1 ? 'From ' : ''}{lowestTierPrice || priceText.split(' ')[0]}/unit</p>
-                    <p className="text-xs text-muted-foreground mt-1">Subsidised rates available for NGOs, clinics & government facilities</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t("quote.chat.subsidyText")}</p>
                     {pricingTiers.length > 1 && (
-                      <p className="text-xs text-primary/70 mt-1">Volume discounts available</p>
+                      <p className="text-xs text-primary/70 mt-1">{t("quote.chat.volumeDiscount")}</p>
                     )}
                   </div>
                 ) : isLoading ? (
@@ -1173,7 +1173,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     Loading pricing...
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Contact us for pricing details</p>
+                  <p className="text-sm text-muted-foreground">{t("quote.chat.contactForPricing")}</p>
                 )}
                 <Button
                   onClick={() => {
@@ -1194,7 +1194,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   className="w-full max-w-xs h-11 text-sm font-semibold"
                   data-testid="button-step-continue-to-details"
                 >
-                  Get a Quote
+                  {t("quote.chat.getQuote")}
                   <ChevronDown className="h-4 w-4 ml-1" />
                 </Button>
               </motion.div>
@@ -1210,15 +1210,15 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 className="flex-1 flex flex-col justify-center space-y-3 px-2 max-w-sm mx-auto w-full"
               >
                 <div className="text-center mb-1">
-                  <h3 className="text-lg font-bold mb-1">What type of organisation are you?</h3>
+                  <h3 className="text-lg font-bold mb-1">{t("quote.chat.orgTypeQuestion")}</h3>
                 </div>
                 <div className="flex flex-col gap-2.5 w-full">
                   {[
-                    { value: "NGO / Non-Profit", label: "NGO / Non-Profit", icon: "🌍" },
-                    { value: "Government / Public Sector", label: "Government / Public Sector", icon: "🏛️" },
-                    { value: "Healthcare Provider", label: "Healthcare Provider", icon: "🏥" },
-                    { value: "Distributor", label: "Distributor", icon: "📦" },
-                    { value: "Private Clinic", label: "Private Clinic", icon: "🩺" },
+                    { value: "NGO / Non-Profit", labelKey: "quote.chat.orgNgo", icon: "🌍" },
+                    { value: "Government / Public Sector", labelKey: "quote.chat.orgGovt", icon: "🏛️" },
+                    { value: "Healthcare Provider", labelKey: "quote.chat.orgHealthcare", icon: "🏥" },
+                    { value: "Distributor", labelKey: "quote.chat.orgDistributor", icon: "📦" },
+                    { value: "Private Clinic", labelKey: "quote.chat.orgPrivate", icon: "🩺" },
                   ].map((org) => (
                     <button
                       key={org.value}
@@ -1235,12 +1235,12 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                       data-testid={`button-org-type-${org.value.toLowerCase().replace(/[^a-z]+/g, '-')}`}
                     >
                       <span className="text-xl leading-none">{org.icon}</span>
-                      <span>{org.label}</span>
+                      <span>{t(org.labelKey)}</span>
                     </button>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground text-center pt-1">
-                  Your organisation type determines your pricing tier
+                  {t("quote.chat.orgTypeSubtext")}
                 </p>
               </motion.div>
             </div>
@@ -1255,9 +1255,9 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 className="flex-1 flex flex-col justify-center space-y-4 px-2 max-w-sm mx-auto w-full"
               >
                 <div className="text-center mb-1">
-                  <h3 className="text-lg font-bold mb-1">Almost there!</h3>
+                  <h3 className="text-lg font-bold mb-1">{t("quote.chat.almostThere")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Just a few details to finalise your quote.
+                    {t("quote.chat.almostThereSubtext")}
                   </p>
                 </div>
                 <ChatContactForm
@@ -1286,10 +1286,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 className="flex-1 flex flex-col justify-center items-center space-y-4 px-2"
               >
                 <div>
-                  <h3 className="text-base font-semibold text-center mb-1">How many units do you need?</h3>
+                  <h3 className="text-base font-semibold text-center mb-1">{t("quote.chat.quantityQuestion")}</h3>
                   {product.unitsPerPack && product.packType && (
                     <p className="text-xs text-muted-foreground text-center">
-                      Sold in {product.packType}s of {product.unitsPerPack} units
+                      {t("quote.chat.soldInPacks", { packType: product.packType, unitsPerPack: product.unitsPerPack })}
                     </p>
                   )}
                 </div>
@@ -1307,8 +1307,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   />
                   <p className="text-xs text-muted-foreground text-center mt-2" data-testid="volume-nudge">
                     {pricingTiers.length > 1
-                      ? 'Most buyers order 50-500+ units — volume discounts applied automatically'
-                      : 'Contact us for volume pricing on larger orders'}
+                      ? t("quote.chat.volumeNudge")
+                      : t("quote.chat.volumeNudgeAlt")}
                   </p>
                 </div>
                 {quantity && parseInt(quantity) > 0 && pricingTiers.length > 0 && (
@@ -1324,9 +1324,9 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                       if (!unitPrice) return null;
                       return (
                         <>
-                          <p className="text-xs text-muted-foreground">Estimated total</p>
+                          <p className="text-xs text-muted-foreground">{t("quote.chat.estimatedTotal")}</p>
                           <p className="text-xl font-bold text-foreground">${(qty * unitPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                          <p className="text-xs text-muted-foreground">${unitPrice.toFixed(2)} per unit x {qty} units</p>
+                          <p className="text-xs text-muted-foreground">${unitPrice.toFixed(2)} × {qty} units</p>
                         </>
                       );
                     })()}
@@ -1334,7 +1334,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 )}
                 {pricingTiers.length > 1 && (
                   <div className="w-full max-w-xs">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5 text-center">Volume pricing</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5 text-center">{t("quote.chat.volumePricing")}</p>
                     <div className="space-y-1">
                       {pricingTiers.map((tier, idx) => {
                         const qty = parseInt(quantity) || 0;
@@ -1359,7 +1359,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   className="w-full max-w-xs h-11 text-sm font-semibold"
                   data-testid="button-step-confirm-quantity"
                 >
-                  Get My Quote
+                  {t("quote.chat.confirmQuantity")}
                   <ChevronDown className="h-4 w-4 ml-1" />
                 </Button>
               </motion.div>
