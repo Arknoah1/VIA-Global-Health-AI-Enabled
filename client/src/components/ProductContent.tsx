@@ -26,6 +26,8 @@ import {
   trackQuoteFormStep3View,
   trackQuoteFormStep3FieldStart,
   trackQuoteFormAbandoned,
+  captureUtmParams,
+  initRemarketingTracking,
 } from "@/lib/analytics";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -97,6 +99,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const [expandedFaqIndex, setExpandedFaqIndex] = useState<number | null>(null);
   const [desktopCtaVisible, setDesktopCtaVisible] = useState(true);
   const desktopCtaRef = useRef<HTMLDivElement>(null);
+  const [mobileStickyVisible, setMobileStickyVisible] = useState(false);
+  const [stickyBasePrice, setStickyBasePrice] = useState<string>('');
   const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
   const [chatStep, setChatStep] = useState<'intro' | 'org_type' | 'details' | 'quantity' | 'chat'>('intro');
   const [selectedOrgType, setSelectedOrgType] = useState('');
@@ -229,6 +233,31 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const SCROLL_THRESHOLD = 280;
+    const onScroll = () => setMobileStickyVisible(window.scrollY > SCROLL_THRESHOLD);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    captureUtmParams();
+    return initRemarketingTracking();
+  }, []);
+
+  useEffect(() => {
+    if (!product?.id) return;
+    fetch(`/api/products/${product.id}/pricing-tiers`)
+      .then(r => r.ok ? r.json() : [])
+      .then((tiers: Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>) => {
+        if (tiers.length > 0) {
+          const lowestCents = Math.min(...tiers.map(t => t.unitPriceCents));
+          setStickyBasePrice("$" + (lowestCents / 100).toFixed(2));
+        }
+      })
+      .catch(() => {});
+  }, [product?.id]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading || !product || isConversationComplete) return;
@@ -1093,20 +1122,20 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
         </div>
       </div>
 
-      {/* Mobile Sticky CTA */}
-      <div className="lg:hidden sticky bottom-0 z-30 p-3 bg-gradient-to-t from-background via-background to-background/80 backdrop-blur-sm border-t">
-        <Button
-          className="w-full h-12 text-sm font-semibold bg-teal-600 hover:bg-teal-700 shadow-lg hover:shadow-xl transition-all duration-300"
-          data-testid="button-request-quote-mobile"
-          onClick={() => { trackCtaClick("product_detail", product?.name); setShowQuoteDialog(true); }}
-        >
-          <Stethoscope className="mr-2 h-5 w-5" />
-          Check Bulk Pricing & Availability
-        </Button>
-        <p className="text-[11px] text-center text-muted-foreground mt-1">
-          Join 500+ global clinics sourcing through VIA. Response time &lt; 2 mins.
-        </p>
-      </div>
+      {/* Mobile Sticky CTA — appears after scrolling past page header */}
+      {mobileStickyVisible && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 p-3 bg-background/95 backdrop-blur-sm border-t shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+          <Button
+            className="w-full h-12 text-sm font-semibold bg-teal-600 hover:bg-teal-700 shadow-lg hover:shadow-xl transition-all duration-300"
+            data-testid="button-request-quote-mobile-sticky"
+            onClick={() => { trackCtaClick("sticky_bottom", product?.name); setShowQuoteDialog(true); }}
+          >
+            {stickyBasePrice
+              ? t("quote.sticky.cta", { price: stickyBasePrice })
+              : t("quote.chat.getQuote")}
+          </Button>
+        </div>
+      )}
 
       {/* Desktop Sticky CTA — appears when inline CTA scrolls out of view */}
       {!desktopCtaVisible && (

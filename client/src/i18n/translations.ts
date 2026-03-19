@@ -134,6 +134,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "productDetail.connectionError": "Unable to start chat. Please try again.",
 
     "quote.chat.getQuote": "Get a Quote",
+    "quote.sticky.cta": "From {price} · Get a Quote →",
+
     "quote.chat.subsidyText": "Subsidised rates available for NGOs, clinics & government facilities",
     "quote.chat.volumeDiscount": "Volume discounts available",
     "quote.chat.contactForPricing": "Contact us for pricing details",
@@ -1408,6 +1410,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "productDetail.connectionError": "No se pudo iniciar el chat. Por favor intenta de nuevo.",
 
     "quote.chat.getQuote": "Solicitar Cotización",
+    "quote.sticky.cta": "Precio desde {price} · Solicitar cotización →",
+
     "quote.chat.subsidyText": "Tarifas subsidiadas disponibles para ONGs, clínicas y entidades gubernamentales",
     "quote.chat.volumeDiscount": "Descuentos por volumen disponibles",
     "quote.chat.contactForPricing": "Contáctanos para detalles de precios",
