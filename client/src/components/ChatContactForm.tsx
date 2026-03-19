@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ interface ChatContactFormProps {
   }) => void;
   isLoading?: boolean;
   organizationType: string;
+  onFieldStart?: (fieldName: string) => void;
   defaultValues?: {
     fullName?: string;
     email?: string;
@@ -37,7 +38,7 @@ const priorityCountries = [
   "Trinidad and Tobago", "Nicaragua"
 ];
 
-export function ChatContactForm({ onSubmit, isLoading, organizationType, defaultValues }: ChatContactFormProps) {
+export function ChatContactForm({ onSubmit, isLoading, organizationType, onFieldStart, defaultValues }: ChatContactFormProps) {
   const { t } = useTranslation();
   const [fullName, setFullName] = useState(defaultValues?.fullName || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
@@ -47,6 +48,14 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [geoLoading, setGeoLoading] = useState(false);
+  const firedFields = useRef<Set<string>>(new Set());
+
+  const fireFieldStart = (fieldName: string) => {
+    if (!firedFields.current.has(fieldName)) {
+      firedFields.current.add(fieldName);
+      onFieldStart?.(fieldName);
+    }
+  };
 
   useEffect(() => {
     if (defaultValues?.country || country) return;
@@ -155,7 +164,8 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
           <Input
             id="chat-fullname"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e) => { fireFieldStart("full_name"); setFullName(e.target.value); }}
+            onFocus={() => fireFieldStart("full_name")}
             placeholder={t("quote.chat.fullNamePlaceholder")}
             className="h-12 text-base"
             data-testid="input-contact-fullname"
@@ -172,7 +182,8 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
             id="chat-email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { fireFieldStart("email"); setEmail(e.target.value); }}
+            onFocus={() => fireFieldStart("email")}
             placeholder={t("quote.chat.emailPlaceholder")}
             className="h-12 text-base"
             data-testid="input-contact-email"
@@ -191,11 +202,12 @@ export function ChatContactForm({ onSubmit, isLoading, organizationType, default
               id="chat-country"
               value={country || countrySearch}
               onChange={(e) => {
+                fireFieldStart("country");
                 setCountry("");
                 setCountrySearch(e.target.value);
                 setShowDropdown(true);
               }}
-              onFocus={() => setShowDropdown(true)}
+              onFocus={() => { fireFieldStart("country"); setShowDropdown(true); }}
               placeholder={t("quote.chat.countryPlaceholder")}
               className="h-12 text-base"
               data-testid="input-contact-country"

@@ -15,7 +15,18 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/browsingHistory";
 import { slugify } from "@/lib/slugify";
 import { getCustomerProfile, saveCustomerProfile, clearCustomerProfile } from "@/lib/customerProfile";
-import { trackCtaClick, trackQuoteStarted, trackQuoteSubmitted, trackChatMessage } from "@/lib/analytics";
+import {
+  trackCtaClick,
+  trackQuoteStarted,
+  trackQuoteSubmitted,
+  trackChatMessage,
+  trackQuoteFormStep1View,
+  trackQuoteFormStep2View,
+  trackQuoteFormStep2Complete,
+  trackQuoteFormStep3View,
+  trackQuoteFormStep3FieldStart,
+  trackQuoteFormAbandoned,
+} from "@/lib/analytics";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
@@ -172,6 +183,17 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     const profile = getCustomerProfile();
     if (profile?.shippingCountry) setShippingCountry(profile.shippingCountry);
   }, [showQuoteDialog]);
+
+  useEffect(() => {
+    if (!showQuoteDialog) return;
+    if (chatStep === 'intro') {
+      trackQuoteFormStep1View(product.name, product.sku || undefined, priceText || undefined);
+    } else if (chatStep === 'org_type') {
+      trackQuoteFormStep2View(product.name);
+    } else if (chatStep === 'details') {
+      trackQuoteFormStep3View(product.name, selectedOrgType);
+    }
+  }, [chatStep, showQuoteDialog]);
 
   useEffect(() => {
     setMessages([]);
@@ -381,7 +403,22 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setChatStep('quantity');
   };
 
+  const fireAbandonEvent = () => {
+    const stepMap: Record<string, 1 | 2 | 3 | null> = {
+      intro: 1,
+      org_type: 2,
+      details: 3,
+      quantity: null,
+      chat: null,
+    };
+    const stepNum = stepMap[chatStep];
+    if (stepNum !== null) {
+      trackQuoteFormAbandoned(product.name, stepNum, selectedOrgType || undefined);
+    }
+  };
+
   const handleCloseQuoteDialog = () => {
+    fireAbandonEvent();
     setShowQuoteDialog(false);
   };
 
@@ -1091,7 +1128,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       )}
 
       {/* AI Quote Assistant Dialog */}
-      <Dialog open={showQuoteDialog} onOpenChange={(open) => !open && setShowQuoteDialog(false)}>
+      <Dialog open={showQuoteDialog} onOpenChange={(open) => { if (!open) { fireAbandonEvent(); setShowQuoteDialog(false); } }}>
         <DialogContent className="w-[95vw] sm:max-w-lg h-[90vh] sm:h-[80vh] max-h-[800px] flex flex-col p-0 rounded-t-xl sm:rounded-xl">
           <DialogHeader className="p-3 sm:p-4 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
             <div className="flex items-center justify-between w-full">
@@ -1225,6 +1262,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                       type="button"
                       onClick={() => {
                         setSelectedOrgType(org.value);
+                        trackQuoteFormStep2Complete(product.name, org.value);
                         setChatStep('details');
                       }}
                       className={`w-full min-h-[52px] rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition-all duration-150 flex items-center gap-3
@@ -1264,6 +1302,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   onSubmit={handleStepContactFormSubmit}
                   isLoading={isLoading}
                   organizationType={selectedOrgType}
+                  onFieldStart={(fieldName) => trackQuoteFormStep3FieldStart(fieldName, product.name)}
                   defaultValues={{
                     fullName: (() => {
                       const p = getCustomerProfile();

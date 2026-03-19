@@ -56,3 +56,46 @@ export function trackCatalogView(searchTerm?: string, category?: string) {
     category: category || undefined,
   });
 }
+
+export function trackQuoteFormStep1View(productName: string, productSku?: string, priceShown?: string) {
+  trackEvent("quote_form_step1_view", {
+    product_name: productName,
+    product_sku: productSku || undefined,
+    price_shown: priceShown || undefined,
+  });
+}
+
+export function trackQuoteFormStep2View(productName: string) {
+  trackEvent("quote_form_step2_view", {
+    product_name: productName,
+  });
+}
+
+export function trackQuoteFormStep2Complete(productName: string, orgTypeSelected: string) {
+  trackEvent("quote_form_step2_complete", {
+    product_name: productName,
+    org_type_selected: orgTypeSelected,
+  });
+}
+
+export function trackQuoteFormStep3View(productName: string, orgType: string) {
+  trackEvent("quote_form_step3_view", {
+    product_name: productName,
+    org_type: orgType,
+  });
+}
+
+export function trackQuoteFormStep3FieldStart(fieldName: string, productName: string) {
+  trackEvent("quote_form_step3_field_start", {
+    field_name: fieldName,
+    product_name: productName,
+  });
+}
+
+export function trackQuoteFormAbandoned(productName: string, abandonedAtStep: 1 | 2 | 3, orgType?: string) {
+  trackEvent("quote_form_abandoned", {
+    product_name: productName,
+    abandoned_at_step: abandonedAtStep,
+    org_type: orgType || undefined,
+  });
+}
