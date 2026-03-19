@@ -87,7 +87,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const [desktopCtaVisible, setDesktopCtaVisible] = useState(true);
   const desktopCtaRef = useRef<HTMLDivElement>(null);
   const [contactFormSubmitted, setContactFormSubmitted] = useState(false);
-  const [chatStep, setChatStep] = useState<'intro' | 'quantity' | 'details' | 'chat'>('intro');
+  const [chatStep, setChatStep] = useState<'intro' | 'org_type' | 'details' | 'quantity' | 'chat'>('intro');
+  const [selectedOrgType, setSelectedOrgType] = useState('');
   const [quantity, setQuantity] = useState<string>('');
   const [priceText, setPriceText] = useState('');
   const [lowestTierPrice, setLowestTierPrice] = useState('');
@@ -103,8 +104,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
 
   const chatProgress = useMemo(() => {
     if (chatStep === 'intro') return { step: 1, label: "Product & pricing", total: 4 };
-    if (chatStep === 'details') return { step: 2, label: "Your details", total: 4 };
-    if (chatStep === 'quantity') return { step: 3, label: "Order quantity", total: 4 };
+    if (chatStep === 'org_type') return { step: 2, label: "Organisation type", total: 4 };
+    if (chatStep === 'details') return { step: 3, label: "Your details", total: 4 };
     return { step: 4, label: "Finalising your quote", total: 4 };
   }, [chatStep]);
 
@@ -141,7 +142,6 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       const data = await response.json();
       setQuoteRequestId(data.quoteRequestId);
       setMessages([{ role: 'assistant', content: data.message }]);
-      trackQuoteStarted(product.name);
       if (data.priceText) setPriceText(data.priceText);
       if (data.lowestTierPrice) setLowestTierPrice(data.lowestTierPrice);
       if (data.pricingTiers) setPricingTiers(data.pricingTiers);
@@ -186,6 +186,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setPriceText('');
     setLowestTierPrice('');
     setPricingTiers([]);
+    setSelectedOrgType('');
   }, [product?.id]);
 
   useEffect(() => {
@@ -375,6 +376,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setShippingCountry(data.country);
     const currentProfile = getCustomerProfile() || {};
     saveCustomerProfile({ ...currentProfile, firstName: data.firstName, lastName: data.lastName, email: data.email, shippingCountry: data.country, organizationType: data.organizationType });
+    trackQuoteSubmitted(quoteRequestId, 1);
     await fetchOrgPricing(data.organizationType);
     setChatStep('quantity');
   };
@@ -398,6 +400,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setLowestTierPrice('');
     setPricingTiers([]);
     setContactFormSubmitted(false);
+    setSelectedOrgType('');
   };
 
   const currentImage = product?.images && product.images.length > 0
@@ -1179,10 +1182,12 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     if (hasCompleteProfile) {
                       setContactFormSubmitted(true);
                       setShippingCountry(profile!.shippingCountry!);
+                      setSelectedOrgType(profile!.organizationType!);
                       fetchOrgPricing(profile!.organizationType!);
                       setChatStep('quantity');
                     } else {
-                      setChatStep('details');
+                      trackQuoteStarted(product.name);
+                      setChatStep('org_type');
                     }
                   }}
                   disabled={isLoading}
@@ -1196,35 +1201,78 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
             </div>
           )}
 
-          {/* Step 2: Details */}
+          {/* Step 2: Org Type (Screen A) */}
+          {chatStep === 'org_type' && (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex-1 flex flex-col justify-center space-y-3 px-2 max-w-sm mx-auto w-full"
+              >
+                <div className="text-center mb-1">
+                  <h3 className="text-lg font-bold mb-1">What type of organisation are you?</h3>
+                </div>
+                <div className="flex flex-col gap-2.5 w-full">
+                  {[
+                    { value: "NGO / Non-Profit", label: "NGO / Non-Profit", icon: "🌍" },
+                    { value: "Government / Public Sector", label: "Government / Public Sector", icon: "🏛️" },
+                    { value: "Healthcare Provider", label: "Healthcare Provider", icon: "🏥" },
+                    { value: "Distributor", label: "Distributor", icon: "📦" },
+                    { value: "Private Clinic", label: "Private Clinic", icon: "🩺" },
+                  ].map((org) => (
+                    <button
+                      key={org.value}
+                      type="button"
+                      onClick={() => {
+                        setSelectedOrgType(org.value);
+                        setChatStep('details');
+                      }}
+                      className={`w-full min-h-[52px] rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition-all duration-150 flex items-center gap-3
+                        ${selectedOrgType === org.value
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-card hover:border-primary/50 hover:bg-primary/5 text-foreground active:bg-primary/10'
+                        }`}
+                      data-testid={`button-org-type-${org.value.toLowerCase().replace(/[^a-z]+/g, '-')}`}
+                    >
+                      <span className="text-xl leading-none">{org.icon}</span>
+                      <span>{org.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground text-center pt-1">
+                  Your organisation type determines your pricing tier
+                </p>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Step 3: Contact Details (Screen B) */}
           {chatStep === 'details' && (
             <div className="flex-1 overflow-y-auto p-4 flex flex-col">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex-1 flex flex-col justify-center items-center space-y-4 px-2"
+                className="flex-1 flex flex-col justify-center space-y-4 px-2 max-w-sm mx-auto w-full"
               >
-                <div className="text-center mb-2">
-                  <h3 className="text-base font-semibold mb-1">Tell us about yourself</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Your organisation type determines your pricing tier.
+                <div className="text-center mb-1">
+                  <h3 className="text-lg font-bold mb-1">Almost there!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Just a few details to finalise your quote.
                   </p>
                 </div>
-                <div className="w-full flex justify-center">
-                  <ChatContactForm
-                    onSubmit={handleStepContactFormSubmit}
-                    isLoading={isLoading}
-                    defaultValues={{
-                      fullName: (() => {
-                        const p = getCustomerProfile();
-                        return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
-                      })(),
-                      email: getCustomerProfile()?.email || '',
-                      country: getCustomerProfile()?.shippingCountry || '',
-                      organizationType: getCustomerProfile()?.organizationType || ''
-                    }}
-                  />
-                </div>
+                <ChatContactForm
+                  onSubmit={handleStepContactFormSubmit}
+                  isLoading={isLoading}
+                  organizationType={selectedOrgType}
+                  defaultValues={{
+                    fullName: (() => {
+                      const p = getCustomerProfile();
+                      return p?.firstName ? `${p.firstName}${p.lastName ? ' ' + p.lastName : ''}` : '';
+                    })(),
+                    email: getCustomerProfile()?.email || '',
+                    country: getCustomerProfile()?.shippingCountry || '',
+                  }}
+                />
               </motion.div>
             </div>
           )}

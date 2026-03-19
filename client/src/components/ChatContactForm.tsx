@@ -1,19 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, User, Mail, MapPin, Building2 } from "lucide-react";
+import { Send, User, Mail, MapPin, Loader2 } from "lucide-react";
 import { countries } from "@/lib/countries";
 import { motion } from "framer-motion";
-
-const ORG_TYPES = [
-  { value: "ngo", label: "NGO / Charity" },
-  { value: "government", label: "Government / Public Hospital" },
-  { value: "healthcare_provider", label: "Healthcare Provider" },
-  { value: "distributor", label: "Distributor" },
-  { value: "private_clinic", label: "Private Clinic" },
-  { value: "other", label: "Other" },
-];
 
 interface ChatContactFormProps {
   onSubmit: (data: {
@@ -25,11 +16,11 @@ interface ChatContactFormProps {
     organizationType: string;
   }) => void;
   isLoading?: boolean;
+  organizationType: string;
   defaultValues?: {
     fullName?: string;
     email?: string;
     country?: string;
-    organizationType?: string;
   };
 }
 
@@ -45,15 +36,47 @@ const priorityCountries = [
   "Trinidad and Tobago", "Nicaragua"
 ];
 
-export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatContactFormProps) {
+export function ChatContactForm({ onSubmit, isLoading, organizationType, defaultValues }: ChatContactFormProps) {
   const [fullName, setFullName] = useState(defaultValues?.fullName || "");
   const [email, setEmail] = useState(defaultValues?.email || "");
   const [country, setCountry] = useState(defaultValues?.country || "");
-  const [organizationType, setOrganizationType] = useState(defaultValues?.organizationType || "");
   const [countrySearch, setCountrySearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  useEffect(() => {
+    if (defaultValues?.country || country) return;
+    setGeoLoading(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            const data = await res.json();
+            const countryName = data?.address?.country;
+            if (countryName) {
+              const match = countries.find(
+                (c) => c.name.toLowerCase() === countryName.toLowerCase()
+              );
+              if (match) setCountry(match.name);
+            }
+          } catch {
+          } finally {
+            setGeoLoading(false);
+          }
+        },
+        () => setGeoLoading(false),
+        { timeout: 5000 }
+      );
+    } else {
+      setGeoLoading(false);
+    }
+  }, []);
 
   const filteredCountries = countrySearch.trim()
     ? countries.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
@@ -78,11 +101,8 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       newErrors.email = "Please enter a valid email address";
     }
-    if (!organizationType) {
-      newErrors.organizationType = "Please select your organisation type";
-    }
     if (!country) {
-      newErrors.country = "Please select your country";
+      newErrors.country = "Please select your shipping country";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -91,16 +111,12 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate() || submitted) return;
-    
     const nameParts = fullName.trim().split(/\s+/);
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(" ");
-    
     setSubmitted(true);
     onSubmit({ fullName: fullName.trim(), email: email.trim(), country, firstName, lastName, organizationType });
   };
-
-  const orgLabel = ORG_TYPES.find(o => o.value === organizationType)?.label || organizationType;
 
   if (submitted) {
     return (
@@ -111,12 +127,12 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
         data-testid="contact-form-submitted"
       >
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
+          <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
             <svg className="h-3 w-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <span className="font-medium">{fullName} | {orgLabel} | {country}</span>
+          <span className="font-medium">{fullName} | {organizationType} | {country}</span>
         </div>
       </motion.div>
     );
@@ -126,28 +142,29 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card border rounded-xl p-4 shadow-sm max-w-[90%]"
+      className="w-full"
       data-testid="contact-form-inline"
     >
-      <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Your Details</p>
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <Label htmlFor="chat-fullname" className="text-xs flex items-center gap-1.5 mb-1">
-            <User className="h-3 w-3" /> Full Name
+          <Label htmlFor="chat-fullname" className="text-sm flex items-center gap-1.5 mb-1.5 font-medium">
+            <User className="h-3.5 w-3.5 text-muted-foreground" /> Full Name
           </Label>
           <Input
             id="chat-fullname"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="e.g. Jane Doe"
-            className="h-9 text-sm"
+            className="h-12 text-base"
             data-testid="input-contact-fullname"
+            autoComplete="name"
           />
           {errors.fullName && <p className="text-xs text-destructive mt-1">{errors.fullName}</p>}
         </div>
+
         <div>
-          <Label htmlFor="chat-email" className="text-xs flex items-center gap-1.5 mb-1">
-            <Mail className="h-3 w-3" /> Email Address
+          <Label htmlFor="chat-email" className="text-sm flex items-center gap-1.5 mb-1.5 font-medium">
+            <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Email Address
           </Label>
           <Input
             id="chat-email"
@@ -155,32 +172,17 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="e.g. jane@clinic.com"
-            className="h-9 text-sm"
+            className="h-12 text-base"
             data-testid="input-contact-email"
+            autoComplete="email"
           />
           {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
         </div>
-        <div>
-          <Label htmlFor="chat-org-type" className="text-xs flex items-center gap-1.5 mb-1">
-            <Building2 className="h-3 w-3" /> Organisation Type
-          </Label>
-          <select
-            id="chat-org-type"
-            value={organizationType}
-            onChange={(e) => setOrganizationType(e.target.value)}
-            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            data-testid="select-contact-org-type"
-          >
-            <option value="">e.g. NGO, Government, Distributor</option>
-            {ORG_TYPES.map(org => (
-              <option key={org.value} value={org.value}>{org.label}</option>
-            ))}
-          </select>
-          {errors.organizationType && <p className="text-xs text-destructive mt-1">{errors.organizationType}</p>}
-        </div>
+
         <div className="relative">
-          <Label htmlFor="chat-country" className="text-xs flex items-center gap-1.5 mb-1">
-            <MapPin className="h-3 w-3" /> Shipping Country
+          <Label htmlFor="chat-country" className="text-sm flex items-center gap-1.5 mb-1.5 font-medium">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Shipping Country
+            {geoLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-1" />}
           </Label>
           <div className="relative">
             <Input
@@ -193,12 +195,12 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
               }}
               onFocus={() => setShowDropdown(true)}
               placeholder="Search or select country..."
-              className="h-9 text-sm"
+              className="h-12 text-base"
               data-testid="input-contact-country"
               autoComplete="off"
             />
             {showDropdown && (
-              <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-40 overflow-y-auto">
+              <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-44 overflow-y-auto">
                 {filteredCountries.map((c, idx) => {
                   if (c.code === "divider") {
                     return <div key={`divider-${idx}`} className="border-t my-1" />;
@@ -207,7 +209,7 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
                     <button
                       key={c.code}
                       type="button"
-                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
                       onClick={() => {
                         setCountry(c.name);
                         setCountrySearch("");
@@ -227,15 +229,15 @@ export function ChatContactForm({ onSubmit, isLoading, defaultValues }: ChatCont
           </div>
           {errors.country && <p className="text-xs text-destructive mt-1">{errors.country}</p>}
         </div>
+
         <Button
           type="submit"
-          size="sm"
           disabled={isLoading}
-          className="w-full h-9 text-sm"
+          className="w-full h-12 text-base font-semibold mt-2"
           data-testid="button-submit-contact-form"
         >
-          <Send className="h-3.5 w-3.5 mr-2" />
-          Submit Details
+          <Send className="h-4 w-4 mr-2" />
+          Get My Quote →
         </Button>
       </form>
     </motion.div>
