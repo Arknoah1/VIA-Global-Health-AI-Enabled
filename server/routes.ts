@@ -184,6 +184,10 @@ export async function registerRoutes(
 ): Promise<Server> {
   registerImageOptimizer(app);
 
+  app.get("/thermocoagulator", (_req, res) => {
+    res.redirect(301, "/products/thermocoagulator");
+  });
+
   app.use((req, res, next) => {
     if (req.path.startsWith('/admin')) {
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');
