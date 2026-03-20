@@ -178,7 +178,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                     onClick={() => setSelectedImageIndex(-1)}
                     data-testid="product-thumbnail-main"
                   >
-                    <img src={product.imageUrl} alt="Main view" className="h-full w-full object-cover" />
+                    <img src={product.imageUrl} alt="Main view" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   </button>
                   {(product.images as string[]).map((img, idx) => (
                     <button 
@@ -187,7 +187,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                       onClick={() => setSelectedImageIndex(idx)}
                       data-testid={`product-thumbnail-${idx}`}
                     >
-                      <img src={img} alt={`Product view ${idx + 1}`} className="h-full w-full object-cover" />
+                      <img src={img} alt={`Product view ${idx + 1}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     </button>
                   ))}
                 </div>
@@ -414,7 +414,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                           >
                             <div className="flex items-center gap-3">
                               {doc.thumbnailUrl ? (
-                                <img src={doc.thumbnailUrl} alt={doc.name} className="h-12 w-12 rounded-xl object-cover border" />
+                                <img src={doc.thumbnailUrl} alt={doc.name} className="h-12 w-12 rounded-xl object-cover border" loading="lazy" decoding="async" />
                               ) : (
                                 <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary">
                                   <FileText className="h-6 w-6" />
@@ -445,7 +445,7 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
                           const certContent = (
                             <>
                               {cert.thumbnailUrl ? (
-                                <img src={cert.thumbnailUrl} alt={cert.name} className="h-20 w-20 object-contain" />
+                                <img src={cert.thumbnailUrl} alt={cert.name} className="h-20 w-20 object-contain" loading="lazy" decoding="async" />
                               ) : (
                                 <div className="h-20 w-20 rounded-xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
                                   <Award className="h-10 w-10 text-green-600" />

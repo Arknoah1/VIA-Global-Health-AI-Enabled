@@ -56,6 +56,8 @@ export function ProductTable({ products, isLoading, onSelectProduct, onEditProdu
                     src={product.imageUrl} 
                     alt={product.name} 
                     className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 </div>
               </TableCell>

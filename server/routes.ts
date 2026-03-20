@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
+import { registerImageOptimizer } from "./image-optimizer";
 import { scrapeViaGlobalHealth } from "./scraper";
 import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema, insertProformaInvoiceSchema, insertTrainingTranscriptSchema } from "@shared/schema";
 import { z } from "zod";
@@ -181,6 +182,8 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  registerImageOptimizer(app);
+
   app.use((req, res, next) => {
     if (req.path.startsWith('/admin')) {
       res.setHeader('X-Robots-Tag', 'noindex, nofollow');

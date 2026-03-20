@@ -501,6 +501,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 className="h-full w-full object-contain bg-white transition-transform duration-300"
                 animate={{ scale: isImageZoomed ? 1.5 : 1 }}
                 data-testid="product-image-main"
+                fetchPriority="high"
+                decoding="sync"
               />
               <div className="absolute top-3 right-3 flex gap-2">
                 <div className="bg-black/70 text-white border-0 text-xs px-2 py-1 rounded flex items-center gap-1">
@@ -516,7 +518,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   onClick={() => setSelectedImageIndex(-1)}
                   data-testid="product-thumbnail-main"
                 >
-                  <img src={product.imageUrl} alt="Main view" className="h-full w-full object-cover" />
+                  <img src={product.imageUrl} alt="Main view" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 </button>
                 {(product.images as string[]).map((img, idx) => (
                   <button
@@ -525,7 +527,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     onClick={() => setSelectedImageIndex(idx)}
                     data-testid={`product-thumbnail-${idx}`}
                   >
-                    <img src={img} alt={`Product view ${idx + 1}`} className="h-full w-full object-cover" />
+                    <img src={img} alt={`Product view ${idx + 1}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   </button>
                 ))}
               </div>
@@ -837,7 +839,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     data-testid={`document-${idx}`}
                   >
                     {(doc as any).thumbnailUrl ? (
-                      <img src={(doc as any).thumbnailUrl} alt={doc.name} className="h-14 w-10 object-cover rounded border" />
+                      <img src={(doc as any).thumbnailUrl} alt={doc.name} className="h-14 w-10 object-cover rounded border" loading="lazy" decoding="async" />
                     ) : (
                       <div className="h-14 w-10 rounded bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         <FileText className="h-6 w-6" />
@@ -866,7 +868,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   const content = (
                     <>
                       {cert.thumbnailUrl ? (
-                        <img src={cert.thumbnailUrl} alt={cert.name} className="h-14 w-14 object-contain rounded border" />
+                        <img src={cert.thumbnailUrl} alt={cert.name} className="h-14 w-14 object-contain rounded border" loading="lazy" decoding="async" />
                       ) : (
                         <div className="h-14 w-10 rounded bg-green-500/10 flex items-center justify-center text-green-600 shrink-0">
                           <Award className="h-6 w-6" />
@@ -1108,7 +1110,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                     data-testid={`related-product-${rp.id}`}
                   >
                     <div className="aspect-square overflow-hidden bg-muted/30">
-                      <img src={rp.imageUrl} alt={rp.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform" />
+                      <img src={rp.imageUrl} alt={rp.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform" loading="lazy" decoding="async" />
                     </div>
                     <div className="p-3">
                       <p className="text-sm font-medium line-clamp-2">{rp.name}</p>

@@ -10,9 +10,10 @@ import {
   ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package,
 } from "lucide-react";
 
-import africanHealthcareHero from "@/assets/images/african-healthcare-hero.png";
 import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
 import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
+
+const africanHealthcareHero = "/images/hero/african-healthcare-hero.jpg";
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -155,6 +156,10 @@ export default function HomePage() {
               src={africanHealthcareHero} 
               alt="African healthcare professional" 
               className="relative rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
+              fetchPriority="high"
+              decoding="sync"
+              width="800"
+              height="600"
             />
             <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-lg p-4 border">
               <p className="text-sm font-semibold text-slate-900">{t("hero.tagline")}</p>
@@ -200,6 +205,8 @@ export default function HomePage() {
                     src={product.image} 
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                    decoding="async"
                   />
                 </div>
                 <CardHeader>
@@ -363,6 +370,8 @@ export default function HomePage() {
                 src={africanMedicalTeam} 
                 alt="African medical professionals collaborating" 
                 className="rounded-xl shadow-lg w-full object-cover aspect-video"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <div className="grid grid-cols-2 gap-6">
