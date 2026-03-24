@@ -266,7 +266,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
-    trackChatMessage(messages.length);
+    const userMessageCount = messages.filter(m => m.role === 'user').length + 1;
+    trackChatMessage(userMessageCount);
     try {
       if (!quoteRequestId) {
         setTimeout(() => {

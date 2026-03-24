@@ -120,6 +120,7 @@ export function trackQuoteSubmitted(quoteId: string, productCount?: number) {
 export function trackChatMessage(messageIndex: number) {
   trackEvent("chat_message_sent", {
     message_index: messageIndex,
+    is_first_message: messageIndex === 1,
   });
 }
 

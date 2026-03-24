@@ -101,6 +101,9 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
     setInputValue("");
     setIsLoading(true);
 
+    const userMessageCount = updatedMessages.filter(m => m.role === 'user').length;
+    trackChatMessage(userMessageCount);
+
     try {
       const response = await fetch(`/api/quote-requests/${quoteRequestId}/messages`, {
         method: "POST",
@@ -112,7 +115,6 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
 
       const data = await response.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply || data.message }]);
-      trackChatMessage(updatedMessages.length + 1);
 
       if (data.profileUpdate) {
         const currentProfile = getCustomerProfile() || {};
