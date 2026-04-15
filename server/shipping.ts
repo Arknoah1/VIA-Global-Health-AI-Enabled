@@ -207,7 +207,7 @@ async function fetchFredViaProxy(): Promise<{ date: string; value: number }[]> {
   const start = new Date();
   start.setFullYear(start.getFullYear() - 1);
   const resp = await fetch(`${FRED_PROXY}/v0/observations?series_id=${FRED_SERIES}&observation_start=${start.toISOString().split("T")[0]}&limit=60`, {
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(3000),
   });
   if (!resp.ok) throw new Error(`FRED HTTP ${resp.status}`);
   const json = await resp.json();

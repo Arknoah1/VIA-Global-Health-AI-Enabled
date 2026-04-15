@@ -1584,13 +1584,31 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
 
   // ===== HubSpot CRM Integration =====
   app.post("/api/shipping/sync-hubspot", requireAdmin, async (_req, res) => {
+    const SYNC_TIMEOUT_MS = 60_000;
+    let responded = false;
+
+    const timeoutHandle = setTimeout(() => {
+      if (!responded) {
+        responded = true;
+        res.status(408).json({ error: "HubSpot sync timed out — the connector did not respond within 60 seconds. Check your HubSpot integration." });
+      }
+    }, SYNC_TIMEOUT_MS);
+
     try {
       const { syncHubspotDeals } = await import("./hubspot-sync");
       const result = await syncHubspotDeals();
-      res.json(result);
-    } catch (error) {
+      clearTimeout(timeoutHandle);
+      if (!responded) {
+        responded = true;
+        res.json(result);
+      }
+    } catch (error: any) {
+      clearTimeout(timeoutHandle);
       console.error("Error syncing HubSpot deals:", error);
-      res.status(500).json({ error: "Failed to sync HubSpot deals" });
+      if (!responded) {
+        responded = true;
+        res.status(500).json({ error: error?.message || "Failed to sync HubSpot deals" });
+      }
     }
   });
 

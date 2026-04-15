@@ -9,6 +9,15 @@ function log(message: string) {
   console.log(`${t} [hubspot] ${message}`);
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+    ),
+  ]);
+}
+
 interface HubspotDeal {
   id: string;
   properties: Record<string, string | null>;
@@ -46,7 +55,11 @@ interface CustomerHistory {
 
 async function hubspotGet(path: string, params?: Record<string, string>): Promise<any> {
   const query = params ? "?" + new URLSearchParams(params).toString() : "";
-  const response = await connectors.proxy("hubspot", `${path}${query}`, { method: "GET" });
+  const response = await withTimeout(
+    connectors.proxy("hubspot", `${path}${query}`, { method: "GET" }),
+    15000,
+    `HubSpot GET ${path}`
+  );
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`HubSpot API error ${response.status}: ${text}`);
@@ -143,17 +156,21 @@ export async function getHubspotDealHistory(email?: string | null, orgName?: str
 
     if (email) {
       try {
-        const contactSearch = await connectors.proxy("hubspot", "/crm/v3/objects/contacts/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filterGroups: [{
-              filters: [{ propertyName: "email", operator: "EQ", value: email }]
-            }],
-            properties: ["firstname", "lastname", "email", "company", "associatedcompanyid"],
-            limit: 1
-          })
-        });
+        const contactSearch = await withTimeout(
+          connectors.proxy("hubspot", "/crm/v3/objects/contacts/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filterGroups: [{
+                filters: [{ propertyName: "email", operator: "EQ", value: email }]
+              }],
+              properties: ["firstname", "lastname", "email", "company", "associatedcompanyid"],
+              limit: 1
+            })
+          }),
+          15000,
+          "HubSpot contact search"
+        );
 
         if (contactSearch.ok) {
           const contactData = await contactSearch.json();
@@ -173,17 +190,21 @@ export async function getHubspotDealHistory(email?: string | null, orgName?: str
 
     if (orgName && !contactId) {
       try {
-        const companySearch = await connectors.proxy("hubspot", "/crm/v3/objects/companies/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filterGroups: [{
-              filters: [{ propertyName: "name", operator: "CONTAINS_TOKEN", value: orgName }]
-            }],
-            properties: ["name", "domain"],
-            limit: 1
-          })
-        });
+        const companySearch = await withTimeout(
+          connectors.proxy("hubspot", "/crm/v3/objects/companies/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filterGroups: [{
+                filters: [{ propertyName: "name", operator: "CONTAINS_TOKEN", value: orgName }]
+              }],
+              properties: ["name", "domain"],
+              limit: 1
+            })
+          }),
+          15000,
+          "HubSpot company search"
+        );
 
         if (companySearch.ok) {
           const companyData = await companySearch.json();
@@ -201,7 +222,11 @@ export async function getHubspotDealHistory(email?: string | null, orgName?: str
 
     if (contactId) {
       try {
-        const assocResponse = await connectors.proxy("hubspot", `/crm/v3/objects/contacts/${contactId}/associations/deals`, { method: "GET" });
+        const assocResponse = await withTimeout(
+          connectors.proxy("hubspot", `/crm/v3/objects/contacts/${contactId}/associations/deals`, { method: "GET" }),
+          15000,
+          "HubSpot contact associations"
+        );
         if (assocResponse.ok) {
           const assocData = await assocResponse.json();
           const dealIds = (assocData.results || []).map((r: any) => r.id || r.toObjectId).filter(Boolean);
@@ -233,7 +258,11 @@ export async function getHubspotDealHistory(email?: string | null, orgName?: str
 
     if (deals.length === 0 && companyId) {
       try {
-        const assocResponse = await connectors.proxy("hubspot", `/crm/v3/objects/companies/${companyId}/associations/deals`, { method: "GET" });
+        const assocResponse = await withTimeout(
+          connectors.proxy("hubspot", `/crm/v3/objects/companies/${companyId}/associations/deals`, { method: "GET" }),
+          15000,
+          "HubSpot company associations"
+        );
         if (assocResponse.ok) {
           const assocData = await assocResponse.json();
           const dealIds = (assocData.results || []).map((r: any) => r.id || r.toObjectId).filter(Boolean);

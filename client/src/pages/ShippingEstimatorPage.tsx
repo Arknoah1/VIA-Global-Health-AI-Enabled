@@ -124,7 +124,10 @@ export default function ShippingEstimatorPage() {
   const hubspotSyncMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/shipping/sync-hubspot", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to sync HubSpot deals");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to sync HubSpot deals");
+      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -143,13 +146,19 @@ export default function ShippingEstimatorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type }),
       });
-      if (!res.ok) throw new Error("Failed to refresh");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to refresh market data");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shipping-market-data"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-deals"] });
       toast({ title: "Market data refreshed" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Refresh failed", description: err.message, variant: "destructive" });
     },
   });
 
@@ -523,7 +532,7 @@ export default function ShippingEstimatorPage() {
                     <div className="flex justify-between items-center">
                       <CardTitle className="flex items-center gap-2">
                         <Fuel className="h-4 w-4" />
-                        Jet Fuel · FRED
+                        Jet Fuel · EIA
                       </CardTitle>
                       <Button
                         variant="outline"
@@ -549,6 +558,11 @@ export default function ShippingEstimatorPage() {
                         <p className="text-xs text-muted-foreground">
                           Fuel {marketData.fuel.label} · {marketData.fuel.multiplier}× applied to estimates
                         </p>
+                        {marketData.fuel.date && (
+                          <p className="text-xs text-muted-foreground/70">
+                            As of {new Date(marketData.fuel.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · Source: EIA/FRED
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">No fuel data available. Click Refresh to fetch.</p>
@@ -615,7 +629,7 @@ export default function ShippingEstimatorPage() {
                     <div className="space-y-3">
                       {[
                         { name: "Historical Deals", desc: `${marketData?.dealCount || 0} deals from ${marketData?.distinctCountries || 0} countries`, status: (marketData?.dealCount || 0) > 0 ? "Live" : "Empty", ok: (marketData?.dealCount || 0) > 0 },
-                        { name: "FRED Jet Fuel", desc: marketData?.fuel?.price ? `$${marketData.fuel.price.toFixed(2)}/gal · ${marketData.fuel.label}` : "Not fetched", status: marketData?.fuel?.price ? "Live" : "Pending", ok: !!marketData?.fuel?.price },
+                        { name: "EIA Jet Fuel", desc: marketData?.fuel?.price ? `$${marketData.fuel.price.toFixed(2)}/gal · ${marketData.fuel.label}${marketData.fuel.date ? ` · as of ${marketData.fuel.date}` : ""}` : "Not fetched", status: marketData?.fuel?.price ? "Live" : "Pending", ok: !!marketData?.fuel?.price },
                         { name: "DHL Intelligence", desc: marketData?.dhl ? `${marketData.dhl.reportMonth} report` : "Not fetched", status: marketData?.dhl ? "Live" : "Pending", ok: !!marketData?.dhl },
                         { name: "Product Catalog", desc: `${products.length} products with shipping data`, status: "Live", ok: true },
                       ].map(s => (
