@@ -89,7 +89,7 @@ const REGION_MAP: Record<string, string[]> = {
   "North Africa": ["egypt", "morocco", "tunisia", "algeria", "libya", "sudan"],
   "South Asia": ["india", "bangladesh", "nepal", "sri lanka", "pakistan", "afghanistan", "bhutan", "maldives"],
   "Southeast Asia": ["vietnam", "cambodia", "myanmar", "laos", "thailand", "philippines", "indonesia", "malaysia", "timor-leste"],
-  "Central America & Caribbean": ["haiti", "guatemala", "honduras", "el salvador", "nicaragua", "costa rica", "panama", "dominican republic", "jamaica", "trinidad and tobago"],
+  "Central America & Caribbean": ["mexico", "haiti", "guatemala", "honduras", "el salvador", "nicaragua", "costa rica", "panama", "dominican republic", "jamaica", "trinidad and tobago", "belize", "cuba"],
   "South America": ["brazil", "colombia", "peru", "bolivia", "ecuador", "paraguay", "chile", "argentina", "uruguay", "venezuela", "guyana", "suriname"],
   "Middle East": ["yemen", "iraq", "syria", "jordan", "lebanon", "palestine", "oman", "saudi arabia", "united arab emirates"],
   "Pacific Islands": ["papua new guinea", "fiji", "solomon islands", "vanuatu", "samoa", "tonga", "kiribati"],
@@ -118,12 +118,16 @@ function findSimilarDeals(
   deals: ShippingDeal[],
   method: string = "Air"
 ): { baseEstimate: number | null; confidence: "High" | "Medium" | "Low"; source: string; comparables: ShippingDeal[] } {
+  // Only use historical deals for estimation — HubSpot-synced deals have
+  // fabricated shipping costs (12% of deal value) that corrupt estimates.
+  const reliableDeals = deals.filter(d => d.source === "historical");
+
   const shortName = product.name.toLowerCase();
   const kws = shortName.split(" ").filter(k => k.length > 3);
   const match = (d: ShippingDeal) => kws.some(k => d.product.toLowerCase().includes(k));
 
-  const countryDeals = deals.filter(d => d.country?.toLowerCase() === country.toLowerCase() && d.shippingCost > 0);
-  const productDeals = deals.filter(d => match(d) && d.shippingCost > 0);
+  const countryDeals = reliableDeals.filter(d => d.country?.toLowerCase() === country.toLowerCase() && d.shippingCost > 0);
+  const productDeals = reliableDeals.filter(d => match(d) && d.shippingCost > 0);
   const exactDeals = countryDeals.filter(d => match(d));
 
   const regionCountries = getRegionCountries(country);
