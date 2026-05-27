@@ -1810,6 +1810,16 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       // Create initial quote request
       const quoteRequest = await storage.createQuoteRequest(initialData as any);
 
+      // Fire-and-forget: auto-notify if returning customer already has all required fields
+      (async () => {
+        try {
+          const { autoNotifyOnQuoteComplete } = await import("./auto-notify");
+          await autoNotifyOnQuoteComplete(quoteRequest.id);
+        } catch (err) {
+          console.error("[auto-notify] Fire-and-forget (start) failed:", err);
+        }
+      })();
+
       let defaultMultiplier = 1.25;
       let bestSegmentMultiplier = 1.0;
       try {
@@ -2313,6 +2323,16 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       }
 
       await storage.updateQuoteRequest(id, updates as any);
+
+      // Fire-and-forget: auto-notify team if quote is now complete
+      (async () => {
+        try {
+          const { autoNotifyOnQuoteComplete } = await import("./auto-notify");
+          await autoNotifyOnQuoteComplete(id);
+        } catch (err) {
+          console.error("[auto-notify] Fire-and-forget failed:", err);
+        }
+      })();
 
       // Post-response: if AI extracted a different quantity, regenerate estimate for next turn
       const aiExtractedQty = parseInt(flags.orderQuantity || "") || 0;
