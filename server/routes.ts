@@ -523,7 +523,22 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
   app.get("/api/quote-requests", requireAdmin, async (req, res) => {
     try {
       const quoteRequests = await storage.getAllQuoteRequests();
-      res.json(quoteRequests);
+      const allInvoices = await storage.getAllProformaInvoices();
+      const invoiceByQuote: Record<string, { emailSentAt: Date | null; emailSentTo: string | null }> = {};
+      for (const inv of allInvoices) {
+        if (inv.quoteRequestId) {
+          invoiceByQuote[inv.quoteRequestId] = {
+            emailSentAt: inv.emailSentAt,
+            emailSentTo: inv.emailSentTo,
+          };
+        }
+      }
+      const enriched = quoteRequests.map((qr) => ({
+        ...qr,
+        notifiedAt: invoiceByQuote[qr.id]?.emailSentAt ?? null,
+        notifiedTo: invoiceByQuote[qr.id]?.emailSentTo ?? null,
+      }));
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching quote requests:", error);
       res.status(500).json({ error: "Failed to fetch quote requests" });

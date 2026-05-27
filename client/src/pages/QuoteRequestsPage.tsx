@@ -17,7 +17,8 @@ import {
   Check,
   Brain,
   Loader2,
-  Ship
+  Ship,
+  Bell
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -70,6 +71,8 @@ interface QuoteRequest {
   createdAt: string;
   aiReview?: any;
   shippingEstimate?: any;
+  notifiedAt?: string | null;
+  notifiedTo?: string | null;
 }
 
 export default function QuoteRequestsPage() {
@@ -450,12 +453,23 @@ export default function QuoteRequestsPage() {
                       </div>
                       <div>
                         <div className="text-sm text-muted-foreground">Status</div>
-                        <Badge 
-                          className={getStatusBadgeClass(request.status || 'active')}
-                          data-testid={`badge-status-${request.id}`}
-                        >
-                          {getStatusLabel(request.status || 'active')}
-                        </Badge>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <Badge 
+                            className={getStatusBadgeClass(request.status || 'active')}
+                            data-testid={`badge-status-${request.id}`}
+                          >
+                            {getStatusLabel(request.status || 'active')}
+                          </Badge>
+                          {request.notifiedAt && (
+                            <Badge
+                              className="bg-emerald-100 text-emerald-800 gap-1"
+                              data-testid={`badge-notified-${request.id}`}
+                            >
+                              <Bell className="h-3 w-3" />
+                              Notified
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <ChevronDown
@@ -529,6 +543,27 @@ export default function QuoteRequestsPage() {
                         </div>
                       </div>
 
+                      {/* Auto-notification status */}
+                      {request.notifiedAt ? (
+                        <div
+                          className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+                          data-testid={`notification-banner-${request.id}`}
+                        >
+                          <Bell className="h-4 w-4 shrink-0" />
+                          <span>
+                            Auto-notification sent to <strong>{request.notifiedTo}</strong> on{" "}
+                            {formatDate(request.notifiedAt)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+                          data-testid={`notification-pending-${request.id}`}
+                        >
+                          <Bell className="h-4 w-4 shrink-0" />
+                          <span>No auto-notification sent yet</span>
+                        </div>
+                      )}
 
                       {/* Shipping Estimate Section */}
                       {request.shippingEstimate && request.shippingEstimate.costRange ? (

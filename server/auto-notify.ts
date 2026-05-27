@@ -149,6 +149,11 @@ export async function autoNotifyOnQuoteComplete(quoteRequestId: string): Promise
       return;
     }
 
+    await storage.updateProformaInvoice(invoice.id, {
+      emailSentAt: new Date(),
+      emailSentTo: NOTIFY_TO,
+    } as any);
+
     console.log(`[auto-notify] Invoice generated and emailed for quote ${quoteRequestId} (ref: ${invoice.referenceNumber})`);
   } catch (err) {
     console.error(`[auto-notify] Unexpected error for quote ${quoteRequestId}:`, err);
