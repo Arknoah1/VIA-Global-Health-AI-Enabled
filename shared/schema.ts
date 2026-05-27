@@ -174,7 +174,7 @@ export type CustomerSegment = typeof customerSegments.$inferSelect;
 export const proformaInvoices = pgTable("proforma_invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   referenceNumber: varchar("reference_number", { length: 50 }).notNull().unique(),
-  quoteRequestId: varchar("quote_request_id").references(() => quoteRequests.id),
+  quoteRequestId: varchar("quote_request_id").unique().references(() => quoteRequests.id),
   
   // Customer info
   customerName: text("customer_name").notNull(),

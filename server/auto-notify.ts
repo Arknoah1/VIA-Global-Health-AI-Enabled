@@ -23,7 +23,7 @@ function isQuoteComplete(q: Awaited<ReturnType<typeof storage.getQuoteRequestByI
   return hasName && hasEmail && hasProduct && hasQuantity;
 }
 
-function buildEmailHtml(invoice: ProformaInvoice, quoteId: string): string {
+function buildEmailHtml(invoice: ProformaInvoice, quoteId: string, organizationType?: string | null): string {
   const lineItems = invoice.lineItems as any[];
   const lineItemsHtml = lineItems
     .map(
@@ -39,6 +39,7 @@ function buildEmailHtml(invoice: ProformaInvoice, quoteId: string): string {
 
   const safeCustomerName = escapeHtml(invoice.customerName || "");
   const safeOrg = escapeHtml(invoice.customerOrganization || "N/A");
+  const safeOrgType = escapeHtml(organizationType || "N/A");
   const safeEmail = escapeHtml(invoice.customerEmail || "N/A");
   const safeCountry = escapeHtml(invoice.deliveryCountry || "N/A");
   const safeCity = escapeHtml(invoice.deliveryCity || "");
@@ -56,6 +57,7 @@ function buildEmailHtml(invoice: ProformaInvoice, quoteId: string): string {
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
       <tr><td style="padding:6px 0;color:#6b7280;width:130px;">Customer</td><td style="padding:6px 0;font-weight:600;">${safeCustomerName}</td></tr>
       <tr><td style="padding:6px 0;color:#6b7280;">Organization</td><td style="padding:6px 0;">${safeOrg}</td></tr>
+      <tr><td style="padding:6px 0;color:#6b7280;">Org Type</td><td style="padding:6px 0;">${safeOrgType}</td></tr>
       <tr><td style="padding:6px 0;color:#6b7280;">Email</td><td style="padding:6px 0;"><a href="mailto:${safeEmail}">${safeEmail}</a></td></tr>
       <tr><td style="padding:6px 0;color:#6b7280;">Destination</td><td style="padding:6px 0;">${safeCity ? safeCity + ", " : ""}${safeCountry}</td></tr>
       <tr><td style="padding:6px 0;color:#6b7280;">Reference</td><td style="padding:6px 0;font-family:monospace;">${invoice.referenceNumber}</td></tr>
@@ -139,7 +141,7 @@ export async function autoNotifyOnQuoteComplete(quoteRequestId: string): Promise
       from: NOTIFY_FROM,
       to: NOTIFY_TO,
       subject,
-      html: buildEmailHtml(invoice, quoteRequestId),
+      html: buildEmailHtml(invoice, quoteRequestId, quoteRequest!.organizationType),
     });
 
     if (error) {
