@@ -32,13 +32,14 @@ function buildMetaTags(meta: PageMeta): string {
   const tags = [
     `<meta name="description" content="${escapeHtml(meta.description)}" />`,
     `<link rel="canonical" href="${escapeHtml(meta.canonicalUrl)}" />`,
+    `<meta property="og:site_name" content="VIA Global Health" />`,
+    `<meta property="og:locale" content="en_US" />`,
     `<meta property="og:title" content="${escapeHtml(meta.title)}" />`,
     `<meta property="og:description" content="${escapeHtml(meta.description)}" />`,
     `<meta property="og:type" content="${escapeHtml(meta.ogType)}" />`,
     `<meta property="og:url" content="${escapeHtml(meta.canonicalUrl)}" />`,
     `<meta property="og:image" content="${escapeHtml(meta.ogImage)}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
-    `<meta name="twitter:site" content="@replit" />`,
     `<meta name="twitter:title" content="${escapeHtml(meta.title)}" />`,
     `<meta name="twitter:description" content="${escapeHtml(meta.description)}" />`,
     `<meta name="twitter:image" content="${escapeHtml(meta.ogImage)}" />`,
@@ -61,6 +62,8 @@ function injectMetaIntoHtml(html: string, meta: PageMeta): string {
   }
 
   result = result.replace(/<meta\s+name="description"[^>]*\/?>/i, "");
+  result = result.replace(/<meta\s+property="og:site_name"[^>]*\/?>/i, "");
+  result = result.replace(/<meta\s+property="og:locale"[^>]*\/?>/i, "");
   result = result.replace(/<meta\s+property="og:title"[^>]*\/?>/i, "");
   result = result.replace(/<meta\s+property="og:description"[^>]*\/?>/i, "");
   result = result.replace(/<meta\s+property="og:type"[^>]*\/?>/i, "");
@@ -188,6 +191,20 @@ const PAGE_META: Record<string, () => PageMeta> = {
     title: "Contact Us | VIA Global Health",
     description: "Get in touch with VIA Global Health for medical equipment inquiries, quotes, and support. We respond to every inquiry within 24 hours.",
     canonicalUrl: `${SITE_URL}/contact`,
+    ogType: "website",
+    ogImage: `${SITE_URL}/opengraph.jpg`,
+  }),
+  "/privacy-policy": () => ({
+    title: "Privacy Policy | VIA Global Health",
+    description: "Read VIA Global Health's privacy policy to understand how we collect, use, and protect your personal information when you interact with our medical equipment catalog and quote system.",
+    canonicalUrl: `${SITE_URL}/privacy-policy`,
+    ogType: "website",
+    ogImage: `${SITE_URL}/opengraph.jpg`,
+  }),
+  "/return-policy": () => ({
+    title: "Return Policy | VIA Global Health",
+    description: "Learn about VIA Global Health's return and refund policy for medical equipment purchases, including eligibility, timelines, and the process for returns.",
+    canonicalUrl: `${SITE_URL}/return-policy`,
     ogType: "website",
     ogImage: `${SITE_URL}/opengraph.jpg`,
   }),
