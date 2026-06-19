@@ -308,6 +308,20 @@ function buildProductBodyHtml(product: any, slug: string): string {
       }</ul>`
     : "";
 
+  const productCategory = product.category || "";
+  const relevantMarkets = MARKETS.filter(m =>
+    m.relevantCategories.length === 0 || m.relevantCategories.includes(productCategory)
+  );
+  const marketsHtml = relevantMarkets.length > 0
+    ? `<h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Available in these markets</h2>
+<p style="font-size:0.875rem;color:#6b7280;margin-bottom:0.75rem">VIA Global Health ships ${escapeHtml(product.name)} to healthcare providers, distributors, and NGOs across the following countries:</p>
+<ul style="list-style:none;padding:0;margin:0 0 1rem;display:flex;flex-wrap:wrap;gap:0.5rem">${
+  relevantMarkets.map(m =>
+    `<li><a href="/markets/${m.slug}" style="display:inline-flex;align-items:center;gap:0.375rem;color:#2563eb;text-decoration:none;background:#f0f4ff;border:1px solid #c7d7f9;border-radius:0.5rem;padding:0.375rem 0.75rem;font-size:0.875rem;white-space:nowrap">${m.flag} ${escapeHtml(m.name)}</a></li>`
+  ).join("")
+}</ul>`
+    : "";
+
   return `
     <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
       <header>
@@ -318,7 +332,7 @@ function buildProductBodyHtml(product: any, slug: string): string {
           <a href="/" style="color:#2563eb">Home</a> &rsaquo; <a href="/catalog" style="color:#2563eb">Catalog</a> &rsaquo; ${escapeHtml(product.name)}
         </nav>
         <h1 style="font-size:1.75rem;margin:0 0 0.75rem">${escapeHtml(product.name)}</h1>
-        ${category}${sku}${priceHtml}${desc}${specsHtml}${faqsHtml}${docsHtml}
+        ${category}${sku}${priceHtml}${desc}${specsHtml}${faqsHtml}${docsHtml}${marketsHtml}
         <p style="margin-top:1.5rem"><a href="/catalog" style="color:#2563eb">&larr; Back to catalog</a></p>
       </main>
     </div>

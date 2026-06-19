@@ -10,8 +10,9 @@ import {
   Settings, Package, Award,
   ChevronDown, ChevronUp, Search, Phone, Mail, Eye,
   Stethoscope, Activity, Heart, Microscope, ClipboardCheck,
-  Shield, Headphones, ExternalLink
+  Shield, Headphones, ExternalLink, MapPin
 } from "lucide-react";
+import { MARKETS } from "@shared/markets";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useMemo } from "react";
 import { trackProductView } from "@/lib/browsingHistory";
@@ -551,6 +552,38 @@ export function ProductDetailSheet({ product, isOpen, onClose }: ProductDetailSh
               )}
 
             </Tabs>
+
+            {/* Available markets section */}
+            {(() => {
+              const productCategory = product.category || "";
+              const relevantMarkets = MARKETS.filter(m =>
+                m.relevantCategories.length === 0 || m.relevantCategories.includes(productCategory)
+              );
+              if (relevantMarkets.length === 0) return null;
+              return (
+                <div className="rounded-xl border bg-muted/30 p-4" data-testid="section-available-markets">
+                  <h3 className="font-semibold text-sm flex items-center gap-2 mb-3 text-foreground">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Available in these markets
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {relevantMarkets.map(m => (
+                      <a
+                        key={m.slug}
+                        href={`/markets/${m.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs bg-background border border-border rounded-lg px-2.5 py-1 text-primary hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                        data-testid={`market-link-${m.slug}`}
+                      >
+                        <span>{m.flag}</span>
+                        <span>{m.name}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

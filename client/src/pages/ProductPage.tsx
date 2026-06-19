@@ -7,10 +7,11 @@ import { ProductSEO, BreadcrumbSEO } from "@/components/ProductSEO";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { Product } from "@/lib/types";
-import { Loader2, ArrowLeft, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronRight, MapPin } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { trackProductView } from "@/lib/analytics";
 import { slugify } from "@/lib/slugify";
+import { MARKETS } from "@shared/markets";
 
 export default function ProductPage() {
   const { t } = useTranslation();
@@ -160,6 +161,41 @@ export default function ProductPage() {
         </div>
 
         <ProductContent product={product} relatedProducts={relatedProducts} />
+
+        {/* Available markets cross-links */}
+        {(() => {
+          const productCategory = product.category || "";
+          const relevantMarkets = MARKETS.filter(m =>
+            m.relevantCategories.length === 0 || m.relevantCategories.includes(productCategory)
+          );
+          if (relevantMarkets.length === 0) return null;
+          return (
+            <section className="border-t bg-muted/30" aria-label="Available markets" data-testid="section-product-markets">
+              <div className="container mx-auto px-4 py-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <h2 className="text-base font-semibold text-foreground">Available in these markets</h2>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  VIA Global Health ships {product.name} to healthcare providers, distributors, and NGOs across Africa and Latin America.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {relevantMarkets.map(m => (
+                    <Link
+                      key={m.slug}
+                      href={`/markets/${m.slug}`}
+                      className="inline-flex items-center gap-1.5 text-sm bg-background border border-border rounded-lg px-3 py-1.5 text-primary hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                      data-testid={`market-link-${m.slug}`}
+                    >
+                      <span>{m.flag}</span>
+                      <span>{m.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+          );
+        })()}
       </main>
 
       <Footer />
