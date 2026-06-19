@@ -498,6 +498,76 @@ async function buildCatalogBodyHtml(): Promise<string> {
   `;
 }
 
+async function buildCatalogMeta(): Promise<PageMeta> {
+  const base: PageMeta = {
+    title: "Medical Products Catalog | VIA Global Health",
+    description: "Browse our catalog of quality medical equipment: thermocoagulators, colposcopes, CPAP devices, autoclaves, and more. Designed for low-resource healthcare settings.",
+    canonicalUrl: `${SITE_URL}/catalog`,
+    ogType: "website",
+    ogImage: `${SITE_URL}/opengraph.jpg`,
+  };
+
+  try {
+    const allProducts = await storage.getAllProducts();
+    const active = allProducts.filter((p: any) => p.status !== "inactive");
+
+    const itemList = {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            {
+              "@type": "ListItem",
+              position: 1,
+              item: { "@type": "WebPage", "@id": SITE_URL, name: "Home" },
+            },
+            {
+              "@type": "ListItem",
+              position: 2,
+              item: {
+                "@type": "WebPage",
+                "@id": `${SITE_URL}/catalog`,
+                name: "Medical Products Catalog",
+              },
+            },
+          ],
+        },
+        {
+          "@type": "ItemList",
+          name: "Medical Products Catalog",
+          description: base.description,
+          url: `${SITE_URL}/catalog`,
+          numberOfItems: active.length,
+          itemListElement: active.map((p: any, index: number) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            item: {
+              "@type": "Product",
+              "@id": `${SITE_URL}/products/${slugify(p.name)}`,
+              name: p.name,
+              url: `${SITE_URL}/products/${slugify(p.name)}`,
+              description: p.description
+                ? p.description.slice(0, 200)
+                : undefined,
+              category: p.category || undefined,
+              image: p.imageUrl
+                ? p.imageUrl.startsWith("http")
+                  ? p.imageUrl
+                  : `${SITE_URL}${p.imageUrl}`
+                : undefined,
+            },
+          })),
+        },
+      ],
+    };
+
+    return { ...base, jsonLd: itemList };
+  } catch {
+    return base;
+  }
+}
+
 async function getProductForSlug(slug: string): Promise<any | null> {
   try {
     const allProducts = await storage.getAllProducts();
@@ -597,13 +667,6 @@ const PAGE_META: Record<string, () => PageMeta> = {
       },
       areaServed: AREA_SERVED_COUNTRIES.map(c => ({ "@type": "Country", "name": c.name, "identifier": c.isoCode })),
     },
-  }),
-  "/catalog": () => ({
-    title: "Medical Products Catalog | VIA Global Health",
-    description: "Browse our catalog of quality medical equipment: thermocoagulators, colposcopes, CPAP devices, autoclaves, and more. Designed for low-resource healthcare settings.",
-    canonicalUrl: `${SITE_URL}/catalog`,
-    ogType: "website",
-    ogImage: `${SITE_URL}/opengraph.jpg`,
   }),
   "/about": () => ({
     title: "About VIA Global Health | Medical Equipment for Global Health",
@@ -751,12 +814,11 @@ export async function resolvePublicRoute(html: string, url: string): Promise<Rou
     }
 
     if (normalizedPath === "/catalog") {
-      const metaFn = PAGE_META["/catalog"];
-      let result = html;
-      if (metaFn) {
-        result = injectMetaIntoHtml(result, metaFn());
-      }
-      const catalogBody = await buildCatalogBodyHtml();
+      const [catalogMeta, catalogBody] = await Promise.all([
+        buildCatalogMeta(),
+        buildCatalogBodyHtml(),
+      ]);
+      let result = injectMetaIntoHtml(html, catalogMeta);
       result = injectBodyContent(result, catalogBody);
       return { status: 200, html: result };
     }
