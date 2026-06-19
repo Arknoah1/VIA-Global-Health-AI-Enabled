@@ -2135,7 +2135,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         model: "gpt-4o",
         messages: openaiMessages,
         temperature: 0.7,
-        max_tokens: 200
+        max_tokens: 600
       });
 
       const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble responding. Please try again.";
