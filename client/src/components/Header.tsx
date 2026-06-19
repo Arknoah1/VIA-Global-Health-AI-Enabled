@@ -54,6 +54,13 @@ export function Header() {
               {t("nav.catalog")}
             </Link>
             <Link 
+              href="/markets" 
+              className={`transition-colors ${isActive("/markets") || location.startsWith("/markets/") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
+              data-testid="link-markets-nav"
+            >
+              Markets
+            </Link>
+            <Link 
               href="/about" 
               className={`transition-colors ${isActive("/about") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
               data-testid="link-about-nav"
@@ -139,6 +146,14 @@ export function Header() {
                 data-testid="link-mobile-catalog"
               >
                 {t("nav.catalog")}
+              </Link>
+              <Link 
+                href="/markets" 
+                className="block px-4 py-3 min-h-[44px] rounded-lg hover:bg-slate-100 transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+                data-testid="link-mobile-markets"
+              >
+                Markets
               </Link>
               <Link 
                 href="/about" 

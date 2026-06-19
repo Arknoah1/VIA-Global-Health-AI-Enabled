@@ -326,6 +326,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "footer.allRights": "All rights reserved.",
 
     "nav.contact": "Contact",
+    "nav.markets": "Markets",
 
     "contact.heroTitle": "Contact Us",
     "contact.heroSubtitle": "We're here to help you find the right medical equipment and get you a custom quote. The best way to reach us is by submitting a quote request, chatting with Amara, or emailing us directly.",
@@ -635,6 +636,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "footer.allRights": "Tous droits réservés.",
 
     "nav.contact": "Contact",
+    "nav.markets": "Marchés",
 
     "contact.heroTitle": "Contactez-nous",
     "contact.heroSubtitle": "Nous sommes là pour vous aider à trouver le bon équipement médical et vous fournir un devis personnalisé. Le meilleur moyen de nous contacter est de soumettre une demande de devis, de discuter avec Amara ou de nous envoyer un email.",
@@ -944,6 +946,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "footer.allRights": "Todos os direitos reservados.",
 
     "nav.contact": "Contato",
+    "nav.markets": "Mercados",
 
     "contact.heroTitle": "Contacte-nos",
     "contact.heroSubtitle": "Estamos aqui para ajudá-lo a encontrar o equipamento médico certo e fornecer-lhe um orçamento personalizado. A melhor forma de nos contactar é submeter um pedido de orçamento, conversar com a Amara ou enviar-nos um email.",
@@ -1253,6 +1256,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "footer.allRights": "Haki zote zimehifadhiwa.",
 
     "nav.contact": "Mawasiliano",
+    "nav.markets": "Masoko",
 
     "contact.heroTitle": "Wasiliana Nasi",
     "contact.heroSubtitle": "Tuko hapa kukusaidia kupata vifaa vya kimatibabu vinavyofaa na kukupa nukuu ya kibinafsi. Njia bora ya kuwasiliana nasi ni kutuma ombi la nukuu, kuzungumza na Amara, au kutuma barua pepe.",
@@ -1602,6 +1606,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "footer.allRights": "Todos los derechos reservados.",
 
     "nav.contact": "Contacto",
+    "nav.markets": "Mercados",
 
     "contact.heroTitle": "Contáctanos",
     "contact.heroSubtitle": "Estamos aquí para ayudarte a encontrar el equipo médico adecuado y darte una cotización personalizada. La mejor forma de contactarnos es enviando una solicitud de cotización, chateando con Amara o escribiéndonos un correo.",

@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { MARKETS, AREA_SERVED_COUNTRIES, type MarketCountry } from "@shared/markets";
 
 const SITE_URL = "https://viaglobalhealth.com";
 
@@ -294,6 +295,64 @@ function buildProductBodyHtml(product: any, slug: string): string {
   `;
 }
 
+function buildMarketBodyHtml(market: MarketCountry): string {
+  return `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; <a href="/markets" style="color:#2563eb">Markets</a> &rsaquo; ${escapeHtml(market.name)}
+        </nav>
+        <h1 style="font-size:1.75rem;margin:0 0 0.75rem">${market.flag} Medical Equipment for ${escapeHtml(market.name)}</h1>
+        <p style="color:#374151;margin-bottom:1.5rem">${escapeHtml(market.healthContext)}</p>
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Procurement &amp; Import Information</h2>
+        <p style="color:#374151;margin-bottom:1rem">${escapeHtml(market.importNote)}</p>
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Equipment Available for ${escapeHtml(market.name)}</h2>
+        <p style="color:#374151;margin-bottom:1rem">VIA Global Health supplies thermocoagulators, colposcopes, CPAP devices, autoclaves, pulse oximeters, diagnostic equipment, and more to healthcare facilities in ${escapeHtml(market.name)}. All products include full documentation and warranty support.</p>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li>Quote response within 24 hours for all ${escapeHtml(market.name)} orders</li>
+          <li>Air and sea freight options to ${escapeHtml(market.name)}</li>
+          <li>Competitive pricing for distributors, healthcare providers, and NGOs</li>
+          <li>Support in English, French, Portuguese, Swahili, and Spanish</li>
+        </ul>
+        <p><a href="/catalog" style="color:#2563eb;font-weight:600">Browse our full medical equipment catalog &rarr;</a></p>
+        <p><a href="/contact" style="color:#2563eb">Contact us about ${escapeHtml(market.name)} procurement &rarr;</a></p>
+        <p style="margin-top:1.5rem"><a href="/markets" style="color:#2563eb">&larr; View all market guides</a></p>
+      </main>
+    </div>
+  `;
+}
+
+function buildMarketsIndexBodyHtml(): string {
+  const countryLinks = MARKETS.map(m =>
+    `<li><a href="/markets/${m.slug}" style="color:#2563eb">${m.flag} ${escapeHtml(m.name)}</a> &mdash; ${escapeHtml(m.subregion)}</li>`
+  ).join("\n          ");
+
+  return `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; Markets
+        </nav>
+        <h1 style="font-size:1.75rem;margin:0 0 0.75rem">Medical Equipment for Africa &amp; LMIC</h1>
+        <p style="font-size:1rem;color:#374151;margin-bottom:1.5rem">VIA Global Health supplies quality medical equipment to healthcare providers, distributors, and NGOs across Africa and low- and middle-income countries. Browse country-specific procurement guides below.</p>
+        <p style="color:#374151;margin-bottom:1rem">We ship thermocoagulators, CPAP devices, autoclaves, pulse oximeters, diagnostic tools, and more to healthcare facilities in over 30 countries. Each guide below provides local procurement context, import guidance, and links to request a quote.</p>
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Country Market Guides</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          ${countryLinks}
+        </ul>
+        <p><a href="/catalog" style="color:#2563eb;font-weight:600">Browse our full medical equipment catalog &rarr;</a></p>
+        <p><a href="/contact" style="color:#2563eb">Contact us for procurement in any market &rarr;</a></p>
+      </main>
+    </div>
+  `;
+}
+
 async function getProductForSlug(slug: string): Promise<any | null> {
   try {
     const allProducts = await storage.getAllProducts();
@@ -390,6 +449,7 @@ const PAGE_META: Record<string, () => PageMeta> = {
         contactType: "sales",
         availableLanguage: ["English", "French", "Portuguese", "Swahili", "Spanish"],
       },
+      areaServed: AREA_SERVED_COUNTRIES.map(name => ({ "@type": "Country", "name": name })),
     },
   }),
   "/catalog": () => ({
@@ -461,6 +521,68 @@ export async function resolvePublicRoute(html: string, url: string): Promise<Rou
         result = injectMetaIntoHtml(result, meta);
       }
       result = injectBodyContent(result, buildProductBodyHtml(product, slug));
+      return { status: 200, html: result };
+    }
+
+    if (normalizedPath === "/markets") {
+      const meta: PageMeta = {
+        title: "Medical Equipment for Africa & LMIC | VIA Global Health",
+        description: "VIA Global Health supplies quality medical equipment to healthcare providers, distributors, and NGOs across Africa and low- and middle-income countries. Browse procurement guides by country.",
+        canonicalUrl: `${SITE_URL}/markets`,
+        ogType: "website",
+        ogImage: `${SITE_URL}/opengraph.jpg`,
+        jsonLd: {
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Medical Equipment for Africa & LMIC",
+          url: `${SITE_URL}/markets`,
+          description: "VIA Global Health supplies quality medical equipment to healthcare providers, distributors, and NGOs across Africa and low- and middle-income countries.",
+          breadcrumb: {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, item: { "@type": "WebPage", "@id": SITE_URL, name: "Home" } },
+              { "@type": "ListItem", position: 2, item: { "@type": "WebPage", "@id": `${SITE_URL}/markets`, name: "Markets" } },
+            ],
+          },
+        },
+      };
+      let result = injectMetaIntoHtml(html, meta);
+      result = injectBodyContent(result, buildMarketsIndexBodyHtml());
+      return { status: 200, html: result };
+    }
+
+    const marketMatch = normalizedPath.match(/^\/markets\/([^/]+)$/);
+    if (marketMatch) {
+      const slug = marketMatch[1];
+      const market = MARKETS.find(m => m.slug === slug);
+      if (!market) {
+        return { status: 404, html: build404Html(html) };
+      }
+      const meta: PageMeta = {
+        title: `Medical Equipment for ${market.name} | VIA Global Health`,
+        description: `Quality medical equipment for healthcare providers, distributors, and NGOs in ${market.name}. VIA Global Health supplies thermocoagulators, CPAP devices, diagnostic equipment, and more. Quote within 24 hours.`,
+        canonicalUrl: `${SITE_URL}/markets/${market.slug}`,
+        ogType: "website",
+        ogImage: `${SITE_URL}/opengraph.jpg`,
+        jsonLd: {
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: `Medical Equipment for ${market.name}`,
+          url: `${SITE_URL}/markets/${market.slug}`,
+          description: market.healthContext.slice(0, 200),
+          breadcrumb: {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, item: { "@type": "WebPage", "@id": SITE_URL, name: "Home" } },
+              { "@type": "ListItem", position: 2, item: { "@type": "WebPage", "@id": `${SITE_URL}/markets`, name: "Markets" } },
+              { "@type": "ListItem", position: 3, item: { "@type": "WebPage", "@id": `${SITE_URL}/markets/${market.slug}`, name: `Medical Equipment for ${market.name}` } },
+            ],
+          },
+        },
+      };
+      const geoTags = `<meta name="geo.region" content="${escapeHtml(market.geoRegion)}" />\n    <meta name="geo.placename" content="${escapeHtml(market.name)}" />`;
+      let result = injectMetaIntoHtml(html, meta, geoTags);
+      result = injectBodyContent(result, buildMarketBodyHtml(market));
       return { status: 200, html: result };
     }
 

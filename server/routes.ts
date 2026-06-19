@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
+import { MARKETS } from "@shared/markets";
 import { registerImageOptimizer } from "./image-optimizer";
 import { scrapeViaGlobalHealth } from "./scraper";
 import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema, insertProformaInvoiceSchema, insertTrainingTranscriptSchema } from "@shared/schema";
@@ -224,7 +225,12 @@ export async function registerRoutes(
         return { loc: `/products/${slug}`, changefreq: "weekly", priority: "0.7", lastmod };
       });
 
-      const allEntries = [...staticPages, ...productEntries];
+      const marketEntries = [
+        { loc: "/markets", changefreq: "monthly", priority: "0.6", lastmod: now },
+        ...MARKETS.map(m => ({ loc: `/markets/${m.slug}`, changefreq: "monthly", priority: "0.7", lastmod: now })),
+      ];
+
+      const allEntries = [...staticPages, ...marketEntries, ...productEntries];
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

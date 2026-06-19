@@ -21,6 +21,8 @@ const ProductPage = lazy(() => import("@/pages/ProductPage"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/PrivacyPolicyPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
 const ReturnPolicyPage = lazy(() => import("@/pages/ReturnPolicyPage"));
+const MarketsIndexPage = lazy(() => import("@/pages/MarketsIndexPage"));
+const MarketPage = lazy(() => import("@/pages/MarketPage"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
 function PageLoader() {
@@ -86,6 +88,8 @@ function Router() {
         <Route path="/catalog" component={PublicCatalog} />
         <Route path="/products/:slug" component={ProductPage} />
         <Route path="/about" component={AboutPage} />
+        <Route path="/markets/:slug" component={MarketPage} />
+        <Route path="/markets" component={MarketsIndexPage} />
         <Route path="/track-quote" component={QuoteTrackingPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/contact" component={ContactPage} />
