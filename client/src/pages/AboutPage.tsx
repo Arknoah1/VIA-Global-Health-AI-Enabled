@@ -226,6 +226,8 @@ export default function AboutPage() {
                 src={africanMedicalTeam} 
                 alt="African medical professionals collaborating" 
                 className="rounded-2xl shadow-xl w-full object-cover aspect-video"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <div className="text-center lg:text-left">
