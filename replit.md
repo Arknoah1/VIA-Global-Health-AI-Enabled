@@ -25,8 +25,7 @@ Preferred communication style: Simple, everyday language.
   - Product data (names, descriptions, categories) stays in English from the database
   - Admin pages remain English-only
   - AI chat (Amara) responds in the user's selected language via `language` parameter in API calls
-  - Hreflang SEO tags in `server/seo.ts` for all 5 languages plus x-default
-  - Sitemap includes xhtml:link alternates for each language
+  - SEO approach: English is the only indexed language version. The server explicitly sets `lang="en"` on every HTML response via `injectMetaIntoHtml` in `server/seo.ts`. Non-English translations are UX-only (client-side) and are not exposed at separate crawlable URLs. No hreflang tags are emitted because no locale-specific URLs exist.
 - **Currency Conversion**: Approximate local-currency notes shown near USD prices
   - `client/src/lib/currency.ts` maps countries → currency codes/symbols
   - `GET /api/exchange-rates` endpoint with 24h cache in `market_data_cache` (free API + fallback rates)

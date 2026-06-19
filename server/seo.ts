@@ -56,6 +56,13 @@ function injectMetaIntoHtml(html: string, meta: PageMeta, extraHeadHtml?: string
 
   let result = html;
 
+  // Always set lang="en" on the html element so crawlers see the correct
+  // language regardless of any client-side language switching.
+  result = result.replace(/<html([^>]*)>/i, (_match, attrs) => {
+    const cleaned = (attrs || "").replace(/\slang="[^"]*"/gi, "").replace(/\slang='[^']*'/gi, "");
+    return `<html${cleaned} lang="en">`;
+  });
+
   result = result.replace(/<title>[^<]*<\/title>/i, titleTag);
   if (!/<title>/i.test(result)) {
     result = result.replace("</head>", `  ${titleTag}\n  </head>`);
