@@ -12,6 +12,8 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@esbuild-kit/core-utils": "^3.3.2",
+    "@esbuild-kit/esm-loader": "^2.6.5",
     "@hookform/resolvers": "^3.10.0",
     "@hubspot/api-client": "^12.0.0",
     "@jridgewell/trace-mapping": "^0.3.25",
@@ -51,7 +53,7 @@
     "cmdk": "^1.1.1",
     "connect-pg-simple": "^10.0.0",
     "date-fns": "^3.6.0",
-    "drizzle-orm": "^0.39.3",
+    "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.7.0",
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
@@ -61,7 +63,7 @@
     "lucide-react": "^0.545.0",
     "memorystore": "^1.6.7",
     "next-themes": "^0.4.6",
-    "nodemailer": "^8.0.0",
+    "nodemailer": "^9.0.1",
     "openai": "^6.10.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
@@ -109,9 +111,20 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.20.5",
     "typescript": "5.6.3",
-    "vite": "^7.1.9"
+    "vite": "^7.3.5"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.4"
+    },
+    "@esbuild-kit/esm-loader": {
+      "esbuild": "^0.25.4"
+    },
+    "vite": {
+      "esbuild": "0.27.2"
+    }
   }
 }
