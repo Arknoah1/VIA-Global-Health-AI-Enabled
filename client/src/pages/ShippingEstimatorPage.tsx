@@ -476,11 +476,21 @@ export default function ShippingEstimatorPage() {
                               <div key={i} className="flex justify-between items-center py-2 border-b last:border-0">
                                 <span className="text-sm text-muted-foreground">{d.qty}× {d.product} → {d.country}</span>
                                 <div className="flex items-center gap-2">
+                                  {d.source === "historical" ? (
+                                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-200">Historical</Badge>
+                                  ) : d.source === "hubspot" ? (
+                                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800 border-purple-200">HubSpot</Badge>
+                                  ) : d.source ? (
+                                    <Badge variant="outline" className="text-xs">{d.source}</Badge>
+                                  ) : null}
                                   {d.method && <Badge variant="outline" className="text-xs">{d.method}</Badge>}
                                   <span className="font-mono font-semibold text-sm">${d.shippingCost?.toLocaleString()}</span>
                                 </div>
                               </div>
                             ))}
+                            <p className="text-xs text-muted-foreground mt-3 pt-2 border-t">
+                              Only <span className="font-medium text-green-700">Historical</span> deals are used for quote generation. HubSpot deals use a synthetic 12%-of-deal-value estimate and are shown for reference only.
+                            </p>
                           </CardContent>
                         </Card>
                       )}
