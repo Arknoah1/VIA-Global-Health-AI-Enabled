@@ -579,6 +579,12 @@ const PAGE_META: Record<string, () => PageMeta> = {
   }),
 };
 
+function firstSentence(text: string, maxLen = 155): string {
+  const match = text.match(/^[^.!?]+[.!?]/);
+  const sentence = match ? match[0].trim() : text.slice(0, maxLen);
+  return sentence.length > maxLen ? sentence.slice(0, maxLen - 1) + "…" : sentence;
+}
+
 function isAdminRoute(path: string): boolean {
   return path === "/admin" || path.startsWith("/admin/");
 }
@@ -656,7 +662,7 @@ export async function resolvePublicRoute(html: string, url: string): Promise<Rou
       }
       const meta: PageMeta = {
         title: `Medical Equipment for ${market.name} | VIA Global Health`,
-        description: `Quality medical equipment for healthcare providers, distributors, and NGOs in ${market.name}. VIA Global Health supplies thermocoagulators, CPAP devices, diagnostic equipment, and more. Quote within 24 hours.`,
+        description: firstSentence(market.healthContext),
         canonicalUrl: `${SITE_URL}/markets/${market.slug}`,
         ogType: "website",
         ogImage: `${SITE_URL}/opengraph.jpg`,
