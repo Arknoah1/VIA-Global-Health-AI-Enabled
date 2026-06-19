@@ -339,7 +339,63 @@ function buildProductBodyHtml(product: any, slug: string): string {
   `;
 }
 
-function buildMarketBodyHtml(market: MarketCountry): string {
+async function buildMarketBodyHtml(market: MarketCountry): Promise<string> {
+  let featuredProductsHtml = "";
+  let allProductsHtml = "";
+  try {
+    const allProducts = await storage.getAllProducts();
+    const active = allProducts.filter((p: any) => p.status !== "inactive");
+    const hasFilter = market.relevantCategories.length > 0;
+    const featured = hasFilter
+      ? active.filter((p: any) => market.relevantCategories.includes(p.category))
+      : [];
+    const remaining = hasFilter
+      ? active.filter((p: any) => !market.relevantCategories.includes(p.category))
+      : active;
+
+    if (featured.length > 0) {
+      featuredProductsHtml = `
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Featured Equipment for ${escapeHtml(market.name)}</h2>
+        <p style="font-size:0.875rem;color:#6b7280;margin-bottom:0.75rem">Products most relevant to ${escapeHtml(market.name)}'s healthcare priorities:</p>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          ${featured.map((p: any) => {
+            const pSlug = slugify(p.name);
+            const priceStr = p.price ? ` — From $${(p.price / 100).toFixed(2)} USD` : "";
+            return `<li><a href="/products/${escapeHtml(pSlug)}" style="color:#2563eb">${escapeHtml(p.name)}</a>${escapeHtml(priceStr)}</li>`;
+          }).join("")}
+        </ul>`;
+    }
+
+    if (remaining.length > 0) {
+      allProductsHtml = `
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">All Equipment Available for ${escapeHtml(market.name)}</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          ${remaining.map((p: any) => {
+            const pSlug = slugify(p.name);
+            const priceStr = p.price ? ` — From $${(p.price / 100).toFixed(2)} USD` : "";
+            return `<li><a href="/products/${escapeHtml(pSlug)}" style="color:#2563eb">${escapeHtml(p.name)}</a>${escapeHtml(priceStr)}</li>`;
+          }).join("")}
+        </ul>`;
+    }
+
+    if (!hasFilter && active.length > 0) {
+      featuredProductsHtml = `
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Equipment Available for ${escapeHtml(market.name)}</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          ${active.map((p: any) => {
+            const pSlug = slugify(p.name);
+            const priceStr = p.price ? ` — From $${(p.price / 100).toFixed(2)} USD` : "";
+            return `<li><a href="/products/${escapeHtml(pSlug)}" style="color:#2563eb">${escapeHtml(p.name)}</a>${escapeHtml(priceStr)}</li>`;
+          }).join("")}
+        </ul>`;
+      allProductsHtml = "";
+    }
+  } catch {
+    featuredProductsHtml = `
+      <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Equipment Available for ${escapeHtml(market.name)}</h2>
+      <p style="color:#374151;margin-bottom:1rem">VIA Global Health supplies thermocoagulators, colposcopes, CPAP devices, autoclaves, pulse oximeters, diagnostic equipment, and more to healthcare facilities in ${escapeHtml(market.name)}. All products include full documentation and warranty support.</p>`;
+  }
+
   return `
     <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
       <header>
@@ -353,8 +409,8 @@ function buildMarketBodyHtml(market: MarketCountry): string {
         <p style="color:#374151;margin-bottom:1.5rem">${escapeHtml(market.healthContext)}</p>
         <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Procurement &amp; Import Information</h2>
         <p style="color:#374151;margin-bottom:1rem">${escapeHtml(market.importNote)}</p>
-        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Equipment Available for ${escapeHtml(market.name)}</h2>
-        <p style="color:#374151;margin-bottom:1rem">VIA Global Health supplies thermocoagulators, colposcopes, CPAP devices, autoclaves, pulse oximeters, diagnostic equipment, and more to healthcare facilities in ${escapeHtml(market.name)}. All products include full documentation and warranty support.</p>
+        ${featuredProductsHtml}
+        ${allProductsHtml}
         <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
           <li>Quote response within 24 hours for all ${escapeHtml(market.name)} orders</li>
           <li>Air and sea freight options to ${escapeHtml(market.name)}</li>
@@ -603,8 +659,14 @@ export async function resolvePublicRoute(html: string, url: string): Promise<Rou
   }
 
   if (normalizedPath === "/track-quote") {
-    let result = html;
-    result = result.replace("</head>", `  <meta name="robots" content="noindex, nofollow" />\n  </head>`);
+    const meta: PageMeta = {
+      title: "Track Your Quote | VIA Global Health",
+      description: "Check the status of your medical equipment quote request from VIA Global Health.",
+      canonicalUrl: `${SITE_URL}/track-quote`,
+      ogType: "website",
+      ogImage: `${SITE_URL}/opengraph.jpg`,
+    };
+    let result = injectMetaIntoHtml(html, meta, `<meta name="robots" content="noindex, nofollow" />`);
     return { status: 200, html: result };
   }
 
@@ -684,7 +746,7 @@ export async function resolvePublicRoute(html: string, url: string): Promise<Rou
       };
       const geoTags = `<meta name="geo.region" content="${escapeHtml(market.geoRegion)}" />\n    <meta name="geo.placename" content="${escapeHtml(market.name)}" />`;
       let result = injectMetaIntoHtml(html, meta, geoTags);
-      result = injectBodyContent(result, buildMarketBodyHtml(market));
+      result = injectBodyContent(result, await buildMarketBodyHtml(market));
       return { status: 200, html: result };
     }
 
