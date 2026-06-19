@@ -1,9 +1,53 @@
 import { storage } from "./storage";
 import { generateProformaInvoice } from "./invoice-generator";
+import { ReplitConnectors } from "@replit/connectors-sdk";
 import type { ProformaInvoice } from "@shared/schema";
 
 const NOTIFY_TO = "noah@viaglobalhealth.com";
-const NOTIFY_FROM = "noreply@viaglobalhealth.com";
+const NOTIFY_FROM = process.env.AUTO_NOTIFY_FROM_EMAIL || "noreply@viaglobalhealth.com";
+
+const connectors = new ReplitConnectors();
+
+async function sendViaConnectorProxy(from: string, subject: string, html: string): Promise<boolean> {
+  try {
+    const response = await connectors.proxy("resend", "/emails", {
+      method: "POST",
+      body: JSON.stringify({ from, to: NOTIFY_TO, subject, html }),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      console.error(`[auto-notify] Resend connector proxy HTTP ${response.status}:`, text);
+      return false;
+    }
+    const data = await response.json().catch(() => ({}));
+    if ((data as any)?.id) {
+      return true;
+    }
+    console.error("[auto-notify] Resend connector proxy unexpected response:", data);
+    return false;
+  } catch (err) {
+    console.warn("[auto-notify] Resend connector proxy failed:", (err as Error).message);
+    return false;
+  }
+}
+
+async function sendViaApiKey(from: string, subject: string, html: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({ from, to: NOTIFY_TO, subject, html });
+    if (error) {
+      console.error("[auto-notify] Resend API key error:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("[auto-notify] Resend API key send failed:", (err as Error).message);
+    return false;
+  }
+}
 
 function escapeHtml(text: string): string {
   return text
@@ -112,40 +156,31 @@ export async function autoNotifyOnQuoteComplete(quoteRequestId: string): Promise
     }
 
     const existingInvoices = await storage.getProformaInvoicesByQuoteRequest(quoteRequestId);
-    if (existingInvoices.length > 0) {
+    const alreadyEmailed = existingInvoices.some((inv) => (inv as any).emailSentAt);
+    if (alreadyEmailed) {
       return;
     }
 
-    const invoice = await generateProformaInvoice(quoteRequestId);
+    const invoice = existingInvoices.length > 0
+      ? existingInvoices[0]
+      : await generateProformaInvoice(quoteRequestId);
+
     if (!invoice) {
       console.error(`[auto-notify] generateProformaInvoice returned null for quote ${quoteRequestId}`);
       return;
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      console.warn("[auto-notify] RESEND_API_KEY not set — skipping email");
-      return;
-    }
-
-    const { Resend } = await import("resend");
-    const resend = new Resend(apiKey);
-
     const customerName = quoteRequest!.firstName || quoteRequest!.lastName || "Customer";
     const productName = quoteRequest!.productName || "Product";
     const country = quoteRequest!.shippingCountry || "Unknown";
-
     const subject = `New Quote – ${customerName} – ${productName} – ${country}`;
+    const html = buildEmailHtml(invoice, quoteRequestId, quoteRequest!.organizationType);
 
-    const { error } = await resend.emails.send({
-      from: NOTIFY_FROM,
-      to: NOTIFY_TO,
-      subject,
-      html: buildEmailHtml(invoice, quoteRequestId, quoteRequest!.organizationType),
-    });
+    const sent = await sendViaConnectorProxy(NOTIFY_FROM, subject, html)
+      || await sendViaApiKey(NOTIFY_FROM, subject, html);
 
-    if (error) {
-      console.error(`[auto-notify] Resend error for quote ${quoteRequestId}:`, error);
+    if (!sent) {
+      console.warn(`[auto-notify] Could not send email for quote ${quoteRequestId} — no working Resend credentials`);
       return;
     }
 

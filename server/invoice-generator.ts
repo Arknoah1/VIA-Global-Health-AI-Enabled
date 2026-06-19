@@ -38,6 +38,12 @@ export async function generateProformaInvoice(quoteRequestId: string): Promise<P
   const quoteRequest = await storage.getQuoteRequestById(quoteRequestId);
   if (!quoteRequest) return null;
 
+  const existingInvoices = await storage.getProformaInvoicesByQuoteRequest(quoteRequestId);
+  if (existingInvoices.length > 0) {
+    console.log(`[InvoiceGen] Returning existing invoice ${existingInvoices[0].id} for quote ${quoteRequestId}`);
+    return existingInvoices[0];
+  }
+
   const quantity = parseInt(quoteRequest.orderQuantity || "1") || 1;
 
   let basePriceCents = 0;
