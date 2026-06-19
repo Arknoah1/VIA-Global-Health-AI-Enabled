@@ -4,7 +4,7 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 import type { ProformaInvoice } from "@shared/schema";
 
 const NOTIFY_TO = "noah@viaglobalhealth.com";
-const NOTIFY_FROM = process.env.AUTO_NOTIFY_FROM_EMAIL || "noreply@viaglobalhealth.com";
+const NOTIFY_FROM = process.env.AUTO_NOTIFY_FROM_EMAIL || "noah@viaglobalhealth.com";
 
 const connectors = new ReplitConnectors();
 
