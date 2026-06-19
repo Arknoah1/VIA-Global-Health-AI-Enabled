@@ -196,9 +196,56 @@ export async function registerRoutes(
     next();
   });
 
+  function buildUrlsetXml(entries: { loc: string; lastmod: string; changefreq: string; priority: string }[], baseUrl: string): string {
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries
+  .map(
+    (entry) => `  <url>
+    <loc>${baseUrl}${entry.loc}</loc>
+    <lastmod>${entry.lastmod}</lastmod>
+    <changefreq>${entry.changefreq}</changefreq>
+    <priority>${entry.priority}</priority>
+  </url>`
+  )
+  .join("\n")}
+</urlset>`;
+  }
+
   app.get("/sitemap.xml", async (_req, res) => {
     try {
-      const allProducts = await storage.getAllProducts();
+      const baseUrl = "https://viaglobalhealth.com";
+      const now = new Date().toISOString().split("T")[0];
+
+      const childSitemaps = [
+        { loc: `${baseUrl}/sitemap-static.xml`, lastmod: now },
+        { loc: `${baseUrl}/sitemap-markets.xml`, lastmod: now },
+        { loc: `${baseUrl}/sitemap-products.xml`, lastmod: now },
+      ];
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${childSitemaps
+  .map(
+    (s) => `  <sitemap>
+    <loc>${s.loc}</loc>
+    <lastmod>${s.lastmod}</lastmod>
+  </sitemap>`
+  )
+  .join("\n")}
+</sitemapindex>`;
+
+      res.set("Content-Type", "application/xml");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(xml);
+    } catch (error) {
+      console.error("Error generating sitemap index:", error);
+      res.status(500).send("Failed to generate sitemap index");
+    }
+  });
+
+  app.get("/sitemap-static.xml", (_req, res) => {
+    try {
       const baseUrl = "https://viaglobalhealth.com";
       const now = new Date().toISOString().split("T")[0];
 
@@ -210,6 +257,40 @@ export async function registerRoutes(
         { loc: "/privacy-policy", changefreq: "yearly", priority: "0.3", lastmod: now },
         { loc: "/return-policy", changefreq: "yearly", priority: "0.3", lastmod: now },
       ];
+
+      res.set("Content-Type", "application/xml");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(buildUrlsetXml(staticPages, baseUrl));
+    } catch (error) {
+      console.error("Error generating static sitemap:", error);
+      res.status(500).send("Failed to generate static sitemap");
+    }
+  });
+
+  app.get("/sitemap-markets.xml", (_req, res) => {
+    try {
+      const baseUrl = "https://viaglobalhealth.com";
+      const now = new Date().toISOString().split("T")[0];
+
+      const marketEntries = [
+        { loc: "/markets", changefreq: "monthly", priority: "0.6", lastmod: now },
+        ...MARKETS.map(m => ({ loc: `/markets/${m.slug}`, changefreq: "monthly", priority: "0.7", lastmod: now })),
+      ];
+
+      res.set("Content-Type", "application/xml");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(buildUrlsetXml(marketEntries, baseUrl));
+    } catch (error) {
+      console.error("Error generating markets sitemap:", error);
+      res.status(500).send("Failed to generate markets sitemap");
+    }
+  });
+
+  app.get("/sitemap-products.xml", async (_req, res) => {
+    try {
+      const allProducts = await storage.getAllProducts();
+      const baseUrl = "https://viaglobalhealth.com";
+      const now = new Date().toISOString().split("T")[0];
 
       const productEntries = allProducts.map((p) => {
         const slug = p.name
@@ -224,33 +305,12 @@ export async function registerRoutes(
         return { loc: `/products/${slug}`, changefreq: "weekly", priority: "0.7", lastmod };
       });
 
-      const marketEntries = [
-        { loc: "/markets", changefreq: "monthly", priority: "0.6", lastmod: now },
-        ...MARKETS.map(m => ({ loc: `/markets/${m.slug}`, changefreq: "monthly", priority: "0.7", lastmod: now })),
-      ];
-
-      const allEntries = [...staticPages, ...marketEntries, ...productEntries];
-
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${allEntries
-  .map(
-    (entry) => `  <url>
-    <loc>${baseUrl}${entry.loc}</loc>
-    <lastmod>${entry.lastmod}</lastmod>
-    <changefreq>${entry.changefreq}</changefreq>
-    <priority>${entry.priority}</priority>
-  </url>`
-  )
-  .join("\n")}
-</urlset>`;
-
       res.set("Content-Type", "application/xml");
       res.set("Cache-Control", "public, max-age=3600");
-      res.send(xml);
+      res.send(buildUrlsetXml(productEntries, baseUrl));
     } catch (error) {
-      console.error("Error generating sitemap:", error);
-      res.status(500).send("Failed to generate sitemap");
+      console.error("Error generating products sitemap:", error);
+      res.status(500).send("Failed to generate products sitemap");
     }
   });
 
