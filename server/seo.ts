@@ -47,7 +47,7 @@ function buildMetaTags(meta: PageMeta): string {
   return tags.join("\n    ");
 }
 
-function injectMetaIntoHtml(html: string, meta: PageMeta): string {
+function injectMetaIntoHtml(html: string, meta: PageMeta, extraHeadHtml?: string): string {
   const titleTag = `<title>${escapeHtml(meta.title)}</title>`;
   const metaTags = buildMetaTags(meta);
   const jsonLdTag = meta.jsonLd
@@ -75,9 +75,10 @@ function injectMetaIntoHtml(html: string, meta: PageMeta): string {
   result = result.replace(/<meta\s+name="twitter:description"[^>]*\/?>/i, "");
   result = result.replace(/<meta\s+name="twitter:image"[^>]*\/?>/i, "");
 
+  const extra = extraHeadHtml ? `\n    ${extraHeadHtml}` : "";
   result = result.replace(
     "</head>",
-    `    ${metaTags}\n    ${jsonLdTag}\n  </head>`
+    `    ${metaTags}\n    ${jsonLdTag}${extra}\n  </head>`
   );
 
   return result;
@@ -225,7 +226,10 @@ export async function injectSeoMeta(html: string, url: string): Promise<string> 
     const normalizedPath = reqPath === "" ? "/" : reqPath;
     const metaFn = PAGE_META[normalizedPath];
     if (metaFn) {
-      return injectMetaIntoHtml(html, metaFn());
+      const heroPreload = normalizedPath === "/"
+        ? `<link rel="preload" as="image" href="/images/hero/african-healthcare-hero.jpg" fetchpriority="high" />`
+        : undefined;
+      return injectMetaIntoHtml(html, metaFn(), heroPreload);
     }
   } catch (err) {
     console.error("Error injecting SEO meta:", err);
