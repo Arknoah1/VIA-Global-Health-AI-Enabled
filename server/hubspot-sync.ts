@@ -72,6 +72,7 @@ export interface SyncResult {
   updated: number;
   errors: number;
   skipped: number;
+  skippedReasons: { missingAmount: number; unparseableProduct: number; unparseableCountry: number; processingError: number };
   syntheticCount: number;
   realCount: number;
   lastSyncedAt: string;
@@ -82,7 +83,7 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
   let added = 0;
   let updated = 0;
   let errors = 0;
-  let skipped = 0;
+  const skippedReasons = { missingAmount: 0, unparseableProduct: 0, unparseableCountry: 0, processingError: 0 };
   let after: string | undefined;
   const allDeals: InsertShippingDeal[] = [];
 
@@ -109,35 +110,35 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
         try {
           const props = deal.properties;
           const amount = props.amount ? parseFloat(props.amount) : null;
-          if (!amount || amount <= 0) { skipped++; continue; }
+          if (!amount || amount <= 0) { skippedReasons.missingAmount++; continue; }
 
           const dealName = props.dealname || "Unknown";
           const product = extractProductFromDealName(dealName);
           const country = extractCountryFromDealName(dealName);
 
-          if (product && country) {
-            const key = `${country}|${product}`;
-            if (existingHubspotKeys.has(key)) {
-              updated++;
-            } else {
-              added++;
-            }
-            allDeals.push({
-              country,
-              product,
-              qty: 1,
-              shippingCost: Math.round(amount * 0.12),
-              method: "Air",
-              incoterm: "DAP",
-              productValue: amount,
-              source: "hubspot",
-              dealDate: props.closedate ? new Date(props.closedate) : null,
-            });
+          if (!product) { skippedReasons.unparseableProduct++; continue; }
+          if (!country) { skippedReasons.unparseableCountry++; continue; }
+
+          const key = `${country}|${product}`;
+          if (existingHubspotKeys.has(key)) {
+            updated++;
           } else {
-            skipped++;
+            added++;
           }
+          allDeals.push({
+            country,
+            product,
+            qty: 1,
+            shippingCost: Math.round(amount * 0.12),
+            method: "Air",
+            incoterm: "DAP",
+            productValue: amount,
+            source: "hubspot",
+            dealDate: props.closedate ? new Date(props.closedate) : null,
+          });
         } catch (err) {
           errors++;
+          skippedReasons.processingError++;
           log(`Error processing deal ${deal.id}: ${err}`);
         }
       }
@@ -145,21 +146,26 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
       after = data.paging?.next?.after;
     } while (after);
 
-    const manualDeals = existingDeals.filter(d => d.source !== "hubspot");
-    const combined = [...manualDeals.map(d => ({
-      country: d.country,
-      product: d.product,
-      qty: d.qty,
-      shippingCost: d.shippingCost,
-      method: d.method,
-      incoterm: d.incoterm,
-      productValue: d.productValue,
-      source: d.source,
-      dealDate: d.dealDate,
-    })), ...allDeals];
-    await storage.upsertShippingDeals(combined);
+    // Only write to the DB when HubSpot returned at least one parseable deal,
+    // preventing accidental wipe of existing rows if the API returns an empty set.
+    if (allDeals.length > 0) {
+      const manualDeals = existingDeals.filter(d => d.source !== "hubspot");
+      const combined = [...manualDeals.map(d => ({
+        country: d.country,
+        product: d.product,
+        qty: d.qty,
+        shippingCost: d.shippingCost,
+        method: d.method,
+        incoterm: d.incoterm,
+        productValue: d.productValue,
+        source: d.source,
+        dealDate: d.dealDate,
+      })), ...allDeals];
+      await storage.upsertShippingDeals(combined);
+    }
 
     const lastSyncedAt = new Date().toISOString();
+    const skipped = skippedReasons.missingAmount + skippedReasons.unparseableProduct + skippedReasons.unparseableCountry;
     const syntheticCount = added + updated;
     // Persist sync metadata with long TTL so it survives server restarts
     await storage.setMarketDataCache("hubspot_sync_meta", {
@@ -167,6 +173,7 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
       added,
       updated,
       skipped,
+      skippedReasons,
       errors,
       syntheticCount,
       realCount: 0,
@@ -174,7 +181,7 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
 
     log(`Sync complete: ${added} added, ${updated} updated, ${skipped} skipped, ${errors} errors`);
 
-    return { added, updated, errors, skipped, syntheticCount, realCount: 0, lastSyncedAt };
+    return { added, updated, errors, skipped, skippedReasons, syntheticCount, realCount: 0, lastSyncedAt };
   } catch (err) {
     log(`Sync failed: ${err}`);
     throw err;

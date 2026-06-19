@@ -185,10 +185,14 @@ export default function ShippingEstimatorPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["shipping-deals"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-market-data"] });
+      const skipReasons: string[] = [];
+      if (data.skippedReasons?.missingAmount > 0) skipReasons.push(`${data.skippedReasons.missingAmount} no amount`);
+      if (data.skippedReasons?.unparseableProduct > 0) skipReasons.push(`${data.skippedReasons.unparseableProduct} unparseable product`);
+      if (data.skippedReasons?.unparseableCountry > 0) skipReasons.push(`${data.skippedReasons.unparseableCountry} unparseable country`);
       const parts = [
         data.added > 0 ? `${data.added} added` : null,
         data.updated > 0 ? `${data.updated} updated` : null,
-        data.skipped > 0 ? `${data.skipped} skipped` : null,
+        data.skipped > 0 ? `${data.skipped} skipped${skipReasons.length > 0 ? ` (${skipReasons.join(", ")})` : ""}` : null,
         data.errors > 0 ? `${data.errors} errors` : null,
         data.syntheticCount > 0 ? `${data.syntheticCount} use ~12% est.` : null,
       ].filter(Boolean);
