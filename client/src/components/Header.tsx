@@ -68,13 +68,6 @@ export function Header() {
               {t("nav.about")}
             </Link>
             <Link 
-              href="/track-quote" 
-              className={`transition-colors ${isActive("/track-quote") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
-              data-testid="link-track-quote"
-            >
-              {t("nav.trackQuote")}
-            </Link>
-            <Link 
               href="/contact" 
               className={`transition-colors ${isActive("/contact") ? "text-blue-600 font-semibold" : "text-slate-600 hover:text-slate-900"}`} 
               data-testid="link-contact-nav"
@@ -162,14 +155,6 @@ export function Header() {
                 data-testid="link-mobile-about"
               >
                 {t("nav.about")}
-              </Link>
-              <Link 
-                href="/track-quote" 
-                className="block px-4 py-3 min-h-[44px] rounded-lg hover:bg-slate-100 transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-                data-testid="link-mobile-track-quote"
-              >
-                {t("nav.trackQuote")}
               </Link>
               <Link 
                 href="/contact" 

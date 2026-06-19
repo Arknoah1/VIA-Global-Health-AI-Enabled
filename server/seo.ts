@@ -256,13 +256,30 @@ const STATIC_BODY: Record<string, string> = {
 
 const KNOWN_STATIC_ROUTES = new Set(Object.keys(STATIC_BODY));
 
+function buildSpecsHtml(specifications: any): string {
+  if (!specifications) return "";
+  let entries: Array<[string, string]> = [];
+  if (Array.isArray(specifications) && specifications.length > 0) {
+    entries = specifications.slice(0, 12).map((s: any) => [String(s.name || ""), String(s.value || "")]);
+  } else if (typeof specifications === "object") {
+    const objEntries = Object.entries(specifications as Record<string, unknown>);
+    if (objEntries.length > 0) {
+      entries = objEntries.slice(0, 12).map(([k, v]) => [k, String(v ?? "")]);
+    }
+  }
+  if (entries.length === 0) return "";
+  return `<h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Specifications</h2><ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">${
+    entries.map(([name, value]) => `<li><strong>${escapeHtml(name)}</strong>: ${escapeHtml(value)}</li>`).join("")
+  }</ul>`;
+}
+
 function buildProductBodyHtml(product: any, slug: string): string {
   const price = product.price ? `$${(product.price / 100).toFixed(2)}` : null;
   const priceHtml = price
     ? `<p style="font-size:1.125rem;font-weight:600;color:#1a1a2e;margin-bottom:0.75rem">From ${escapeHtml(price)} USD</p>`
     : "";
   const desc = product.description
-    ? `<p style="color:#374151;margin-bottom:1rem">${escapeHtml(product.description.slice(0, 500))}${product.description.length > 500 ? "…" : ""}</p>`
+    ? `<p style="color:#374151;margin-bottom:1rem">${escapeHtml(product.description.slice(0, 600))}${product.description.length > 600 ? "…" : ""}</p>`
     : "";
   const category = product.category
     ? `<p style="font-size:0.875rem;color:#6b7280;margin-bottom:0.5rem">Category: ${escapeHtml(product.category)}</p>`
@@ -270,11 +287,24 @@ function buildProductBodyHtml(product: any, slug: string): string {
   const sku = product.sku
     ? `<p style="font-size:0.875rem;color:#6b7280;margin-bottom:0.5rem">SKU: ${escapeHtml(product.sku)}</p>`
     : "";
-  const specsHtml = product.specifications && Array.isArray(product.specifications) && product.specifications.length > 0
-    ? `<h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Specifications</h2><ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">${
-        product.specifications.slice(0, 8).map((s: any) =>
-          `<li><strong>${escapeHtml(s.name || "")}</strong>: ${escapeHtml(String(s.value || ""))}</li>`
+
+  const specsHtml = buildSpecsHtml(product.specifications);
+
+  const faqs: any[] = Array.isArray(product.faqs) ? product.faqs : [];
+  const faqsHtml = faqs.length > 0
+    ? `<h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Frequently Asked Questions</h2>${
+        faqs.slice(0, 6).map((f: any) =>
+          `<div style="margin-bottom:0.75rem"><strong style="color:#1a1a2e">${escapeHtml(f.question || "")}</strong><p style="color:#374151;margin:0.25rem 0 0">${escapeHtml(f.answer || "")}</p></div>`
         ).join("")
+      }`
+    : "";
+
+  const docs: any[] = Array.isArray(product.documents) ? product.documents : [];
+  const certs: any[] = Array.isArray(product.regulatoryCertificates) ? product.regulatoryCertificates : [];
+  const allDocs = [...docs, ...certs];
+  const docsHtml = allDocs.length > 0
+    ? `<h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Documents &amp; Certificates</h2><ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">${
+        allDocs.map((d: any) => `<li><a href="${escapeHtml(d.url || "#")}" style="color:#2563eb">${escapeHtml(d.name || "Document")}</a></li>`).join("")
       }</ul>`
     : "";
 
@@ -288,7 +318,7 @@ function buildProductBodyHtml(product: any, slug: string): string {
           <a href="/" style="color:#2563eb">Home</a> &rsaquo; <a href="/catalog" style="color:#2563eb">Catalog</a> &rsaquo; ${escapeHtml(product.name)}
         </nav>
         <h1 style="font-size:1.75rem;margin:0 0 0.75rem">${escapeHtml(product.name)}</h1>
-        ${category}${sku}${priceHtml}${desc}${specsHtml}
+        ${category}${sku}${priceHtml}${desc}${specsHtml}${faqsHtml}${docsHtml}
         <p style="margin-top:1.5rem"><a href="/catalog" style="color:#2563eb">&larr; Back to catalog</a></p>
       </main>
     </div>
@@ -348,6 +378,51 @@ function buildMarketsIndexBodyHtml(): string {
         </ul>
         <p><a href="/catalog" style="color:#2563eb;font-weight:600">Browse our full medical equipment catalog &rarr;</a></p>
         <p><a href="/contact" style="color:#2563eb">Contact us for procurement in any market &rarr;</a></p>
+      </main>
+    </div>
+  `;
+}
+
+async function buildCatalogBodyHtml(): Promise<string> {
+  let productLinksHtml = "";
+  try {
+    const allProducts = await storage.getAllProducts();
+    const active = allProducts.filter((p: any) => p.status !== "inactive");
+    if (active.length > 0) {
+      const byCategory: Record<string, any[]> = {};
+      for (const p of active) {
+        const cat = p.category || "Other";
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(p);
+      }
+      productLinksHtml = Object.entries(byCategory).map(([cat, products]) => `
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">${escapeHtml(cat)}</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          ${products.map((p: any) => {
+            const slug = slugify(p.name);
+            const priceStr = p.price ? ` — From $${(p.price / 100).toFixed(2)} USD` : "";
+            return `<li><a href="/products/${escapeHtml(slug)}" style="color:#2563eb">${escapeHtml(p.name)}</a>${escapeHtml(priceStr)}</li>`;
+          }).join("")}
+        </ul>`).join("");
+    }
+  } catch {
+    productLinksHtml = "";
+  }
+
+  return `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; Medical Products Catalog
+        </nav>
+        <h1 style="font-size:2rem;margin:0 0 1rem">Medical Products Catalog</h1>
+        <p style="font-size:1.125rem;color:#374151;margin-bottom:1.5rem">Quality medical equipment for low-resource healthcare settings. Browse thermocoagulators, colposcopes, CPAP devices, autoclaves, pulse oximeters, diagnostic equipment, and more.</p>
+        <p style="color:#374151;margin-bottom:1rem">All products include full documentation, CE marking where applicable, and warranty support. VIA Global Health ships to healthcare providers, distributors, and NGOs across Africa, Asia, and Latin America.</p>
+        ${productLinksHtml}
+        <p style="margin-top:1.5rem">Request a quote for any product — we respond within 24 hours. <a href="/contact" style="color:#2563eb">Contact us</a> for volume pricing and NGO discount rates.</p>
       </main>
     </div>
   `;
@@ -503,8 +578,14 @@ export async function resolvePublicRoute(html: string, url: string): Promise<Rou
   const reqPath = url.split("?")[0] || "/";
   const normalizedPath = reqPath === "" ? "/" : reqPath;
 
-  if (isAdminRoute(normalizedPath) || normalizedPath === "/track-quote") {
+  if (isAdminRoute(normalizedPath)) {
     return { status: 200, html };
+  }
+
+  if (normalizedPath === "/track-quote") {
+    let result = html;
+    result = result.replace("</head>", `  <meta name="robots" content="noindex, nofollow" />\n  </head>`);
+    return { status: 200, html: result };
   }
 
   try {
@@ -584,6 +665,17 @@ export async function resolvePublicRoute(html: string, url: string): Promise<Rou
       const geoTags = `<meta name="geo.region" content="${escapeHtml(market.geoRegion)}" />\n    <meta name="geo.placename" content="${escapeHtml(market.name)}" />`;
       let result = injectMetaIntoHtml(html, meta, geoTags);
       result = injectBodyContent(result, buildMarketBodyHtml(market));
+      return { status: 200, html: result };
+    }
+
+    if (normalizedPath === "/catalog") {
+      const metaFn = PAGE_META["/catalog"];
+      let result = html;
+      if (metaFn) {
+        result = injectMetaIntoHtml(result, metaFn());
+      }
+      const catalogBody = await buildCatalogBodyHtml();
+      result = injectBodyContent(result, catalogBody);
       return { status: 200, html: result };
     }
 

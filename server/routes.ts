@@ -209,7 +209,6 @@ export async function registerRoutes(
         { loc: "/contact", changefreq: "monthly", priority: "0.5", lastmod: now },
         { loc: "/privacy-policy", changefreq: "yearly", priority: "0.3", lastmod: now },
         { loc: "/return-policy", changefreq: "yearly", priority: "0.3", lastmod: now },
-        { loc: "/track-quote", changefreq: "monthly", priority: "0.4", lastmod: now },
       ];
 
       const productEntries = allProducts.map((p) => {

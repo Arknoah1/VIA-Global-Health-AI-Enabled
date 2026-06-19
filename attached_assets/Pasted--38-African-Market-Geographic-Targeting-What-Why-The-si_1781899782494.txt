@@ -1,0 +1,31 @@
+#38 - African Market Geographic Targeting
+What & Why
+The site sends no machine-readable geographic signals to search engines — no areaServed in structured data, no country-specific pages. As a result, it doesn't rank for African healthcare procurement searches ("medical equipment supplier Kenya", "colposcope distributor Nigeria") and organic traffic skews toward US/Canada/Singapore crawlers and general English-language searches. This task adds both structured-data signals and crawlable country hub pages for the top African markets VIA Global Health serves.
+
+Done looks like
+The Organization JSON-LD on the homepage includes a full areaServed array covering all primary African markets VIA serves, plus key LMIC countries in Latin America and Asia
+Product Offer schema includes areaServed for the same region set
+Country hub pages exist at /markets/[country-slug] for at least 10 African markets: Nigeria, Kenya, Ethiopia, Ghana, South Africa, Tanzania, Uganda, Mozambique, Senegal, DRC
+Each country page has: a short intro (local health system context, why VIA operates there), a filtered product grid showing catalog items, import/regulatory notes relevant to that country, and a CTA to the quote flow
+All country pages appear in sitemap.xml
+A /markets index page lists all available country pages with a brief regional intro
+geo.region and geo.placename meta tags are injected server-side for each country page
+Out of scope
+Blocking or redirecting traffic from US/Canada/Singapore (harmful to legitimate prospects and crawlers)
+Translation of country pages (content stays English; the language switcher already handles French/Portuguese/Swahili)
+Country-specific pricing or product availability rules (existing pricing tiers are sufficient)
+Outreach activities (Google Search Console targeting, directory listings, backlink acquisition) — these are non-code actions for the VIA team
+Steps
+Structured data — areaServed — Add an areaServed array to the Organization JSON-LD on the homepage, listing the ISO 3166-1 alpha-2 country codes for all African markets VIA ships to plus key LMIC countries (Latin America, South/Southeast Asia). Add areaServed to the Offer object in Product JSON-LD using the same list.
+Country data file — Create a static data file listing each supported country with: slug, name, ISO code, geo.region tag, short health-system description (2–3 sentences), import/procurement note, and which product categories are most relevant there.
+Country hub page component — Build a MarketPage React component that reads the country data and renders: hero with country name and flag, health context paragraph, filtered product grid (products already in the catalog, same as /catalog), procurement/import note, and a quote CTA.
+Markets index page — Build a /markets index page listing all country hub pages grouped by region (East Africa, West Africa, Southern Africa, Central Africa, Other LMIC). This page itself should be SEO-optimised with a title and description targeting "medical equipment sub-Saharan Africa".
+Routing and sitemap — Register /markets and /markets/:slug routes in the React app. Add server-side SEO injection for these routes (title, description, canonical, geo meta tags, country-specific JSON-LD). Add all /markets/* URLs to sitemap.xml.
+Navigation — Add a "Markets" link to the main navigation header so the pages are crawlable via internal links (not just the sitemap).
+Relevant files
+server/seo.ts
+server/routes.ts
+client/src/App.tsx
+client/src/pages/HomePage.tsx
+client/src/pages/PublicCatalog.tsx
+client/src/components/Header.tsx
