@@ -49,6 +49,26 @@ async function sendViaApiKey(from: string, subject: string, html: string): Promi
   }
 }
 
+async function sendViaSmtp(subject: string, html: string): Promise<boolean> {
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (!smtpUser || !smtpPass) return false;
+  try {
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({ from: smtpUser, to: NOTIFY_TO, subject, html });
+    return true;
+  } catch (err) {
+    console.warn("[auto-notify] SMTP send failed:", (err as Error).message);
+    return false;
+  }
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -177,10 +197,11 @@ export async function autoNotifyOnQuoteComplete(quoteRequestId: string): Promise
     const html = buildEmailHtml(invoice, quoteRequestId, quoteRequest!.organizationType);
 
     const sent = await sendViaConnectorProxy(NOTIFY_FROM, subject, html)
-      || await sendViaApiKey(NOTIFY_FROM, subject, html);
+      || await sendViaApiKey(NOTIFY_FROM, subject, html)
+      || await sendViaSmtp(subject, html);
 
     if (!sent) {
-      console.warn(`[auto-notify] Could not send email for quote ${quoteRequestId} — no working Resend credentials`);
+      console.warn(`[auto-notify] Could not send email for quote ${quoteRequestId} — no working email credentials`);
       return;
     }
 
