@@ -1674,7 +1674,7 @@ ${allEntries
       if (!transcript) return res.status(404).json({ error: "Transcript not found" });
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system",
@@ -2193,7 +2193,7 @@ ${allEntries
 
       // Call OpenAI
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: openaiMessages,
         temperature: 0.7,
         max_tokens: 600
@@ -2369,7 +2369,7 @@ ${allEntries
         : "none";
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "system",
@@ -3126,7 +3126,7 @@ Respond with valid JSON only (no markdown, no code fences):
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
     });

@@ -313,7 +313,7 @@ Rules:
 - keyRisks should list 3-5 specific risks mentioned or implied in the content`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });
@@ -384,7 +384,7 @@ Rules:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_tokens: 800,
       messages: [{ role: "user", content: prompt }],
     });
