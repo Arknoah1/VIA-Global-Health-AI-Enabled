@@ -186,14 +186,15 @@ export default function ShippingEstimatorPage() {
       queryClient.invalidateQueries({ queryKey: ["shipping-deals"] });
       queryClient.invalidateQueries({ queryKey: ["shipping-market-data"] });
       const parts = [
-        `${data.synced} deal${data.synced !== 1 ? "s" : ""} synced`,
+        data.added > 0 ? `${data.added} added` : null,
+        data.updated > 0 ? `${data.updated} updated` : null,
         data.skipped > 0 ? `${data.skipped} skipped` : null,
         data.errors > 0 ? `${data.errors} errors` : null,
-        data.syntheticCount > 0 ? `${data.syntheticCount} use ~12% estimate` : null,
+        data.syntheticCount > 0 ? `${data.syntheticCount} use ~12% est.` : null,
       ].filter(Boolean);
       toast({
         title: "HubSpot Sync Complete",
-        description: parts.join(" · "),
+        description: parts.length > 0 ? parts.join(" · ") : "No changes",
       });
     },
     onError: (err: Error) => {
@@ -564,9 +565,11 @@ export default function ShippingEstimatorPage() {
                         <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid="text-last-synced">
                           <Clock className="h-3 w-3" />
                           Last synced {formatRelativeTime(lastSync.lastSyncedAt)}
-                          {lastSync.synced != null && (
+                          {(lastSync.added != null || lastSync.updated != null) && (
                             <span className="ml-1 text-muted-foreground/60">
-                              · {lastSync.synced} added{lastSync.skipped > 0 ? `, ${lastSync.skipped} skipped` : ""}
+                              ·{lastSync.added > 0 ? ` ${lastSync.added} added` : ""}
+                              {lastSync.updated > 0 ? ` ${lastSync.updated} updated` : ""}
+                              {lastSync.skipped > 0 ? `, ${lastSync.skipped} skipped` : ""}
                             </span>
                           )}
                         </p>
@@ -656,12 +659,23 @@ export default function ShippingEstimatorPage() {
                       <div className="space-y-3">
                         <div className="flex justify-between items-end">
                           <div className="text-3xl font-bold font-mono">${marketData.fuel.price.toFixed(2)}<span className="text-sm text-muted-foreground font-normal">/gal</span></div>
-                          <Badge variant={marketData.fuel.label === "elevated" ? "destructive" : marketData.fuel.label === "low" ? "default" : "secondary"}>
-                            {marketData.fuel.delta > 0 ? "+" : ""}{marketData.fuel.delta}% vs baseline
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1">
+                            {marketData.fuel.isFallback && (
+                              <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-700" data-testid="badge-fuel-fallback">
+                                Fallback rate
+                              </Badge>
+                            )}
+                            <Badge variant={marketData.fuel.label === "elevated" ? "destructive" : marketData.fuel.label === "low" ? "default" : "secondary"}>
+                              {marketData.fuel.delta > 0 ? "+" : ""}{marketData.fuel.delta}% vs baseline
+                            </Badge>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Fuel {marketData.fuel.label} · <strong>{marketData.fuel.multiplier}×</strong> applied to estimates
+                          {marketData.fuel.isFallback
+                            ? "EIA/FRED unavailable · using $1.80/gal baseline — multiplier may not reflect current market"
+                            : `Fuel ${marketData.fuel.label} · `}
+                          {!marketData.fuel.isFallback && <strong>{marketData.fuel.multiplier}×</strong>}
+                          {!marketData.fuel.isFallback && " applied to estimates"}
                         </p>
                         {marketData.fuel.date && (
                           <p className="text-xs text-muted-foreground/70">
@@ -767,7 +781,12 @@ export default function ShippingEstimatorPage() {
                         {
                           name: "HubSpot CRM",
                           desc: lastSync?.lastSyncedAt
-                            ? `Last sync ${formatRelativeTime(lastSync.lastSyncedAt)} · ${lastSync.synced ?? 0} deals synced${lastSync.skipped > 0 ? `, ${lastSync.skipped} skipped` : ""}`
+                            ? [
+                                `Last sync ${formatRelativeTime(lastSync.lastSyncedAt)}`,
+                                lastSync.added > 0 ? `${lastSync.added} added` : null,
+                                lastSync.updated > 0 ? `${lastSync.updated} updated` : null,
+                                lastSync.skipped > 0 ? `${lastSync.skipped} skipped` : null,
+                              ].filter(Boolean).join(" · ")
                             : "Never synced",
                           status: lastSync?.lastSyncedAt ? "Synced" : "Pending",
                           ok: !!lastSync?.lastSyncedAt,

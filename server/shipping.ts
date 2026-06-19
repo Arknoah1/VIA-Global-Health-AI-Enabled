@@ -221,11 +221,11 @@ async function fetchFredViaProxy(): Promise<{ date: string; value: number }[]> {
     .map((o: any) => ({ date: o.date, value: +o.value }));
 }
 
-export async function fetchFredFuelPrice(): Promise<{ price: number | null; date: string | null; history: { date: string; value: number }[] }> {
+export async function fetchFredFuelPrice(): Promise<{ price: number | null; date: string | null; history: { date: string; value: number }[]; isFallback: boolean }> {
   const cached = await storage.getMarketDataCache("fred_fuel");
   if (cached) {
     const data = cached.data as any;
-    return { price: data.price, date: data.date, history: data.history || [] };
+    return { price: data.price, date: data.date, history: data.history || [], isFallback: !!data.isFallback };
   }
 
   let obs: { date: string; value: number }[] = [];
@@ -247,12 +247,14 @@ export async function fetchFredFuelPrice(): Promise<{ price: number | null; date
   }
 
   if (!obs.length) {
-    log("All fuel data sources failed");
-    return { price: null, date: null, history: [] };
+    log(`All fuel data sources failed — caching baseline rate $${BASELINE_FUEL}/gal as fallback`);
+    const fallback = { price: BASELINE_FUEL, date: null, history: [], isFallback: true };
+    await storage.setMarketDataCache("fred_fuel", fallback, 1); // short 1-day TTL to retry sooner
+    return fallback;
   }
 
   obs.sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : 0));
-  const result = { price: obs[0].value, date: obs[0].date, history: obs.slice(0, 52).reverse() };
+  const result = { price: obs[0].value, date: obs[0].date, history: obs.slice(0, 52).reverse(), isFallback: false };
   await storage.setMarketDataCache("fred_fuel", result, 7);
   log(`Fuel price cached: $${result.price}/gal (${result.date})`);
   return result;
@@ -445,6 +447,7 @@ export async function getMarketDataSummary() {
       price: fuel.price,
       date: fuel.date,
       history: fuel.history,
+      isFallback: fuel.isFallback,
       ...surcharge,
       fetchedAt: fuelEntry?.fetchedAt?.toISOString() ?? null,
       expiresAt: fuelEntry?.expiresAt?.toISOString() ?? null,
