@@ -1,5 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import type { Product } from "@/lib/types";
 export default function MarketPage() {
   const { slug } = useParams<{ slug: string }>();
   const market = MARKETS.find(m => m.slug === slug);
+  const [showAll, setShowAll] = useState(false);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products"],
@@ -39,6 +41,14 @@ export default function MarketPage() {
       </div>
     );
   }
+
+  const hasFilter = market.relevantCategories.length > 0;
+  const filteredProducts = hasFilter && !showAll
+    ? products.filter(p => market.relevantCategories.includes(p.category))
+    : products;
+  const filteredCount = hasFilter
+    ? products.filter(p => market.relevantCategories.includes(p.category)).length
+    : products.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
@@ -102,14 +112,44 @@ export default function MarketPage() {
           </div>
 
           <div className="mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <Package className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold text-slate-900">Equipment Available for {market.name}</h2>
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold text-slate-900">
+                  {hasFilter && !showAll
+                    ? `Featured Equipment for ${market.name}`
+                    : `Equipment Available for ${market.name}`}
+                </h2>
+              </div>
+              {hasFilter && !showAll && (
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="text-sm text-primary hover:underline font-medium"
+                  data-testid={`button-market-${market.slug}-show-all`}
+                >
+                  Show all {products.length} products
+                </button>
+              )}
             </div>
-            <p className="text-slate-500 text-sm mb-6">
-              All products in our catalog ship to {market.name}. Request a quote on any item
-              — we respond within 24 hours.
-            </p>
+
+            {hasFilter && !showAll ? (
+              <p className="text-slate-500 text-sm mb-6">
+                Showing {filteredCount} product{filteredCount !== 1 ? "s" : ""} most relevant to {market.name}'s healthcare priorities.
+                {" "}
+                <button onClick={() => setShowAll(true)} className="text-primary hover:underline">
+                  View all {products.length} products →
+                </button>
+              </p>
+            ) : (
+              <p className="text-slate-500 text-sm mb-6">
+                All products in our catalog ship to {market.name}. Request a quote on any item — we respond within 24 hours.
+                {showAll && hasFilter && (
+                  <button onClick={() => setShowAll(false)} className="ml-2 text-primary hover:underline">
+                    Show featured only
+                  </button>
+                )}
+              </p>
+            )}
 
             {isLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -117,9 +157,16 @@ export default function MarketPage() {
                   <div key={i} className="h-64 bg-slate-100 rounded-xl animate-pulse" />
                 ))}
               </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 rounded-xl">
+                <p className="text-slate-500 mb-4">No products found for the selected categories.</p>
+                <Button variant="outline" onClick={() => setShowAll(true)}>
+                  Browse all {products.length} products
+                </Button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {products.map(product => (
+                {filteredProducts.map(product => (
                   <ProductCard
                     key={product.id}
                     product={product}

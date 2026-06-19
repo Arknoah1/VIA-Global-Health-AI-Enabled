@@ -399,6 +399,7 @@ async function getProductMeta(slug: string): Promise<PageMeta | null> {
           "@type": "Organization",
           name: "VIA Global Health",
         },
+        areaServed: AREA_SERVED_COUNTRIES.map(c => ({ "@type": "Country", "name": c.name, "identifier": c.isoCode })),
       },
     };
 
@@ -449,7 +450,7 @@ const PAGE_META: Record<string, () => PageMeta> = {
         contactType: "sales",
         availableLanguage: ["English", "French", "Portuguese", "Swahili", "Spanish"],
       },
-      areaServed: AREA_SERVED_COUNTRIES.map(name => ({ "@type": "Country", "name": name })),
+      areaServed: AREA_SERVED_COUNTRIES.map(c => ({ "@type": "Country", "name": c.name, "identifier": c.isoCode })),
     },
   }),
   "/catalog": () => ({
