@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Ship, Package, Fuel, TrendingUp, BarChart3, RefreshCw, AlertTriangle, Clock } from "lucide-react";
+import { Loader2, Ship, Package, Fuel, TrendingUp, BarChart3, RefreshCw, AlertTriangle, Clock, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ShippingEstimate {
@@ -605,6 +605,7 @@ export default function ShippingEstimatorPage() {
                           <TableHead className="text-right">Product Value</TableHead>
                           <TableHead className="text-right">Shipping</TableHead>
                           <TableHead className="text-right">% of Value</TableHead>
+                          <TableHead className="w-8"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -631,6 +632,20 @@ export default function ShippingEstimatorPage() {
                             </TableCell>
                             <TableCell className="text-right text-xs text-muted-foreground">
                               {d.productValue && d.shippingCost ? `${((d.shippingCost / d.productValue) * 100).toFixed(1)}%` : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {d.sourceUrl ? (
+                                <a
+                                  href={d.sourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-muted-foreground hover:text-blue-500 transition-colors"
+                                  title="Open in HubSpot"
+                                  data-testid={`link-deal-hubspot-${i}`}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              ) : null}
                             </TableCell>
                           </TableRow>
                         ))}

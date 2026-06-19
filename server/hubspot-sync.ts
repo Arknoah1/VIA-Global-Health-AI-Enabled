@@ -78,6 +78,16 @@ export interface SyncResult {
   lastSyncedAt: string;
 }
 
+async function fetchHubspotPortalId(): Promise<number | null> {
+  try {
+    const data = await hubspotGet("/account-info/v3/details");
+    return data.portalId ?? null;
+  } catch (err) {
+    log(`Could not fetch HubSpot portal ID: ${err}`);
+    return null;
+  }
+}
+
 export async function syncHubspotDeals(): Promise<SyncResult> {
   log("Starting HubSpot deal sync...");
   let added = 0;
@@ -86,6 +96,10 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
   const skippedReasons = { missingAmount: 0, unparseableProduct: 0, unparseableCountry: 0, processingError: 0 };
   let after: string | undefined;
   const allDeals: InsertShippingDeal[] = [];
+
+  // Fetch portal ID once so we can build direct deal URLs
+  const portalId = await fetchHubspotPortalId();
+  if (portalId) log(`HubSpot portal ID: ${portalId}`);
 
   // Build a key set of existing HubSpot deals for added/updated tracking
   const existingDeals = await storage.getAllShippingDeals();
@@ -125,6 +139,9 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
           } else {
             added++;
           }
+          const sourceUrl = portalId
+            ? `https://app.hubspot.com/contacts/${portalId}/deal/${deal.id}`
+            : null;
           allDeals.push({
             country,
             product,
@@ -134,6 +151,7 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
             incoterm: "DAP",
             productValue: amount,
             source: "hubspot",
+            sourceUrl,
             dealDate: props.closedate ? new Date(props.closedate) : null,
           });
         } catch (err) {
@@ -159,6 +177,7 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
         incoterm: d.incoterm,
         productValue: d.productValue,
         source: d.source,
+        sourceUrl: d.sourceUrl,
         dealDate: d.dealDate,
       })), ...allDeals];
       await storage.upsertShippingDeals(combined);
