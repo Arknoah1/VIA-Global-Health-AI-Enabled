@@ -22,4 +22,4 @@
 - product-specific equipment keywords
 
 ## Dismissed categories
-- (None yet)
+- Localized crawlable language versions and hreflang clusters for French, Portuguese, Swahili, and Spanish are intentionally out of scope until the project ships real localized URLs. English is the only indexed SEO surface for now.
