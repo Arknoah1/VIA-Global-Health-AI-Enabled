@@ -1,0 +1,1 @@
+- [Client-side i18n and SEO](seo-i18n.md) — Client-only translations do not create rankable language versions without localized URLs and server-visible HTML.
