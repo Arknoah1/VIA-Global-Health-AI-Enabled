@@ -16,6 +16,8 @@ export default function ContactPage() {
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
 
+      <main className="flex-1" role="main">
+
       <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 md:py-24 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -190,6 +192,8 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
+
+      </main>
 
       <Footer />
 

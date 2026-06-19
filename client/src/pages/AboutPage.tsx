@@ -16,6 +16,8 @@ export default function AboutPage() {
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
 
+      <main className="flex-1" role="main">
+
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 md:py-24 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -275,6 +277,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      </main>
 
       <Footer />
     </div>

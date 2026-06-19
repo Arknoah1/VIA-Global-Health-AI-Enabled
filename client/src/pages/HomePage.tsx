@@ -127,6 +127,8 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
       <Header />
 
+      <main className="flex-1" role="main">
+
       {/* Hero Section - Responsiveness Focused */}
       <section ref={heroRef} className="container mx-auto px-4 py-16 md:py-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -431,6 +433,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      </main>
 
       <Footer />
     </div>

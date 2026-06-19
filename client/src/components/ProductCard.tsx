@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "@/i18n/LanguageProvider";
-import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { slugify } from "@/lib/slugify";
 
 interface ProductCardProps {
@@ -16,7 +16,6 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onSelectProduct, onEditProduct, onDeleteProduct }: ProductCardProps) {
   const { t } = useTranslation();
-  const [, setLocation] = useLocation();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLDivElement>(null);
@@ -40,12 +39,17 @@ export function ProductCard({ product, onSelectProduct, onEditProduct, onDeleteP
   }, []);
 
   const isAdmin = !!onEditProduct;
+  const productUrl = `/products/${slugify(product.name)}`;
 
-  return (
-    <Card
-      className="overflow-hidden transition-all hover:shadow-md cursor-pointer group"
-      onClick={() => onSelectProduct ? onSelectProduct(product) : setLocation(`/products/${slugify(product.name)}`)}
-    >
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (onSelectProduct) {
+      e.preventDefault();
+      onSelectProduct(product);
+    }
+  };
+
+  const cardBody = (
+    <Card className="overflow-hidden transition-all hover:shadow-md cursor-pointer group h-full">
       <div ref={imgRef} className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
         {!imageLoaded && (
           <div className="absolute inset-0 bg-muted animate-pulse" />
@@ -90,11 +94,21 @@ export function ProductCard({ product, onSelectProduct, onEditProduct, onDeleteP
             </Button>
           </div>
         ) : (
-          <Button variant="outline" size="sm" className="w-full">
+          <span className="inline-flex items-center justify-center w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground">
             <Eye className="h-4 w-4 mr-2" /> {t("productCard.details")}
-          </Button>
+          </span>
         )}
       </CardFooter>
     </Card>
+  );
+
+  if (isAdmin) {
+    return cardBody;
+  }
+
+  return (
+    <Link href={productUrl} onClick={handleCardClick} className="block">
+      {cardBody}
+    </Link>
   );
 }
