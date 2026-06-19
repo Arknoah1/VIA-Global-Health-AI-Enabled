@@ -290,6 +290,7 @@ export const shippingDeals = pgTable("shipping_deals", {
   productValue: real("product_value"),
   source: varchar("source", { length: 20 }).notNull().default("manual"),
   sourceUrl: text("source_url"),
+  isSyntheticShipping: boolean("is_synthetic_shipping").default(false),
   dealDate: timestamp("deal_date"),
   syncedAt: timestamp("synced_at").notNull().defaultNow(),
 });

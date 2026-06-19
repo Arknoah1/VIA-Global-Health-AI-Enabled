@@ -626,7 +626,7 @@ export default function ShippingEstimatorPage() {
                             </TableCell>
                             <TableCell className="text-right font-mono text-sm font-semibold text-primary">
                               <span>${Number(d.shippingCost).toLocaleString()}</span>
-                              {d.source === "hubspot" && (
+                              {d.isSyntheticShipping && (
                                 <span className="ml-1 text-xs font-normal text-muted-foreground">~Est.</span>
                               )}
                             </TableCell>

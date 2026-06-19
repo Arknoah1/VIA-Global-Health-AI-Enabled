@@ -113,7 +113,7 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
     do {
       const params: Record<string, string> = {
         limit: "100",
-        properties: "dealname,amount,dealstage,closedate,hs_analytics_source,pipeline,description,deal_currency_code",
+        properties: "dealname,amount,dealstage,closedate,hs_analytics_source,pipeline,description,deal_currency_code,shipping_cost",
       };
       if (after) params.after = after;
 
@@ -142,16 +142,27 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
           const sourceUrl = portalId
             ? `https://app.hubspot.com/contacts/${portalId}/deal/${deal.id}`
             : null;
+
+          // Use real shipping cost from HubSpot when available; fall back to 12% estimate
+          const realShippingCost = props.shipping_cost ? parseFloat(props.shipping_cost) : null;
+          const isSyntheticShipping = !realShippingCost || realShippingCost <= 0;
+          const shippingCost = isSyntheticShipping
+            ? Math.round(amount * 0.12)
+            : Math.round(realShippingCost);
+          // Product value = deal amount minus real shipping cost (or full amount if estimated)
+          const productValue = isSyntheticShipping ? amount : Math.round(amount - realShippingCost!);
+
           allDeals.push({
             country,
             product,
             qty: 1,
-            shippingCost: Math.round(amount * 0.12),
+            shippingCost,
             method: "Air",
             incoterm: "DAP",
-            productValue: amount,
+            productValue,
             source: "hubspot",
             sourceUrl,
+            isSyntheticShipping,
             dealDate: props.closedate ? new Date(props.closedate) : null,
           });
         } catch (err) {
@@ -178,6 +189,7 @@ export async function syncHubspotDeals(): Promise<SyncResult> {
         productValue: d.productValue,
         source: d.source,
         sourceUrl: d.sourceUrl,
+        isSyntheticShipping: d.isSyntheticShipping,
         dealDate: d.dealDate,
       })), ...allDeals];
       await storage.upsertShippingDeals(combined);
