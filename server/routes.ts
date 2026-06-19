@@ -2007,6 +2007,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
         organizationName: quoteRequest.organizationName,
         shippingCountry: contactData?.shippingCountry || quoteRequest.shippingCountry,
         importCapability: quoteRequest.importAssistance,
+        orderQuantity: parseInt(contactData?.orderQuantity || quoteRequest.orderQuantity || "0") || 0,
       };
       const customerLanguage = language || "en";
 
@@ -2023,7 +2024,7 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       const currentDest = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
       const hasProduct = quoteRequest.productId;
       const existingEstimate = quoteRequest.shippingEstimate as any;
-      const currentQty = parseInt(contactData?.orderQuantity || quoteRequest.orderQuantity || "1") || 1;
+      const currentQty = existingState.orderQuantity || 1;
 
       if (currentDest && restrictedCountries.length > 0) {
         const destLower = currentDest.toLowerCase();
@@ -2138,6 +2139,11 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
       });
 
       const aiResponse = completion.choices[0]?.message?.content || "I apologize, but I'm having trouble responding. Please try again.";
+
+      // Guard: detect unfilled template placeholders that slipped through
+      if (/\[qty\]|\[price|\[subtotal|\[grand total\]|\[shipping\]|\[name\]/i.test(aiResponse)) {
+        console.warn(`[amara] Detected unfilled placeholder in response for quote ${id}`);
+      }
 
       // Parse AI response for special flags (consider existing quote request state)
       const flags = parseAIResponseFlags(aiResponse, message, quoteRequest.specialPricingEligible || false);
@@ -2462,7 +2468,7 @@ function buildSystemPrompt(
   restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [],
   customerSegments: { name: string; displayName: string; pricingMultiplier: number; isEligibleForQuotes: boolean; ineligibilityReason: string | null }[] = [],
   trainingTranscripts: { buyerType: string | null; country: string | null; productsDiscussed: string | null; objections: string | null; outcome: string | null; annotations: string | null; aiExtractedInsights: any }[] = [],
-  existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null; shippingCountry?: string | null; importCapability?: string | null } = {},
+  existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null; shippingCountry?: string | null; importCapability?: string | null; orderQuantity?: number | null } = {},
   customerLanguage: string = "en",
   salesInsights: { insightType: string; insight: string; category: string | null; region: string | null; customerType: string | null }[] = [],
   logisticsData: { productType: string; destinationCountry: string; pickupCountry: string; avgShippingPerUnit: number; minShippingPerUnit: number; maxShippingPerUnit: number; chargeableWeightKg: number | null; sampleSize: number | null }[] = []
@@ -2505,17 +2511,18 @@ SHIPPING: VIA ships to destination port. Customer handles customs, duties, and l
 - Small/urgent orders → recommend air freight
 - Large volumes → recommend sea freight (4-6 weeks)
 
-QUOTE TABLE (use when presenting final quote with shipping):
+QUOTE TABLE (present when you have a shipping estimate — use the EXACT dollar amounts from CUSTOMER STATE above, do NOT use placeholder text):
 
 | Item | Details |
 |---|---|
-| Product | [name] |
-| Quantity | [qty] units |
-| Unit Price | $[price after segment adjustment] |
-| Product Total | $[subtotal] |
-| Freight | ~$[shipping] to [country] |
-| **Estimated Total** | **$[grand total]** |
+| Product | {product name} |
+| Quantity | {quantity from CUSTOMER STATE} units |
+| Unit Price | {segment-adjusted unit price from CUSTOMER STATE} |
+| Product Total | {product subtotal from CUSTOMER STATE} |
+| Freight | ~{shipping estimate midpoint} to {country} |
+| **Estimated Total** | **{product subtotal + freight}** |
 
+Fill in all values with real numbers. Compute Grand Total = product subtotal + freight. Never leave any cell as a placeholder.
 Delivery to port; your team handles customs.
 
 When would you like this delivered?
@@ -2541,6 +2548,33 @@ CUSTOMER STATE:`;
   if (existingState.importCapability) {
     stateItems.push(`Import Capability: ${existingState.importCapability}`);
   }
+
+  // Inject quantity and computed segment-adjusted pricing so Amara has real numbers
+  const qty = existingState.orderQuantity || 0;
+  if (qty > 0) {
+    stateItems.push(`Quantity: ${qty} units`);
+    if (pricingTiers.length > 0) {
+      const applicableTier = pricingTiers.find(
+        t => qty >= t.minQuantity && (t.maxQuantity === null || qty <= t.maxQuantity)
+      ) || pricingTiers[pricingTiers.length - 1];
+      if (applicableTier) {
+        const orgTypeLower = (existingState.organizationType || "").toLowerCase().trim();
+        const orgTypeNormalized = orgTypeLower.replace(/[\s/]+/g, "_").replace(/[^a-z0-9_]/g, "");
+        const matchedSegment = customerSegments.find(
+          s => s.name === orgTypeNormalized || s.name === orgTypeLower ||
+               s.displayName.toLowerCase() === orgTypeLower ||
+               (orgTypeNormalized && s.name.startsWith(orgTypeNormalized))
+        );
+        const multiplier = matchedSegment?.pricingMultiplier ?? 1.25;
+        const adjustedCents = Math.round(applicableTier.unitPriceCents * multiplier);
+        const adjustedPrice = (adjustedCents / 100).toFixed(2);
+        const subtotalDollars = ((adjustedCents * qty) / 100).toFixed(2);
+        stateItems.push(`Segment-adjusted unit price: $${adjustedPrice}`);
+        stateItems.push(`Product subtotal (${qty} × $${adjustedPrice}): $${subtotalDollars}`);
+      }
+    }
+  }
+
   if (stateItems.length > 0) {
     stateItems.forEach(item => { prompt += `\n- ${item}`; });
   } else {
