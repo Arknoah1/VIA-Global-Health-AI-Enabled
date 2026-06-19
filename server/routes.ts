@@ -617,6 +617,72 @@ ${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}"
     }
   });
 
+  app.post("/api/quote-requests/:id/send-notification", requireAdmin, async (req, res) => {
+    try {
+      const quoteRequest = await storage.getQuoteRequestById(req.params.id);
+      if (!quoteRequest) return res.status(404).json({ error: "Quote request not found" });
+
+      const { autoNotifyOnQuoteComplete } = await import("./auto-notify");
+      const { generateProformaInvoice } = await import("./invoice-generator");
+      const { ReplitConnectors } = await import("@replit/connectors-sdk");
+
+      const hasName = !!(quoteRequest.firstName || quoteRequest.lastName);
+      const hasEmail = !!quoteRequest.email;
+      const hasProduct = !!(quoteRequest.productId || quoteRequest.productName);
+      const hasQuantity = !!(quoteRequest.orderQuantity && parseInt(quoteRequest.orderQuantity) > 0);
+      if (!hasName || !hasEmail || !hasProduct || !hasQuantity) {
+        return res.status(400).json({
+          error: "Quote is incomplete — need name, email, product, and quantity before sending notification.",
+          missing: { name: !hasName, email: !hasEmail, product: !hasProduct, quantity: !hasQuantity },
+        });
+      }
+
+      // Test connector connectivity first so we can give a useful error
+      const connectors = new ReplitConnectors();
+      let connectorWorking = false;
+      try {
+        const testResp = await connectors.proxy("resend", "/emails", {
+          method: "POST",
+          body: JSON.stringify({
+            from: process.env.AUTO_NOTIFY_FROM_EMAIL || "noah@viaglobalhealth.com",
+            to: "noah@viaglobalhealth.com",
+            subject: `[Test] Manual notification for quote ${req.params.id}`,
+            html: "<p>Test</p>",
+          }),
+        });
+        connectorWorking = testResp.ok || testResp.status === 422; // 422 = auth ok, body validation error
+        if (!testResp.ok && testResp.status !== 422) {
+          const txt = await testResp.text().catch(() => "");
+          console.error(`[manual-notify] Connector probe HTTP ${testResp.status}:`, txt);
+        }
+      } catch (probeErr) {
+        console.warn("[manual-notify] Connector probe failed:", (probeErr as Error).message);
+      }
+
+      const hasApiKey = !!process.env.RESEND_API_KEY;
+      if (!connectorWorking && !hasApiKey) {
+        return res.status(503).json({
+          error: "Cannot send email — Resend connector is not responding and no RESEND_API_KEY secret is set. Check the Resend integration credentials in the Integrations panel.",
+          connectorWorking,
+          hasApiKey,
+        });
+      }
+
+      await autoNotifyOnQuoteComplete(req.params.id);
+
+      const invoices = await storage.getProformaInvoicesByQuoteRequest(req.params.id);
+      const sent = invoices.some((inv) => (inv as any).emailSentAt);
+      if (!sent) {
+        return res.status(502).json({ error: "Notification attempted but email delivery failed. Check server logs for details.", connectorWorking, hasApiKey });
+      }
+
+      res.json({ success: true, message: "Notification sent successfully." });
+    } catch (err) {
+      console.error("[manual-notify] Error:", err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
   app.post("/api/quote-requests/:id/generate-review", requireAdmin, async (req, res) => {
     try {
       const quoteRequest = await storage.getQuoteRequestById(req.params.id);

@@ -232,6 +232,22 @@ export default function QuoteRequestsPage() {
     },
   });
 
+  const sendNotificationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/quote-requests/${id}/send-notification`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to send notification");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quoteRequests"] });
+      toast({ title: "Notification sent", description: "Email delivered to noah@viaglobalhealth.com." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Notification failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const regenerateReviewMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/quote-requests/${id}/generate-review`, {
@@ -561,7 +577,18 @@ export default function QuoteRequestsPage() {
                           data-testid={`notification-pending-${request.id}`}
                         >
                           <Bell className="h-4 w-4 shrink-0" />
-                          <span>No auto-notification sent yet</span>
+                          <span className="flex-1">No auto-notification sent yet</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            disabled={sendNotificationMutation.isPending}
+                            onClick={() => sendNotificationMutation.mutate(request.id)}
+                            data-testid={`button-send-notification-${request.id}`}
+                          >
+                            {sendNotificationMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                            {sendNotificationMutation.isPending ? "Sending…" : "Send Now"}
+                          </Button>
                         </div>
                       )}
 
