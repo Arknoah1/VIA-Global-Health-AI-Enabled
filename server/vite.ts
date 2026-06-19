@@ -5,7 +5,7 @@ import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
-import { injectSeoMeta } from "./seo";
+import { resolvePublicRoute } from "./seo";
 
 const viteLogger = createLogger();
 
@@ -50,9 +50,13 @@ export async function setupVite(server: Server, app: Express) {
       );
       let page = await vite.transformIndexHtml(url, template);
 
-      page = await injectSeoMeta(page, req.originalUrl);
+      const { status, html: resolvedPage } = await resolvePublicRoute(page, req.originalUrl);
 
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      if (status === 404) {
+        res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      }
+
+      res.status(status).set({ "Content-Type": "text/html" }).end(resolvedPage);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

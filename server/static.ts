@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { injectSeoMeta } from "./seo";
+import { resolvePublicRoute } from "./seo";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
@@ -35,8 +35,12 @@ export function serveStatic(app: Express) {
     const htmlPath = path.resolve(distPath, "index.html");
     let html = fs.readFileSync(htmlPath, "utf-8");
 
-    html = await injectSeoMeta(html, req.originalUrl);
+    const { status, html: resolvedHtml } = await resolvePublicRoute(html, req.originalUrl);
 
-    res.send(html);
+    if (status === 404) {
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    }
+
+    res.status(status).send(resolvedHtml);
   });
 }

@@ -84,10 +84,221 @@ function injectMetaIntoHtml(html: string, meta: PageMeta, extraHeadHtml?: string
   return result;
 }
 
-async function getProductMeta(slug: string): Promise<PageMeta | null> {
+function injectBodyContent(html: string, bodyHtml: string): string {
+  return html.replace(
+    /<div id="root"><\/div>/,
+    `<div id="root">${bodyHtml}</div>`
+  );
+}
+
+const STATIC_BODY: Record<string, string> = {
+  "/": `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+        <nav style="margin-top:0.75rem">
+          <a href="/catalog" style="margin-right:1.5rem;color:#2563eb">Medical Products Catalog</a>
+          <a href="/about" style="margin-right:1.5rem;color:#2563eb">About</a>
+          <a href="/contact" style="color:#2563eb">Contact</a>
+        </nav>
+      </header>
+      <main>
+        <h1 style="font-size:2rem;margin:2rem 0 1rem">The Medical Equipment Partner That Responds</h1>
+        <p style="font-size:1.125rem;color:#374151;margin-bottom:1.5rem">From a single unit to a national tender, every inquiry gets the same attention. Quality medical equipment for Africa, Asia, and Latin America. Quote response within 24 hours.</p>
+        <p style="color:#374151;margin-bottom:1rem">VIA Global Health supplies distributors, healthcare providers, and NGOs with reliable medical equipment built for low-resource settings. Our catalog includes thermocoagulators, colposcopes, CPAP devices, autoclaves, pulse oximeters, and more.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Who We Serve</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li><strong>Distributors</strong> — Competitive pricing, volume discounts, reliable supply chains across Africa and Latin America.</li>
+          <li><strong>Healthcare Providers</strong> — Hospital-grade equipment with full documentation, warranties, and regulatory compliance support.</li>
+          <li><strong>NGOs &amp; Ministries</strong> — Subsidised rates, grant-compatible invoicing, and experience with international procurement rules.</li>
+        </ul>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Why VIA Global Health</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li>Every inquiry answered within 24 hours</li>
+          <li>Transparent pricing with no hidden fees</li>
+          <li>Air and sea freight options with door-to-port delivery</li>
+          <li>Support in English, French, Portuguese, Swahili, and Spanish</li>
+        </ul>
+        <p><a href="/catalog" style="color:#2563eb;font-weight:600">Browse our full product catalog &rarr;</a></p>
+      </main>
+    </div>
+  `,
+  "/catalog": `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; Medical Products Catalog
+        </nav>
+        <h1 style="font-size:2rem;margin:0 0 1rem">Medical Products Catalog</h1>
+        <p style="font-size:1.125rem;color:#374151;margin-bottom:1.5rem">Quality medical equipment for low-resource healthcare settings. Browse thermocoagulators, colposcopes, CPAP devices, autoclaves, pulse oximeters, diagnostic equipment, and more.</p>
+        <p style="color:#374151;margin-bottom:1rem">All products include full documentation, CE marking where applicable, and warranty support. VIA Global Health ships to healthcare providers, distributors, and NGOs across Africa, Asia, and Latin America.</p>
+        <h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Product Categories</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li>Gynecology &amp; Women&apos;s Health</li>
+          <li>Respiratory &amp; Critical Care</li>
+          <li>Sterilization &amp; Infection Control</li>
+          <li>Diagnostics &amp; Monitoring</li>
+          <li>Surgical &amp; Procedure Equipment</li>
+          <li>Pharmaceuticals &amp; Consumables</li>
+        </ul>
+        <p>Request a quote for any product — we respond within 24 hours. <a href="/contact" style="color:#2563eb">Contact us</a> for volume pricing and NGO discount rates.</p>
+      </main>
+    </div>
+  `,
+  "/about": `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; About
+        </nav>
+        <h1 style="font-size:2rem;margin:0 0 1rem">About VIA Global Health</h1>
+        <p style="font-size:1.125rem;color:#374151;margin-bottom:1.5rem">VIA Global Health is a medical equipment and pharmaceutical supplier dedicated to improving healthcare access in low-resource settings across Africa, Asia, and Latin America.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Our Mission</h2>
+        <p style="color:#374151;margin-bottom:1rem">We connect healthcare providers, distributors, and NGOs with quality medical equipment at fair prices. Every inquiry receives a personalised response within 24 hours — from single units to national tenders.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">What We Do</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li>Source and supply medical equipment from vetted manufacturers in China, India, the USA, and Europe</li>
+          <li>Provide transparent, tiered pricing for distributors, healthcare providers, and NGOs</li>
+          <li>Manage air and sea freight logistics to ports and facilities across Africa and Latin America</li>
+          <li>Support procurement compliance for grant-funded and government healthcare programmes</li>
+        </ul>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Languages We Support</h2>
+        <p style="color:#374151;margin-bottom:1rem">English, French, Portuguese, Swahili, and Spanish.</p>
+        <p><a href="/contact" style="color:#2563eb;font-weight:600">Get in touch &rarr;</a></p>
+      </main>
+    </div>
+  `,
+  "/contact": `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; Contact
+        </nav>
+        <h1 style="font-size:2rem;margin:0 0 1rem">Contact VIA Global Health</h1>
+        <p style="font-size:1.125rem;color:#374151;margin-bottom:1.5rem">Get in touch for product inquiries, quotes, shipping questions, or partnership opportunities. We respond to every message within 24 hours.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">How to Reach Us</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li>Use our online quote request system on any product page</li>
+          <li>Email us directly for general inquiries</li>
+          <li>Chat with Amara, our AI sales assistant, for immediate answers</li>
+        </ul>
+        <p style="color:#374151;margin-bottom:1rem">VIA Global Health serves customers in Africa, Asia, and Latin America. We offer support in English, French, Portuguese, Swahili, and Spanish.</p>
+        <p><a href="/catalog" style="color:#2563eb;font-weight:600">Browse our product catalog &rarr;</a></p>
+      </main>
+    </div>
+  `,
+  "/privacy-policy": `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; Privacy Policy
+        </nav>
+        <h1 style="font-size:2rem;margin:0 0 1rem">Privacy Policy</h1>
+        <p style="color:#374151;margin-bottom:1rem">This Privacy Policy describes how VIA Global Health collects, uses, and protects information provided when using our medical equipment catalog and quote request system.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Information We Collect</h2>
+        <p style="color:#374151;margin-bottom:1rem">We collect information you provide when requesting quotes, including your name, email address, organisation name, and shipping country. We use this information solely to process your quote request and respond to your inquiry.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">How We Use Your Information</h2>
+        <ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li>To respond to product and pricing inquiries</li>
+          <li>To generate quotes and proforma invoices</li>
+          <li>To improve our catalog and service offerings</li>
+        </ul>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Contact</h2>
+        <p style="color:#374151;margin-bottom:1rem">For privacy-related questions, please <a href="/contact" style="color:#2563eb">contact us</a>.</p>
+      </main>
+    </div>
+  `,
+  "/return-policy": `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; Return Policy
+        </nav>
+        <h1 style="font-size:2rem;margin:0 0 1rem">Return Policy</h1>
+        <p style="color:#374151;margin-bottom:1rem">VIA Global Health is committed to customer satisfaction. This policy describes the conditions under which returns and refunds are accepted for medical equipment purchases.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Return Eligibility</h2>
+        <p style="color:#374151;margin-bottom:1rem">Returns are considered for items that arrive damaged, defective, or significantly different from the product description. Please contact us within 14 days of delivery to initiate a return.</p>
+        <h2 style="font-size:1.25rem;margin:1.5rem 0 0.75rem">Return Process</h2>
+        <ol style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">
+          <li>Contact VIA Global Health to report the issue and receive a return authorisation</li>
+          <li>Repackage the item securely in its original packaging</li>
+          <li>Ship the item back using a tracked courier service</li>
+          <li>Refund or replacement will be processed within 30 days of receipt</li>
+        </ol>
+        <p><a href="/contact" style="color:#2563eb;font-weight:600">Contact us to start a return &rarr;</a></p>
+      </main>
+    </div>
+  `,
+};
+
+const KNOWN_STATIC_ROUTES = new Set(Object.keys(STATIC_BODY));
+
+function buildProductBodyHtml(product: any, slug: string): string {
+  const price = product.price ? `$${(product.price / 100).toFixed(2)}` : null;
+  const priceHtml = price
+    ? `<p style="font-size:1.125rem;font-weight:600;color:#1a1a2e;margin-bottom:0.75rem">From ${escapeHtml(price)} USD</p>`
+    : "";
+  const desc = product.description
+    ? `<p style="color:#374151;margin-bottom:1rem">${escapeHtml(product.description.slice(0, 500))}${product.description.length > 500 ? "…" : ""}</p>`
+    : "";
+  const category = product.category
+    ? `<p style="font-size:0.875rem;color:#6b7280;margin-bottom:0.5rem">Category: ${escapeHtml(product.category)}</p>`
+    : "";
+  const sku = product.sku
+    ? `<p style="font-size:0.875rem;color:#6b7280;margin-bottom:0.5rem">SKU: ${escapeHtml(product.sku)}</p>`
+    : "";
+  const specsHtml = product.specifications && Array.isArray(product.specifications) && product.specifications.length > 0
+    ? `<h2 style="font-size:1.125rem;margin:1.5rem 0 0.5rem">Specifications</h2><ul style="color:#374151;padding-left:1.5rem;margin-bottom:1rem">${
+        product.specifications.slice(0, 8).map((s: any) =>
+          `<li><strong>${escapeHtml(s.name || "")}</strong>: ${escapeHtml(String(s.value || ""))}</li>`
+        ).join("")
+      }</ul>`
+    : "";
+
+  return `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <nav aria-label="Breadcrumb" style="font-size:0.875rem;color:#6b7280;margin-bottom:1rem">
+          <a href="/" style="color:#2563eb">Home</a> &rsaquo; <a href="/catalog" style="color:#2563eb">Catalog</a> &rsaquo; ${escapeHtml(product.name)}
+        </nav>
+        <h1 style="font-size:1.75rem;margin:0 0 0.75rem">${escapeHtml(product.name)}</h1>
+        ${category}${sku}${priceHtml}${desc}${specsHtml}
+        <p style="margin-top:1.5rem"><a href="/catalog" style="color:#2563eb">&larr; Back to catalog</a></p>
+      </main>
+    </div>
+  `;
+}
+
+async function getProductForSlug(slug: string): Promise<any | null> {
   try {
     const allProducts = await storage.getAllProducts();
-    const product = allProducts.find(p => slugify(p.name) === slug);
+    return allProducts.find(p => slugify(p.name) === slug) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function getProductMeta(slug: string): Promise<PageMeta | null> {
+  try {
+    const product = await getProductForSlug(slug);
     if (!product) return null;
 
     const desc = product.description.length > 155
@@ -210,6 +421,87 @@ const PAGE_META: Record<string, () => PageMeta> = {
     ogImage: `${SITE_URL}/opengraph.jpg`,
   }),
 };
+
+function isAdminRoute(path: string): boolean {
+  return path === "/admin" || path.startsWith("/admin/");
+}
+
+export interface RouteResolution {
+  status: 200 | 404;
+  html: string;
+}
+
+export async function resolvePublicRoute(html: string, url: string): Promise<RouteResolution> {
+  const reqPath = url.split("?")[0] || "/";
+  const normalizedPath = reqPath === "" ? "/" : reqPath;
+
+  if (isAdminRoute(normalizedPath) || normalizedPath === "/track-quote") {
+    return { status: 200, html };
+  }
+
+  try {
+    const productMatch = normalizedPath.match(/^\/products\/([^/]+)$/);
+    if (productMatch) {
+      const slug = productMatch[1];
+      const product = await getProductForSlug(slug);
+      if (!product) {
+        const notFoundHtml = build404Html(html);
+        return { status: 404, html: notFoundHtml };
+      }
+      const meta = await getProductMeta(slug);
+      let result = html;
+      if (meta) {
+        result = injectMetaIntoHtml(result, meta);
+      }
+      result = injectBodyContent(result, buildProductBodyHtml(product, slug));
+      return { status: 200, html: result };
+    }
+
+    if (KNOWN_STATIC_ROUTES.has(normalizedPath)) {
+      const metaFn = PAGE_META[normalizedPath];
+      let result = html;
+      if (metaFn) {
+        const heroPreload = normalizedPath === "/"
+          ? `<link rel="preload" as="image" href="/images/hero/african-healthcare-hero.jpg" fetchpriority="high" />`
+          : undefined;
+        result = injectMetaIntoHtml(result, metaFn(), heroPreload);
+      }
+      result = injectBodyContent(result, STATIC_BODY[normalizedPath]);
+      return { status: 200, html: result };
+    }
+
+    const notFoundHtml = build404Html(html);
+    return { status: 404, html: notFoundHtml };
+  } catch (err) {
+    console.error("Error resolving public route:", err);
+    return { status: 200, html };
+  }
+}
+
+function build404Html(html: string): string {
+  const meta: PageMeta = {
+    title: "Page Not Found | VIA Global Health",
+    description: "The page you are looking for does not exist. Browse VIA Global Health's medical equipment catalog.",
+    canonicalUrl: `${SITE_URL}/404`,
+    ogType: "website",
+    ogImage: `${SITE_URL}/opengraph.jpg`,
+  };
+  const bodyHtml = `
+    <div style="font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem 1rem">
+      <header>
+        <a href="/" style="font-size:1.5rem;font-weight:700;color:#1a1a2e;text-decoration:none">VIA Global Health</a>
+      </header>
+      <main>
+        <h1 style="font-size:2rem;margin:2rem 0 1rem">404 — Page Not Found</h1>
+        <p style="color:#374151;margin-bottom:1.5rem">The page you are looking for does not exist or may have been moved.</p>
+        <p><a href="/catalog" style="color:#2563eb;font-weight:600">Browse our medical equipment catalog &rarr;</a></p>
+      </main>
+    </div>
+  `;
+  let result = injectMetaIntoHtml(html, meta);
+  result = injectBodyContent(result, bodyHtml);
+  return result;
+}
 
 export async function injectSeoMeta(html: string, url: string): Promise<string> {
   const reqPath = url.split("?")[0];
