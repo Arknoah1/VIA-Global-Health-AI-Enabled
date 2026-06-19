@@ -79,6 +79,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "testimonials.title": "Voices from Our Partners",
     "testimonials.subtitle": "Healthcare leaders across Africa share their experience with VIA",
 
+    "markets.sectionTitle": "Markets We Serve",
+    "markets.sectionSubtitle": "Supplying quality medical equipment to healthcare facilities and NGO programmes across Africa and beyond.",
+    "markets.viewAll": "View all markets",
+
     "whyVia.title": "Why Choose VIA Global Health?",
     "whyVia.subtitle": "Built on relationships, delivered with trust. Our team of African healthcare professionals understands your challenges because we've lived them.",
     "whyVia.trustedRelationships": "Trusted Relationships",
@@ -429,6 +433,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "testimonials.title": "Témoignages de nos partenaires",
     "testimonials.subtitle": "Des leaders de la santé en Afrique partagent leur expérience avec VIA",
 
+    "markets.sectionTitle": "Marchés que nous servons",
+    "markets.sectionSubtitle": "Fourniture d'équipements médicaux de qualité aux établissements de santé et programmes ONG en Afrique et au-delà.",
+    "markets.viewAll": "Voir tous les marchés",
+
     "whyVia.title": "Pourquoi choisir VIA Global Health ?",
     "whyVia.subtitle": "Fondé sur des relations, livré avec confiance. Notre équipe de professionnels de santé africains comprend vos défis car nous les avons vécus.",
     "whyVia.trustedRelationships": "Relations de confiance",
@@ -738,6 +746,10 @@ export const translations: Record<Language, Record<string, string>> = {
 
     "testimonials.title": "Vozes dos Nossos Parceiros",
     "testimonials.subtitle": "Líderes de saúde na África compartilham sua experiência com a VIA",
+
+    "markets.sectionTitle": "Mercados que Atendemos",
+    "markets.sectionSubtitle": "Fornecendo equipamentos médicos de qualidade para estabelecimentos de saúde e programas de ONG na África e além.",
+    "markets.viewAll": "Ver todos os mercados",
 
     "whyVia.title": "Por que escolher a VIA Global Health?",
     "whyVia.subtitle": "Construída sobre relacionamentos, entregue com confiança. Nossa equipe de profissionais de saúde africanos entende seus desafios porque os vivemos.",
@@ -1049,6 +1061,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "testimonials.title": "Sauti za Washirika Wetu",
     "testimonials.subtitle": "Viongozi wa afya kote Afrika wanashiriki uzoefu wao na VIA",
 
+    "markets.sectionTitle": "Masoko Tunayohudumia",
+    "markets.sectionSubtitle": "Kutoa vifaa bora vya matibabu kwa vituo vya afya na programu za NGO barani Afrika na zaidi.",
+    "markets.viewAll": "Ona masoko yote",
+
     "whyVia.title": "Kwa Nini Uchague VIA Global Health?",
     "whyVia.subtitle": "Imejengwa juu ya uhusiano, imetolewa kwa uaminifu. Timu yetu ya wataalamu wa afya wa Kiafrika inaelewa changamoto zako kwa sababu tumezishi.",
     "whyVia.trustedRelationships": "Uhusiano wa Kuaminika",
@@ -1358,6 +1374,10 @@ export const translations: Record<Language, Record<string, string>> = {
 
     "testimonials.title": "Voces de Nuestros Socios",
     "testimonials.subtitle": "Líderes de salud comparten su experiencia con VIA",
+
+    "markets.sectionTitle": "Mercados que Servimos",
+    "markets.sectionSubtitle": "Suministrando equipos médicos de calidad a instalaciones de salud y programas de ONG en África y más allá.",
+    "markets.viewAll": "Ver todos los mercados",
 
     "whyVia.title": "¿Por Qué Elegir VIA Global Health?",
     "whyVia.subtitle": "Construido sobre relaciones, entregado con confianza. Nuestro equipo de profesionales de salud entiende tus desafíos porque los hemos vivido.",

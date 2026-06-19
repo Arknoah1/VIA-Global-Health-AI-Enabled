@@ -5,10 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useTranslation } from "@/i18n/LanguageProvider";
+import { MARKETS } from "@shared/markets";
 import { 
   ArrowRight, Building2, Heart, HandshakeIcon, Globe, Zap, Users, Award, 
   ShieldCheck, Clock, TrendingUp, Quote, CheckCircle2, MapPin, Package,
 } from "lucide-react";
+
+const FEATURED_MARKET_SLUGS = [
+  "kenya", "nigeria", "ethiopia", "ghana", "tanzania", "uganda", "south-africa", "rwanda"
+];
+const featuredMarkets = MARKETS.filter(m => FEATURED_MARKET_SLUGS.includes(m.slug))
+  .sort((a, b) => FEATURED_MARKET_SLUGS.indexOf(a.slug) - FEATURED_MARKET_SLUGS.indexOf(b.slug));
 
 import africanMedicalTeam from "@/assets/images/african-medical-team_1.jpg";
 import africanDoctorPatient from "@/assets/images/african-doctor-patient.png";
@@ -361,8 +368,43 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Why Trust VIA - with team image */}
+      {/* Markets We Serve */}
       <section className="bg-slate-50 py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">{t("markets.sectionTitle")}</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto">{t("markets.sectionSubtitle")}</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {featuredMarkets.map((market) => (
+              <Link key={market.slug} href={`/markets/${market.slug}`}>
+                <div
+                  className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-slate-200 hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer group"
+                  data-testid={`card-market-${market.slug}`}
+                >
+                  <span className="text-4xl" role="img" aria-label={market.name}>{market.flag}</span>
+                  <span className="text-sm font-semibold text-slate-800 group-hover:text-primary transition-colors text-center leading-tight">
+                    {market.name}
+                  </span>
+                  <span className="text-xs text-slate-500">{market.subregion}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div className="text-center">
+            <Link href="/markets">
+              <Button variant="outline" className="gap-2" data-testid="button-view-all-markets">
+                <Globe className="h-4 w-4" />
+                {t("markets.viewAll")}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Trust VIA - with team image */}
+      <section className="bg-white py-16">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
             <div>
