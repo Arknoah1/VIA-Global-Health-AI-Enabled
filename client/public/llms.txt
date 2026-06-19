@@ -1,0 +1,36 @@
+# VIA Global Health
+
+VIA Global Health is a medical equipment and pharmaceutical supplier serving distributors, healthcare providers, and NGOs across Africa, Asia, and Latin America. We source quality products from vetted manufacturers and handle logistics, compliance, and last-mile delivery for low-resource health settings.
+
+## Canonical domain
+
+https://viaglobalhealth.com
+
+## Key public pages
+
+- Homepage: https://viaglobalhealth.com/
+- Product catalog: https://viaglobalhealth.com/catalog
+- About us: https://viaglobalhealth.com/about
+- Contact: https://viaglobalhealth.com/contact
+- Privacy policy: https://viaglobalhealth.com/privacy-policy
+- Return policy: https://viaglobalhealth.com/return-policy
+
+## Product categories
+
+Our catalog includes diagnostic equipment, surgical instruments, maternal and reproductive health devices, infection control and sterilization equipment, cold chain and laboratory supplies, and pharmaceutical-grade consumables. All products are priced in USD and available for international shipment.
+
+## Audience
+
+We primarily serve:
+- Medical distributors and procurement officers
+- NGOs and global health programs
+- Hospitals and clinics in low- and middle-income countries
+
+## Quote and inquiry
+
+Visitors can request a price quote directly on any product page. Quote requests are responded to within 24 hours. An AI assistant named Amara guides users through the quote process.
+
+## Content to deprioritize
+
+- /admin (password-protected, not publicly relevant)
+- /api/* (internal API endpoints, not human-readable content)

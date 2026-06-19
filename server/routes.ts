@@ -226,11 +226,8 @@ export async function registerRoutes(
 
       const allEntries = [...staticPages, ...productEntries];
 
-      const supportedLangs = ["en", "fr", "pt", "sw", "es"];
-
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${allEntries
   .map(
     (entry) => `  <url>
@@ -238,8 +235,6 @@ ${allEntries
     <lastmod>${entry.lastmod}</lastmod>
     <changefreq>${entry.changefreq}</changefreq>
     <priority>${entry.priority}</priority>
-${supportedLangs.map(lang => `    <xhtml:link rel="alternate" hreflang="${lang}" href="${baseUrl}${entry.loc}" />`).join("\n")}
-    <xhtml:link rel="alternate" hreflang="x-default" href="${baseUrl}${entry.loc}" />
   </url>`
   )
   .join("\n")}
