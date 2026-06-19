@@ -430,15 +430,32 @@ Rules:
 }
 
 export async function getMarketDataSummary() {
-  const fuel = await fetchFredFuelPrice();
-  const dhl = await fetchDhlIntelligence();
-  const deals = await storage.getAllShippingDeals();
+  const [fuel, dhl, deals, fuelEntry, dhlEntry, syncEntry] = await Promise.all([
+    fetchFredFuelPrice(),
+    fetchDhlIntelligence(),
+    storage.getAllShippingDeals(),
+    storage.getMarketDataCacheEntry("fred_fuel"),
+    storage.getMarketDataCacheEntry("dhl_intel"),
+    storage.getMarketDataCacheEntry("hubspot_sync_meta"),
+  ]);
   const surcharge = calcFuelMultiplier(fuel.price);
 
   return {
-    fuel: { price: fuel.price, date: fuel.date, history: fuel.history, ...surcharge },
-    dhl,
+    fuel: {
+      price: fuel.price,
+      date: fuel.date,
+      history: fuel.history,
+      ...surcharge,
+      fetchedAt: fuelEntry?.fetchedAt?.toISOString() ?? null,
+      expiresAt: fuelEntry?.expiresAt?.toISOString() ?? null,
+    },
+    dhl: dhl ? {
+      ...dhl,
+      fetchedAt: dhlEntry?.fetchedAt?.toISOString() ?? null,
+      expiresAt: dhlEntry?.expiresAt?.toISOString() ?? null,
+    } : null,
     dealCount: deals.length,
     distinctCountries: [...new Set(deals.map(d => d.country))].length,
+    lastHubspotSync: syncEntry ? (syncEntry.data as any) : null,
   };
 }

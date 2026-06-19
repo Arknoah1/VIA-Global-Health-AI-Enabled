@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Ship, Package, Fuel, TrendingUp, BarChart3, RefreshCw, AlertTriangle } from "lucide-react";
+import { Loader2, Ship, Package, Fuel, TrendingUp, BarChart3, RefreshCw, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ShippingEstimate {
@@ -60,6 +59,59 @@ function CostCard({ label, value, highlight, confidence }: { label: string; valu
         {confidence && <div className="mt-2"><ConfidenceBadge level={confidence} /></div>}
       </CardContent>
     </Card>
+  );
+}
+
+function SourceBadge({ source }: { source: string }) {
+  if (source === "hubspot") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-xs border-blue-400 text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400"
+        data-testid="badge-source-hubspot"
+      >
+        HubSpot
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-xs text-muted-foreground" data-testid="badge-source-historical">
+      Historical
+    </Badge>
+  );
+}
+
+function formatRelativeTime(isoString: string | null | undefined): string {
+  if (!isoString) return "—";
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
+function formatTimeUntil(isoString: string | null | undefined): string {
+  if (!isoString) return "—";
+  const diff = new Date(isoString).getTime() - Date.now();
+  if (diff <= 0) return "expired";
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 60) return `${mins}m`;
+  if (hours < 24) return `${hours}h`;
+  return `${days}d`;
+}
+
+function CacheFreshnessLine({ fetchedAt, expiresAt }: { fetchedAt?: string | null; expiresAt?: string | null }) {
+  if (!fetchedAt) return null;
+  return (
+    <p className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-1" data-testid="text-cache-freshness">
+      <Clock className="h-3 w-3 inline" />
+      Fetched {formatRelativeTime(fetchedAt)} · expires in {formatTimeUntil(expiresAt)}
+    </p>
   );
 }
 
@@ -132,7 +184,17 @@ export default function ShippingEstimatorPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["shipping-deals"] });
-      toast({ title: "HubSpot Sync Complete", description: `${data.synced} deals synced, ${data.errors} errors` });
+      queryClient.invalidateQueries({ queryKey: ["shipping-market-data"] });
+      const parts = [
+        `${data.synced} deal${data.synced !== 1 ? "s" : ""} synced`,
+        data.skipped > 0 ? `${data.skipped} skipped` : null,
+        data.errors > 0 ? `${data.errors} errors` : null,
+        data.syntheticCount > 0 ? `${data.syntheticCount} use ~12% estimate` : null,
+      ].filter(Boolean);
+      toast({
+        title: "HubSpot Sync Complete",
+        description: parts.join(" · "),
+      });
     },
     onError: (err: Error) => {
       toast({ title: "HubSpot Sync Failed", description: err.message, variant: "destructive" });
@@ -164,6 +226,10 @@ export default function ShippingEstimatorPage() {
 
   const selectedProduct = products.find((p: Product) => p.id === productId);
   const allCountries = [...new Set(deals.map((d: any) => d.country))].filter(Boolean).sort();
+
+  const lastSync = marketData?.lastHubspotSync;
+  const hubspotDealCount = deals.filter((d: any) => d.source === "hubspot").length;
+  const historicalDealCount = deals.filter((d: any) => d.source !== "hubspot").length;
 
   return (
     <div className="flex min-h-screen bg-background" data-testid="page-shipping-estimator">
@@ -465,21 +531,47 @@ export default function ShippingEstimatorPage() {
             <TabsContent value="history" className="mt-4">
               <Card>
                 <CardHeader>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-start">
                     <div>
                       <CardTitle>Historical Shipping Deals</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{deals.length} deals from {[...new Set(deals.map((d: any) => d.country))].length} countries</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {deals.length} deals from {[...new Set(deals.map((d: any) => d.country))].length} countries
+                        {hubspotDealCount > 0 && (
+                          <span className="ml-2">
+                            <Badge variant="outline" className="text-xs border-blue-400 text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400">
+                              {hubspotDealCount} HubSpot
+                            </Badge>
+                            {" "}
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              {historicalDealCount} Historical
+                            </Badge>
+                          </span>
+                        )}
+                      </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => hubspotSyncMutation.mutate()}
-                      disabled={hubspotSyncMutation.isPending}
-                      data-testid="button-sync-hubspot"
-                    >
-                      <RefreshCw className={`h-3 w-3 mr-1 ${hubspotSyncMutation.isPending ? "animate-spin" : ""}`} />
-                      {hubspotSyncMutation.isPending ? "Syncing..." : "Sync HubSpot"}
-                    </Button>
+                    <div className="flex flex-col items-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => hubspotSyncMutation.mutate()}
+                        disabled={hubspotSyncMutation.isPending}
+                        data-testid="button-sync-hubspot"
+                      >
+                        <RefreshCw className={`h-3 w-3 mr-1 ${hubspotSyncMutation.isPending ? "animate-spin" : ""}`} />
+                        {hubspotSyncMutation.isPending ? "Syncing..." : "Sync HubSpot"}
+                      </Button>
+                      {lastSync?.lastSyncedAt && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid="text-last-synced">
+                          <Clock className="h-3 w-3" />
+                          Last synced {formatRelativeTime(lastSync.lastSyncedAt)}
+                          {lastSync.synced != null && (
+                            <span className="ml-1 text-muted-foreground/60">
+                              · {lastSync.synced} added{lastSync.skipped > 0 ? `, ${lastSync.skipped} skipped` : ""}
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -487,6 +579,7 @@ export default function ShippingEstimatorPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>Source</TableHead>
                           <TableHead>Destination</TableHead>
                           <TableHead>Product</TableHead>
                           <TableHead className="text-center">Qty</TableHead>
@@ -499,7 +592,10 @@ export default function ShippingEstimatorPage() {
                       </TableHeader>
                       <TableBody>
                         {deals.map((d: any, i: number) => (
-                          <TableRow key={i}>
+                          <TableRow key={i} data-testid={`row-deal-${i}`}>
+                            <TableCell>
+                              <SourceBadge source={d.source} />
+                            </TableCell>
                             <TableCell className="font-medium">{d.country}</TableCell>
                             <TableCell className="text-muted-foreground max-w-[150px] truncate">{d.product}</TableCell>
                             <TableCell className="text-center font-mono">{d.qty}</TableCell>
@@ -511,7 +607,10 @@ export default function ShippingEstimatorPage() {
                               {d.productValue ? `$${Number(d.productValue).toLocaleString()}` : "—"}
                             </TableCell>
                             <TableCell className="text-right font-mono text-sm font-semibold text-primary">
-                              ${Number(d.shippingCost).toLocaleString()}
+                              <span>${Number(d.shippingCost).toLocaleString()}</span>
+                              {d.source === "hubspot" && (
+                                <span className="ml-1 text-xs font-normal text-muted-foreground">~Est.</span>
+                              )}
                             </TableCell>
                             <TableCell className="text-right text-xs text-muted-foreground">
                               {d.productValue && d.shippingCost ? `${((d.shippingCost / d.productValue) * 100).toFixed(1)}%` : "—"}
@@ -521,6 +620,12 @@ export default function ShippingEstimatorPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  {hubspotDealCount > 0 && (
+                    <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1" />
+                      HubSpot deals show shipping as ~12% of deal value (synthetic estimate). Only Historical deals are used for quote generation.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -556,13 +661,14 @@ export default function ShippingEstimatorPage() {
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Fuel {marketData.fuel.label} · {marketData.fuel.multiplier}× applied to estimates
+                          Fuel {marketData.fuel.label} · <strong>{marketData.fuel.multiplier}×</strong> applied to estimates
                         </p>
                         {marketData.fuel.date && (
                           <p className="text-xs text-muted-foreground/70">
                             As of {new Date(marketData.fuel.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · Source: EIA/FRED
                           </p>
                         )}
+                        <CacheFreshnessLine fetchedAt={marketData.fuel.fetchedAt} expiresAt={marketData.fuel.expiresAt} />
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">No fuel data available. Click Refresh to fetch.</p>
@@ -592,7 +698,14 @@ export default function ShippingEstimatorPage() {
                   <CardContent>
                     {marketData?.dhl ? (
                       <div className="space-y-3">
-                        <Badge variant="outline">{marketData.dhl.reportMonth}</Badge>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">{marketData.dhl.reportMonth}</Badge>
+                          {marketData.dhl.overallRateMultiplierSuggestion && (
+                            <Badge variant="secondary" className="font-mono" data-testid="badge-dhl-multiplier">
+                              {marketData.dhl.overallRateMultiplierSuggestion}× rate multiplier
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">{marketData.dhl.executiveSummary}</p>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="rounded bg-muted/50 p-2">
@@ -614,6 +727,7 @@ export default function ShippingEstimatorPage() {
                             ))}
                           </div>
                         )}
+                        <CacheFreshnessLine fetchedAt={marketData.dhl.fetchedAt} expiresAt={marketData.dhl.expiresAt} />
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">No DHL intel available. Click Refresh to fetch the latest report.</p>
@@ -628,10 +742,42 @@ export default function ShippingEstimatorPage() {
                   <CardContent>
                     <div className="space-y-3">
                       {[
-                        { name: "Historical Deals", desc: `${marketData?.dealCount || 0} deals from ${marketData?.distinctCountries || 0} countries`, status: (marketData?.dealCount || 0) > 0 ? "Live" : "Empty", ok: (marketData?.dealCount || 0) > 0 },
-                        { name: "EIA Jet Fuel", desc: marketData?.fuel?.price ? `$${marketData.fuel.price.toFixed(2)}/gal · ${marketData.fuel.label}${marketData.fuel.date ? ` · as of ${marketData.fuel.date}` : ""}` : "Not fetched", status: marketData?.fuel?.price ? "Live" : "Pending", ok: !!marketData?.fuel?.price },
-                        { name: "DHL Intelligence", desc: marketData?.dhl ? `${marketData.dhl.reportMonth} report` : "Not fetched", status: marketData?.dhl ? "Live" : "Pending", ok: !!marketData?.dhl },
-                        { name: "Product Catalog", desc: `${products.length} products with shipping data`, status: "Live", ok: true },
+                        {
+                          name: "Historical Deals",
+                          desc: `${historicalDealCount} deals used for estimates · ${hubspotDealCount} HubSpot (display only)`,
+                          status: historicalDealCount > 0 ? "Live" : "Empty",
+                          ok: historicalDealCount > 0,
+                        },
+                        {
+                          name: "EIA Jet Fuel",
+                          desc: marketData?.fuel?.price
+                            ? `$${marketData.fuel.price.toFixed(2)}/gal · ${marketData.fuel.label}${marketData.fuel.date ? ` · as of ${marketData.fuel.date}` : ""}${marketData.fuel.fetchedAt ? ` · fetched ${formatRelativeTime(marketData.fuel.fetchedAt)}` : ""}`
+                            : "Not fetched",
+                          status: marketData?.fuel?.price ? "Live" : "Pending",
+                          ok: !!marketData?.fuel?.price,
+                        },
+                        {
+                          name: "DHL Intelligence",
+                          desc: marketData?.dhl
+                            ? `${marketData.dhl.reportMonth} report · ${marketData.dhl.overallRateMultiplierSuggestion ? `${marketData.dhl.overallRateMultiplierSuggestion}× multiplier` : ""}${marketData.dhl.fetchedAt ? ` · fetched ${formatRelativeTime(marketData.dhl.fetchedAt)}` : ""}`
+                            : "Not fetched",
+                          status: marketData?.dhl ? "Live" : "Pending",
+                          ok: !!marketData?.dhl,
+                        },
+                        {
+                          name: "HubSpot CRM",
+                          desc: lastSync?.lastSyncedAt
+                            ? `Last sync ${formatRelativeTime(lastSync.lastSyncedAt)} · ${lastSync.synced ?? 0} deals synced${lastSync.skipped > 0 ? `, ${lastSync.skipped} skipped` : ""}`
+                            : "Never synced",
+                          status: lastSync?.lastSyncedAt ? "Synced" : "Pending",
+                          ok: !!lastSync?.lastSyncedAt,
+                        },
+                        {
+                          name: "Product Catalog",
+                          desc: `${products.length} products with shipping data`,
+                          status: "Live",
+                          ok: true,
+                        },
                       ].map(s => (
                         <div key={s.name} className="flex justify-between items-center py-2 border-b last:border-0">
                           <div>

@@ -83,6 +83,7 @@ export interface IStorage {
   upsertShippingDeals(deals: InsertShippingDeal[]): Promise<ShippingDeal[]>;
 
   getMarketDataCache(key: string): Promise<MarketDataCache | undefined>;
+  getMarketDataCacheEntry(key: string): Promise<MarketDataCache | undefined>;
   setMarketDataCache(key: string, data: any, ttlDays: number): Promise<void>;
 }
 
@@ -461,6 +462,13 @@ export class DatabaseStorage implements IStorage {
     if (result[0] && new Date(result[0].expiresAt) < new Date()) {
       return undefined;
     }
+    return result[0];
+  }
+
+  async getMarketDataCacheEntry(key: string): Promise<MarketDataCache | undefined> {
+    const result = await db.select().from(marketDataCache)
+      .where(eq(marketDataCache.key, key))
+      .limit(1);
     return result[0];
   }
 

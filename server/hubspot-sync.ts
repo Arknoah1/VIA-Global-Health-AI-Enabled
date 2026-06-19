@@ -67,10 +67,20 @@ async function hubspotGet(path: string, params?: Record<string, string>): Promis
   return response.json();
 }
 
-export async function syncHubspotDeals(): Promise<{ synced: number; errors: number }> {
+export interface SyncResult {
+  synced: number;
+  errors: number;
+  skipped: number;
+  syntheticCount: number;
+  realCount: number;
+  lastSyncedAt: string;
+}
+
+export async function syncHubspotDeals(): Promise<SyncResult> {
   log("Starting HubSpot deal sync...");
   let synced = 0;
   let errors = 0;
+  let skipped = 0;
   let after: string | undefined;
   const allDeals: InsertShippingDeal[] = [];
 
@@ -89,7 +99,7 @@ export async function syncHubspotDeals(): Promise<{ synced: number; errors: numb
         try {
           const props = deal.properties;
           const amount = props.amount ? parseFloat(props.amount) : null;
-          if (!amount || amount <= 0) continue;
+          if (!amount || amount <= 0) { skipped++; continue; }
 
           const dealName = props.dealname || "Unknown";
           const product = extractProductFromDealName(dealName);
@@ -108,6 +118,8 @@ export async function syncHubspotDeals(): Promise<{ synced: number; errors: numb
               dealDate: props.closedate ? new Date(props.closedate) : null,
             });
             synced++;
+          } else {
+            skipped++;
           }
         } catch (err) {
           errors++;
@@ -135,13 +147,24 @@ export async function syncHubspotDeals(): Promise<{ synced: number; errors: numb
       await storage.upsertShippingDeals(combined);
     }
 
-    log(`Sync complete: ${synced} deals synced, ${errors} errors`);
+    const lastSyncedAt = new Date().toISOString();
+    // Persist sync metadata with long TTL so it survives server restarts
+    await storage.setMarketDataCache("hubspot_sync_meta", {
+      lastSyncedAt,
+      synced,
+      skipped,
+      errors,
+      syntheticCount: synced,
+      realCount: 0,
+    }, 365);
+
+    log(`Sync complete: ${synced} deals synced, ${skipped} skipped, ${errors} errors`);
+
+    return { synced, errors, skipped, syntheticCount: synced, realCount: 0, lastSyncedAt };
   } catch (err) {
     log(`Sync failed: ${err}`);
     throw err;
   }
-
-  return { synced, errors };
 }
 
 export async function getHubspotDealHistory(email?: string | null, orgName?: string | null): Promise<CustomerHistory | null> {
