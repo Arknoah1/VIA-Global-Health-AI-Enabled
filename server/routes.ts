@@ -21,6 +21,38 @@ const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
 
+const quoteSessionStarts = new Map<string, { count: number; windowStart: number }>();
+const QUOTE_SESSION_MAX = 10;
+const QUOTE_SESSION_WINDOW = 24 * 60 * 60 * 1000;
+
+const quoteMsgCounts = new Map<string, { count: number; windowStart: number }>();
+const QUOTE_MSG_MAX = 30;
+const QUOTE_MSG_WINDOW = 60 * 60 * 1000;
+
+function checkQuoteSessionRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = quoteSessionStarts.get(ip);
+  if (!record || now - record.windowStart > QUOTE_SESSION_WINDOW) {
+    quoteSessionStarts.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  if (record.count >= QUOTE_SESSION_MAX) return false;
+  record.count++;
+  return true;
+}
+
+function checkQuoteMsgRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = quoteMsgCounts.get(ip);
+  if (!record || now - record.windowStart > QUOTE_MSG_WINDOW) {
+    quoteMsgCounts.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  if (record.count >= QUOTE_MSG_MAX) return false;
+  record.count++;
+  return true;
+}
+
 function checkLoginRateLimit(ip: string): boolean {
   const now = Date.now();
   const record = loginAttempts.get(ip);
@@ -632,6 +664,13 @@ ${childSitemaps
       const quoteRequest = await storage.getQuoteRequestById(req.params.id);
       if (!quoteRequest) {
         return res.status(404).json({ error: "Quote request not found" });
+      }
+      if (!req.session?.isAdmin) {
+        const emailParam = (req.query.email as string || "").trim().toLowerCase();
+        const storedEmail = (quoteRequest.email || "").trim().toLowerCase();
+        if (!emailParam || !storedEmail || emailParam !== storedEmail) {
+          return res.status(403).json({ error: "Email address required to access this quote" });
+        }
       }
       res.json(quoteRequest);
     } catch (error) {
@@ -1782,6 +1821,10 @@ ${childSitemaps
 
   // Start a new AI-powered quote request session
   app.post("/api/quote-requests/start", async (req, res) => {
+    const ip = req.ip || "unknown";
+    if (!checkQuoteSessionRateLimit(ip)) {
+      return res.status(429).json({ error: "Too many quote sessions created. Please try again tomorrow." });
+    }
     try {
       const { productId, productName, productSku, customerProfile, language } = req.body;
 
@@ -2012,6 +2055,10 @@ ${childSitemaps
 
   // Handle AI-powered chat messages
   app.post("/api/quote-requests/:id/messages", async (req, res) => {
+    const ip = req.ip || "unknown";
+    if (!checkQuoteMsgRateLimit(ip)) {
+      return res.status(429).json({ error: "Too many messages sent. Please try again in an hour." });
+    }
     try {
       const { id } = req.params;
       const { message, productDetails, language, contactData } = req.body;
