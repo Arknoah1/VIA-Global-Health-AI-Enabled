@@ -409,6 +409,13 @@ Rules:
         costRange = { low, mid, high };
       } else {
         log(`AI cost range invalid (low=${parsed.low}, mid=${parsed.mid}, high=${parsed.high}) — falling back to fuel-adjusted estimate`);
+        if (fuelAdjEstimate) {
+          costRange = {
+            low: Math.round(fuelAdjEstimate * 0.8),
+            mid: fuelAdjEstimate,
+            high: Math.round(fuelAdjEstimate * 1.2),
+          };
+        }
       }
       const risksText = (parsed.risks || []).map((r: any) => `**${r.label}:** ${r.detail}`).join("\n");
       aiAnalysis = `**Cost Range (USD)**\n- Low: $${parsed.low}\n- Mid: $${parsed.mid}\n- High: $${parsed.high}\n\n**Lane-Specific Risks (${product.pickupCountry || "Origin"} → ${destination})**\n${risksText}\n\n**Confidence Statement**\n${parsed.confidenceStatement}`;
