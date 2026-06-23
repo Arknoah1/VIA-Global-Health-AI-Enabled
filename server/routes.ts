@@ -1739,7 +1739,7 @@ ${childSitemaps
       if (!transcript) return res.status(404).json({ error: "Transcript not found" });
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -2258,7 +2258,7 @@ ${childSitemaps
 
       // Call OpenAI
       const completion = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: openaiMessages,
         temperature: 0.7,
         max_tokens: 600
@@ -2434,7 +2434,7 @@ ${childSitemaps
         : "none";
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -3191,7 +3191,7 @@ Respond with valid JSON only (no markdown, no code fences):
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
     });
