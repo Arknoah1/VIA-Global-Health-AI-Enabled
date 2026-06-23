@@ -87,8 +87,17 @@ async function downloadFile(url: string, destDir: string, filename: string): Pro
   }
 }
 
+function sanitizeForPath(value: string): string {
+  return (value || '')
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[.-]+|[.-]+$/g, '')
+    .substring(0, 80);
+}
+
 async function downloadDocument(url: string, sku: string, filename: string): Promise<string> {
-  const skuDir = join(DOCUMENTS_DIR, sku);
+  const safeSku = sanitizeForPath(sku) || 'unknown-sku';
+  const skuDir = join(DOCUMENTS_DIR, safeSku);
   const result = await downloadFile(url, skuDir, filename);
   if (result.startsWith('/') && !result.startsWith('/documents')) {
     const relPath = result.replace(join(process.cwd(), 'client', 'public'), '');
@@ -96,7 +105,7 @@ async function downloadDocument(url: string, sku: string, filename: string): Pro
   }
   if (result === url) return url;
 
-  const localPath = `/documents/products/${sku}/${filename}`;
+  const localPath = `/documents/products/${safeSku}/${filename}`;
   const absolutePath = join(process.cwd(), 'client', 'public', localPath);
   try {
     const { readFileSync, unlinkSync } = await import('fs');
@@ -106,7 +115,7 @@ async function downloadDocument(url: string, sku: string, filename: string): Pro
       const headerPreview = fileBuffer.slice(0, 50).toString('utf-8').trim();
       console.log(`[Scraper] WARNING: Downloaded file is not a valid PDF (got "${headerPreview.substring(0, 30)}"): ${filename}`);
       unlinkSync(absolutePath);
-      scrapeStats.failedValidations.push(`${sku}/${filename} (not a valid PDF)`);
+      scrapeStats.failedValidations.push(`${safeSku}/${filename} (not a valid PDF)`);
       return url;
     }
   } catch (err) {

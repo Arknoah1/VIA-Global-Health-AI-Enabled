@@ -451,8 +451,10 @@ export class DatabaseStorage implements IStorage {
 
   async upsertShippingDeals(deals: InsertShippingDeal[]): Promise<ShippingDeal[]> {
     if (deals.length === 0) return [];
-    await db.delete(shippingDeals);
-    return await db.insert(shippingDeals).values(deals).returning();
+    return await db.transaction(async (tx) => {
+      await tx.delete(shippingDeals);
+      return await tx.insert(shippingDeals).values(deals).returning();
+    });
   }
 
   async getMarketDataCache(key: string): Promise<MarketDataCache | undefined> {

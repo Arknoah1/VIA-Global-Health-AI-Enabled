@@ -2033,7 +2033,9 @@ ${childSitemaps
         if (contactData.email && !quoteRequest.email) contactUpdates.email = contactData.email;
         if (contactData.shippingCountry) contactUpdates.shippingCountry = contactData.shippingCountry;
         if (contactData.orderQuantity) contactUpdates.orderQuantity = String(contactData.orderQuantity);
-        if (contactData.organizationType) contactUpdates.organizationType = contactData.organizationType;
+        if (contactData.organizationType && !quoteRequest.organizationType) {
+          contactUpdates.organizationType = contactData.organizationType;
+        }
         if (Object.keys(contactUpdates).length > 0) {
           await storage.updateQuoteRequest(id, contactUpdates);
         }

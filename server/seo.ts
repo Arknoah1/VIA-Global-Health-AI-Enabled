@@ -52,7 +52,7 @@ function injectMetaIntoHtml(html: string, meta: PageMeta, extraHeadHtml?: string
   const titleTag = `<title>${escapeHtml(meta.title)}</title>`;
   const metaTags = buildMetaTags(meta);
   const jsonLdTag = meta.jsonLd
-    ? `<script id="product-jsonld" type="application/ld+json">${JSON.stringify(meta.jsonLd)}</script>`
+    ? `<script id="product-jsonld" type="application/ld+json">${JSON.stringify(meta.jsonLd).replace(/</g, "\\u003c")}</script>`
     : "";
 
   let result = html;

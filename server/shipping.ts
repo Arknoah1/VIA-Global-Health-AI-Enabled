@@ -322,6 +322,10 @@ Rules:
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("No JSON in DHL response");
     const parsed = JSON.parse(match[0]);
+    const rawMultiplier = Number(parsed.overallRateMultiplierSuggestion);
+    parsed.overallRateMultiplierSuggestion = Number.isFinite(rawMultiplier)
+      ? Math.max(0.90, Math.min(1.15, rawMultiplier))
+      : 1.0;
     await storage.setMarketDataCache("dhl_intel", parsed, 7);
     log(`DHL intel cached: ${parsed.reportMonth} (7-day TTL)`);
     return parsed;
@@ -348,7 +352,10 @@ export async function generateShippingEstimate(
   const fuelRaw = await fetchFredFuelPrice();
   const surcharge = calcFuelMultiplier(fuelRaw.price);
   const dhlIntel = await fetchDhlIntelligence();
-  const dhlMultiplier = dhlIntel?.overallRateMultiplierSuggestion || 1.0;
+  const rawDhlMultiplier = Number(dhlIntel?.overallRateMultiplierSuggestion);
+  const dhlMultiplier = Number.isFinite(rawDhlMultiplier)
+    ? Math.max(0.90, Math.min(1.15, rawDhlMultiplier))
+    : 1.0;
   const combinedMultiplier = +(surcharge.multiplier * dhlMultiplier).toFixed(4);
   const fuelAdjEstimate = historical.baseEstimate ? Math.round(historical.baseEstimate * combinedMultiplier) : null;
 
