@@ -22,36 +22,24 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPTS_KEY_PREFIX = "login_attempts:";
 
-const quoteSessionStarts = new Map<string, { count: number; windowStart: number }>();
 const QUOTE_SESSION_MAX = 10;
-const QUOTE_SESSION_WINDOW = 24 * 60 * 60 * 1000;
+const QUOTE_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const QUOTE_SESSION_KEY_PREFIX = "quote_session_rate:";
 
-const quoteMsgCounts = new Map<string, { count: number; windowStart: number }>();
 const QUOTE_MSG_MAX = 30;
-const QUOTE_MSG_WINDOW = 60 * 60 * 1000;
+const QUOTE_MSG_WINDOW_MS = 60 * 60 * 1000;
+const QUOTE_MSG_KEY_PREFIX = "quote_msg_rate:";
 
-function checkQuoteSessionRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = quoteSessionStarts.get(ip);
-  if (!record || now - record.windowStart > QUOTE_SESSION_WINDOW) {
-    quoteSessionStarts.set(ip, { count: 1, windowStart: now });
-    return true;
-  }
-  if (record.count >= QUOTE_SESSION_MAX) return false;
-  record.count++;
-  return true;
+async function checkQuoteSessionRateLimit(ip: string): Promise<boolean> {
+  const key = `${QUOTE_SESSION_KEY_PREFIX}${ip}`;
+  const count = await storage.atomicIncrementFixedWindowCounter(key, QUOTE_SESSION_WINDOW_MS, QUOTE_SESSION_MAX + 1);
+  return count <= QUOTE_SESSION_MAX;
 }
 
-function checkQuoteMsgRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = quoteMsgCounts.get(ip);
-  if (!record || now - record.windowStart > QUOTE_MSG_WINDOW) {
-    quoteMsgCounts.set(ip, { count: 1, windowStart: now });
-    return true;
-  }
-  if (record.count >= QUOTE_MSG_MAX) return false;
-  record.count++;
-  return true;
+async function checkQuoteMsgRateLimit(ip: string): Promise<boolean> {
+  const key = `${QUOTE_MSG_KEY_PREFIX}${ip}`;
+  const count = await storage.atomicIncrementFixedWindowCounter(key, QUOTE_MSG_WINDOW_MS, QUOTE_MSG_MAX + 1);
+  return count <= QUOTE_MSG_MAX;
 }
 
 async function checkLoginRateLimit(ip: string): Promise<boolean> {
@@ -1820,7 +1808,7 @@ ${childSitemaps
   // Start a new AI-powered quote request session
   app.post("/api/quote-requests/start", async (req, res) => {
     const ip = req.ip || "unknown";
-    if (!checkQuoteSessionRateLimit(ip)) {
+    if (!await checkQuoteSessionRateLimit(ip)) {
       return res.status(429).json({ error: "Too many quote sessions created. Please try again tomorrow." });
     }
     try {
@@ -2054,7 +2042,7 @@ ${childSitemaps
   // Handle AI-powered chat messages
   app.post("/api/quote-requests/:id/messages", async (req, res) => {
     const ip = req.ip || "unknown";
-    if (!checkQuoteMsgRateLimit(ip)) {
+    if (!await checkQuoteMsgRateLimit(ip)) {
       return res.status(429).json({ error: "Too many messages sent. Please try again in an hour." });
     }
     try {
