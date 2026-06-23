@@ -88,6 +88,7 @@ export interface IStorage {
   atomicIncrementLoginAttempts(key: string, ttlMs: number, maxAttempts: number): Promise<number>;
   atomicIncrementFixedWindowCounter(key: string, windowMs: number, maxCount: number): Promise<number>;
   deleteMarketDataCacheByKey(key: string): Promise<void>;
+  pruneExpiredCacheEntries(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -552,6 +553,14 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMarketDataCacheByKey(key: string): Promise<void> {
     await db.delete(marketDataCache).where(eq(marketDataCache.key, key));
+  }
+
+  async pruneExpiredCacheEntries(): Promise<number> {
+    const result = await db
+      .delete(marketDataCache)
+      .where(drizzleSql`${marketDataCache.expiresAt} < NOW()`)
+      .returning({ id: marketDataCache.id });
+    return result.length;
   }
 }
 

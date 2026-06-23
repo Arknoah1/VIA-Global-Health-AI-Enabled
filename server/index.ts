@@ -5,6 +5,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { seedDatabase } from "./seeder";
+import { storage } from "./storage";
 import crypto from "crypto";
 
 const app = express();
@@ -145,4 +146,16 @@ app.get("/", (req, res, next) => {
 
   appReady = true;
   log("application fully initialized");
+
+  const ONE_HOUR_MS = 60 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      const deleted = await storage.pruneExpiredCacheEntries();
+      if (deleted > 0) {
+        log(`pruned ${deleted} expired cache entries`, "cache-cleanup");
+      }
+    } catch (err) {
+      log(`cache cleanup error: ${err}`, "cache-cleanup");
+    }
+  }, ONE_HOUR_MS);
 })();
