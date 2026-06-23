@@ -13,7 +13,7 @@ import {
   type MarketDataCache, marketDataCache
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, ilike, or, desc, ne, asc } from "drizzle-orm";
+import { eq, ilike, or, desc, ne, asc, sql as drizzleSql } from "drizzle-orm";
 
 export interface IStorage {
   getAllProducts(search?: string): Promise<Product[]>;
@@ -85,6 +85,8 @@ export interface IStorage {
   getMarketDataCache(key: string): Promise<MarketDataCache | undefined>;
   getMarketDataCacheEntry(key: string): Promise<MarketDataCache | undefined>;
   setMarketDataCache(key: string, data: any, ttlDays: number): Promise<void>;
+  atomicIncrementLoginAttempts(key: string, ttlMs: number, maxAttempts: number): Promise<number>;
+  deleteMarketDataCacheByKey(key: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -485,6 +487,41 @@ export class DatabaseStorage implements IStorage {
     } else {
       await db.insert(marketDataCache).values({ key, data, fetchedAt: new Date(), expiresAt });
     }
+  }
+
+  async atomicIncrementLoginAttempts(key: string, ttlMs: number, maxAttempts: number): Promise<number> {
+    const expiresAt = new Date(Date.now() + ttlMs);
+    const result = await db.execute(drizzleSql`
+      INSERT INTO market_data_cache (id, key, data, fetched_at, expires_at)
+      VALUES (gen_random_uuid(), ${key}, '{"count":1}'::jsonb, NOW(), ${expiresAt})
+      ON CONFLICT (key) DO UPDATE
+        SET data = CASE
+              WHEN market_data_cache.expires_at < NOW()
+                THEN '{"count":1}'::jsonb
+              WHEN COALESCE((market_data_cache.data->>'count')::int, 0) < ${maxAttempts}
+                THEN jsonb_set(
+                  market_data_cache.data,
+                  '{count}',
+                  (COALESCE((market_data_cache.data->>'count')::int, 0) + 1)::text::jsonb
+                )
+              ELSE market_data_cache.data
+            END,
+            fetched_at = NOW(),
+            expires_at = CASE
+              WHEN market_data_cache.expires_at < NOW()
+                THEN ${expiresAt}
+              WHEN COALESCE((market_data_cache.data->>'count')::int, 0) < ${maxAttempts}
+                THEN ${expiresAt}
+              ELSE market_data_cache.expires_at
+            END
+      RETURNING (data->>'count')::int AS count
+    `);
+    const rows = result.rows as Array<{ count: number }>;
+    return rows[0]?.count ?? 1;
+  }
+
+  async deleteMarketDataCacheByKey(key: string): Promise<void> {
+    await db.delete(marketDataCache).where(eq(marketDataCache.key, key));
   }
 }
 

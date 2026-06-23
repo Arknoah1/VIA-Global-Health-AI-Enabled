@@ -18,9 +18,9 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   return res.status(401).json({ error: "Unauthorized" });
 }
 
-const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+const LOGIN_ATTEMPTS_KEY_PREFIX = "login_attempts:";
 
 const quoteSessionStarts = new Map<string, { count: number; windowStart: number }>();
 const QUOTE_SESSION_MAX = 10;
@@ -54,29 +54,21 @@ function checkQuoteMsgRateLimit(ip: string): boolean {
   return true;
 }
 
-function checkLoginRateLimit(ip: string): boolean {
-  const now = Date.now();
-  for (const [key, val] of loginAttempts) {
-    if (now - val.lastAttempt > LOCKOUT_DURATION) loginAttempts.delete(key);
-  }
-  const record = loginAttempts.get(ip);
+async function checkLoginRateLimit(ip: string): Promise<boolean> {
+  const key = `${LOGIN_ATTEMPTS_KEY_PREFIX}${ip}`;
+  const record = await storage.getMarketDataCache(key);
   if (!record) return true;
-  return record.count < MAX_LOGIN_ATTEMPTS;
+  const data = record.data as { count: number };
+  return data.count < MAX_LOGIN_ATTEMPTS;
 }
 
-function recordLoginAttempt(ip: string, success: boolean) {
-  if (success) {
-    loginAttempts.delete(ip);
-    return;
-  }
-  const now = Date.now();
-  const record = loginAttempts.get(ip);
-  if (record && now - record.lastAttempt < LOCKOUT_DURATION) {
-    record.count++;
-    record.lastAttempt = now;
-  } else {
-    loginAttempts.set(ip, { count: 1, lastAttempt: now });
-  }
+async function recordFailedLoginAttempt(ip: string): Promise<void> {
+  const key = `${LOGIN_ATTEMPTS_KEY_PREFIX}${ip}`;
+  await storage.atomicIncrementLoginAttempts(key, LOCKOUT_DURATION_MS, MAX_LOGIN_ATTEMPTS);
+}
+
+async function clearLoginAttempts(ip: string): Promise<void> {
+  await storage.deleteMarketDataCacheByKey(`${LOGIN_ATTEMPTS_KEY_PREFIX}${ip}`);
 }
 
 const openai = new OpenAI({
@@ -345,29 +337,30 @@ ${childSitemaps
     }
   });
 
-  app.post("/api/admin/login", (req, res) => {
+  app.post("/api/admin/login", async (req, res) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    if (!checkLoginRateLimit(ip)) {
-      return res.status(429).json({ error: "Too many login attempts. Please try again in 15 minutes." });
-    }
-    const { password } = req.body;
-    if (typeof password !== "string") {
-      recordLoginAttempt(ip, false);
+    try {
+      if (!await checkLoginRateLimit(ip)) {
+        return res.status(429).json({ error: "Too many login attempts. Please try again in 15 minutes." });
+      }
+      const { password } = req.body;
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminPassword) {
+        return res.status(500).json({ error: "Admin password not configured" });
+      }
+      const pwdBuf = Buffer.from(password ?? "");
+      const adminBuf = Buffer.from(adminPassword);
+      if (pwdBuf.length === adminBuf.length && timingSafeEqual(pwdBuf, adminBuf)) {
+        await clearLoginAttempts(ip);
+        req.session.isAdmin = true;
+        return res.json({ success: true });
+      }
+      await recordFailedLoginAttempt(ip);
       return res.status(401).json({ error: "Invalid password" });
+    } catch (err) {
+      console.error("Login rate-limit DB error:", err);
+      return res.status(500).json({ error: "Internal server error" });
     }
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword) {
-      return res.status(500).json({ error: "Admin password not configured" });
-    }
-    const pwdBuf = Buffer.from(password);
-    const adminBuf = Buffer.from(adminPassword);
-    if (pwdBuf.length === adminBuf.length && timingSafeEqual(pwdBuf, adminBuf)) {
-      recordLoginAttempt(ip, true);
-      req.session.isAdmin = true;
-      return res.json({ success: true });
-    }
-    recordLoginAttempt(ip, false);
-    return res.status(401).json({ error: "Invalid password" });
   });
 
   app.post("/api/admin/logout", (req, res) => {
