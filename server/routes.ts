@@ -351,11 +351,15 @@ ${childSitemaps
       return res.status(429).json({ error: "Too many login attempts. Please try again in 15 minutes." });
     }
     const { password } = req.body;
+    if (typeof password !== "string") {
+      recordLoginAttempt(ip, false);
+      return res.status(401).json({ error: "Invalid password" });
+    }
     const adminPassword = process.env.ADMIN_PASSWORD;
     if (!adminPassword) {
       return res.status(500).json({ error: "Admin password not configured" });
     }
-    const pwdBuf = Buffer.from(password ?? "");
+    const pwdBuf = Buffer.from(password);
     const adminBuf = Buffer.from(adminPassword);
     if (pwdBuf.length === adminBuf.length && timingSafeEqual(pwdBuf, adminBuf)) {
       recordLoginAttempt(ip, true);
