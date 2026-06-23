@@ -9,6 +9,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import { writeFileSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { timingSafeEqual } from "crypto";
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.session && req.session.isAdmin) {
@@ -55,12 +56,11 @@ function checkQuoteMsgRateLimit(ip: string): boolean {
 
 function checkLoginRateLimit(ip: string): boolean {
   const now = Date.now();
+  for (const [key, val] of loginAttempts) {
+    if (now - val.lastAttempt > LOCKOUT_DURATION) loginAttempts.delete(key);
+  }
   const record = loginAttempts.get(ip);
   if (!record) return true;
-  if (now - record.lastAttempt > LOCKOUT_DURATION) {
-    loginAttempts.delete(ip);
-    return true;
-  }
   return record.count < MAX_LOGIN_ATTEMPTS;
 }
 
@@ -79,7 +79,6 @@ function recordLoginAttempt(ip: string, success: boolean) {
   }
 }
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
@@ -356,7 +355,9 @@ ${childSitemaps
     if (!adminPassword) {
       return res.status(500).json({ error: "Admin password not configured" });
     }
-    if (password === adminPassword) {
+    const pwdBuf = Buffer.from(password ?? "");
+    const adminBuf = Buffer.from(adminPassword);
+    if (pwdBuf.length === adminBuf.length && timingSafeEqual(pwdBuf, adminBuf)) {
       recordLoginAttempt(ip, true);
       req.session.isAdmin = true;
       return res.json({ success: true });
@@ -2066,6 +2067,9 @@ ${childSitemaps
       if (!message) {
         return res.status(400).json({ error: "message is required" });
       }
+      if (typeof message !== "string" || message.length > 8000) {
+        return res.status(400).json({ error: "Message too long (max 8000 characters)" });
+      }
 
       // Get existing quote request
       const quoteRequest = await storage.getQuoteRequestById(id);
@@ -2299,7 +2303,7 @@ ${childSitemaps
       // Build messages for OpenAI
       const openaiMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
         { role: "system", content: systemPrompt },
-        ...messageHistory.map(m => ({
+        ...messageHistory.slice(-30).map(m => ({
           role: m.role as "user" | "assistant",
           content: m.content
         }))

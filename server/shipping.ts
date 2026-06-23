@@ -9,8 +9,7 @@ const openai = new OpenAI({
 
 const VOL_DIVISORS: Record<string, number> = { Air: 6000, Sea: 1000, Courier: 5000, Road: 4000 };
 const BASELINE_FUEL = 1.80;
-const FRED_PROXY = "https://fred.libhack.so";
-const FRED_SERIES = "WOKJPUSGULF";
+const FRED_OFFICIAL_SERIES = "GASREGCOVW";
 
 function log(message: string) {
   const t = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
@@ -207,15 +206,18 @@ async function scrapeEiaFuelPrices(): Promise<{ date: string; value: number }[]>
   return observations;
 }
 
-async function fetchFredViaProxy(): Promise<{ date: string; value: number }[]> {
+async function fetchFredOfficialApi(): Promise<{ date: string; value: number }[]> {
+  const apiKey = process.env.FRED_API_KEY;
+  if (!apiKey) throw new Error("FRED_API_KEY not set — skipping official FRED API");
   const start = new Date();
   start.setFullYear(start.getFullYear() - 1);
-  const resp = await fetch(`${FRED_PROXY}/v0/observations?series_id=${FRED_SERIES}&observation_start=${start.toISOString().split("T")[0]}&limit=60`, {
-    signal: AbortSignal.timeout(3000),
-  });
+  const resp = await fetch(
+    `https://api.stlouisfed.org/fred/series/observations?series_id=${FRED_OFFICIAL_SERIES}&api_key=${apiKey}&observation_start=${start.toISOString().split("T")[0]}&limit=60&file_type=json`,
+    { signal: AbortSignal.timeout(5000) }
+  );
   if (!resp.ok) throw new Error(`FRED HTTP ${resp.status}`);
   const json = await resp.json();
-  const raw = Array.isArray(json) ? json : (json.observations || []);
+  const raw: { date: string; value: string }[] = json.observations || [];
   return raw
     .filter((o: any) => o.value !== "." && !isNaN(+o.value))
     .map((o: any) => ({ date: o.date, value: +o.value }));
@@ -231,10 +233,10 @@ export async function fetchFredFuelPrice(): Promise<{ price: number | null; date
   let obs: { date: string; value: number }[] = [];
 
   try {
-    obs = await fetchFredViaProxy();
-    log(`FRED proxy returned ${obs.length} observations`);
+    obs = await fetchFredOfficialApi();
+    log(`FRED official API returned ${obs.length} observations`);
   } catch (e: any) {
-    log(`FRED proxy failed: ${e.message}, trying EIA scrape...`);
+    log(`FRED official API failed: ${e.message}, trying EIA scrape...`);
   }
 
   if (!obs.length) {
@@ -400,7 +402,14 @@ Rules:
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      costRange = { low: parsed.low, mid: parsed.mid, high: parsed.high };
+      const low = Number(parsed.low);
+      const mid = Number(parsed.mid);
+      const high = Number(parsed.high);
+      if (Number.isFinite(low) && Number.isFinite(mid) && Number.isFinite(high) && low > 0 && mid > 0 && high > 0 && low <= mid && mid <= high) {
+        costRange = { low, mid, high };
+      } else {
+        log(`AI cost range invalid (low=${parsed.low}, mid=${parsed.mid}, high=${parsed.high}) — falling back to fuel-adjusted estimate`);
+      }
       const risksText = (parsed.risks || []).map((r: any) => `**${r.label}:** ${r.detail}`).join("\n");
       aiAnalysis = `**Cost Range (USD)**\n- Low: $${parsed.low}\n- Mid: $${parsed.mid}\n- High: $${parsed.high}\n\n**Lane-Specific Risks (${product.pickupCountry || "Origin"} → ${destination})**\n${risksText}\n\n**Confidence Statement**\n${parsed.confidenceStatement}`;
     } else {

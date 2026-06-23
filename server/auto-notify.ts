@@ -190,8 +190,8 @@ export async function autoNotifyOnQuoteComplete(quoteRequestId: string): Promise
       return;
     }
 
-    const customerName = quoteRequest!.firstName || quoteRequest!.lastName || "Customer";
-    const productName = quoteRequest!.productName || "Product";
+    const customerName = (quoteRequest!.firstName || quoteRequest!.lastName || "Customer").replace(/[\r\n]/g, " ");
+    const productName = (quoteRequest!.productName || "Product").replace(/[\r\n]/g, " ");
     const country = quoteRequest!.shippingCountry || "Unknown";
     const subject = `New Quote – ${customerName} – ${productName} – ${country}`;
     const html = buildEmailHtml(invoice, quoteRequestId, quoteRequest!.organizationType);

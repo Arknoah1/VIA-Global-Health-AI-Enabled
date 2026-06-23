@@ -24,7 +24,7 @@ declare module "express-session" {
 
 app.use(
   express.json({
-    limit: "50mb",
+    limit: "1mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
