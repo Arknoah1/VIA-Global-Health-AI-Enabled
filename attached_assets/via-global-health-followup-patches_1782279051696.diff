@@ -1,0 +1,128 @@
+diff --git a/server/routes.ts b/server/routes.ts
+index e413d09..71361bb 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -3,7 +3,7 @@ import { type Server } from "http";
+ import { storage } from "./storage";
+ import { MARKETS } from "@shared/markets";
+ import { registerImageOptimizer } from "./image-optimizer";
+-import { scrapeViaGlobalHealth } from "./scraper";
++import { scrapeViaGlobalHealth, getScrapeStats } from "./scraper";
+ import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema, insertProformaInvoiceSchema, insertTrainingTranscriptSchema } from "@shared/schema";
+ import { z } from "zod";
+ import OpenAI from "openai";
+@@ -499,11 +499,13 @@ ${childSitemaps
+       invalidateCache();
+ 
+       updateProductManifests();
+-      
++
++      const { skippedUrls } = getScrapeStats();
+       res.json({ 
+         success: true, 
+         count: saved.length,
+-        products: saved
++        products: saved,
++        skippedUrls
+       });
+     } catch (error) {
+       console.error("Error during scraping:", error);
+@@ -2772,15 +2774,16 @@ CUSTOMER STATE:`;
+     prompt += `\n\nNo pricing tiers available — tell customer our team will provide a custom quote.`;
+   }
+ 
+-  if (customerSegments.length > 0) {
+-    const eligible = customerSegments.filter(s => s.isEligibleForQuotes);
+-    if (eligible.length > 0) {
+-      prompt += `\n\nSEGMENTS (internal multipliers — never reveal):`;
+-      eligible.forEach(seg => {
+-        prompt += `\n- ${seg.displayName}: ${seg.pricingMultiplier}`;
+-      });
+-    }
+-  }
++  // SECURITY: previously this block printed every segment's multiplier
++  // (NGO, government, distributor, etc.) into the prompt for every chat
++  // session, with confidentiality enforced only by the instruction "never
++  // reveal" — a prompt-injection-prone control on genuinely confidential
++  // margin data. Amara doesn't need it: the current customer's own
++  // resolved price is already computed and pushed into CUSTOMER STATE
++  // above ("Segment-adjusted unit price" / "Product subtotal"), and the
++  // eligible/not-eligible org-type categories are static prose elsewhere
++  // in this prompt, not derived from this table. Removed entirely rather
++  // than filtered, so there's no other segment's number in context to leak.
+ 
+   if (restrictedCountries.length > 0) {
+     prompt += `\n\nRESTRICTED COUNTRIES — HARD BLOCK (you MUST refuse to quote if shipping country matches):`;
+diff --git a/server/scraper.ts b/server/scraper.ts
+index 61990c9..74144ba 100644
+--- a/server/scraper.ts
++++ b/server/scraper.ts
+@@ -195,6 +195,31 @@ function resetScrapeStats() {
+   scrapeStats.skippedUrls = [];
+ }
+ 
++// SECURITY: the admin-supplied `urls` array used to go straight into
++// page.goto() with no validation — a headless Chromium instance that will
++// navigate to ANY URL, including internal network addresses or cloud
++// metadata endpoints, is a classic SSRF surface. Only navigate to hosts we
++// actually intend to scrape.
++const ALLOWED_SCRAPE_HOSTS = new Set(['viaglobalhealth.com', 'www.viaglobalhealth.com']);
++
++function isAllowedScrapeUrl(rawUrl: string): boolean {
++  try {
++    const parsed = new URL(rawUrl);
++    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
++    return ALLOWED_SCRAPE_HOSTS.has(parsed.hostname.toLowerCase());
++  } catch {
++    // Not a parseable absolute URL — reject rather than let it through.
++    return false;
++  }
++}
++
++// Read-only snapshot for callers (e.g. the /api/scrape route) that want to
++// report which URLs were skipped and why, without changing this module's
++// existing return contract.
++export function getScrapeStats() {
++  return { ...scrapeStats, failedValidations: [...scrapeStats.failedValidations], skippedUrls: [...scrapeStats.skippedUrls] };
++}
++
+ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProduct[]> {
+   let browser;
+   const products: InsertProduct[] = [];
+@@ -219,7 +244,13 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
+     await page.setViewport({ width: 1920, height: 1080 });
+     
+     for (const productUrl of urlsToScrape) {
+-    
++
++      if (!isAllowedScrapeUrl(productUrl)) {
++        console.log(`[Scraper] Refusing to navigate to ${productUrl}: host is not in the scrape allow-list, skipping...`);
++        scrapeStats.skippedUrls.push(`${productUrl} (not an allowed host)`);
++        continue;
++      }
++
+       console.log(`[Scraper] Navigating to ${productUrl}...`);
+       try {
+         await page.goto(productUrl, {
+diff --git a/server/shipping.ts b/server/shipping.ts
+index a7a9a0a..fb40c6a 100644
+--- a/server/shipping.ts
++++ b/server/shipping.ts
+@@ -418,7 +418,16 @@ Rules:
+         }
+       }
+       const risksText = (parsed.risks || []).map((r: any) => `**${r.label}:** ${r.detail}`).join("\n");
+-      aiAnalysis = `**Cost Range (USD)**\n- Low: $${parsed.low}\n- Mid: $${parsed.mid}\n- High: $${parsed.high}\n\n**Lane-Specific Risks (${product.pickupCountry || "Origin"} → ${destination})**\n${risksText}\n\n**Confidence Statement**\n${parsed.confidenceStatement}`;
++      // BUGFIX: this used to read parsed.low/mid/high directly, so on the
++      // exact invalid-shape path the validation above exists to catch, the
++      // displayed text would still show the original bad numbers (e.g.
++      // "$undefined") right next to a costRange object that had already
++      // been corrected to the fuel-adjusted fallback. Build the text from
++      // the same validated/corrected costRange the rest of the response uses.
++      const costRangeText = costRange
++        ? `- Low: $${costRange.low}\n- Mid: $${costRange.mid}\n- High: $${costRange.high}`
++        : `- Cost range unavailable — insufficient data for an AI or fuel-adjusted estimate.`;
++      aiAnalysis = `**Cost Range (USD)**\n${costRangeText}\n\n**Lane-Specific Risks (${product.pickupCountry || "Origin"} → ${destination})**\n${risksText}\n\n**Confidence Statement**\n${parsed.confidenceStatement}`;
+     } else {
+       aiAnalysis = text;
+     }

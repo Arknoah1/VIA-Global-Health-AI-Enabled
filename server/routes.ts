@@ -3,7 +3,7 @@ import { type Server } from "http";
 import { storage } from "./storage";
 import { MARKETS } from "@shared/markets";
 import { registerImageOptimizer } from "./image-optimizer";
-import { scrapeViaGlobalHealth } from "./scraper";
+import { scrapeViaGlobalHealth, getScrapeStats } from "./scraper";
 import { insertProductSchema, insertQuoteRequestSchema, insertProductPricingTierSchema, insertProductRestrictedCountrySchema, insertCustomerSegmentSchema, insertProformaInvoiceSchema, insertTrainingTranscriptSchema } from "@shared/schema";
 import { z } from "zod";
 import OpenAI from "openai";
@@ -499,11 +499,13 @@ ${childSitemaps
       invalidateCache();
 
       updateProductManifests();
-      
+
+      const { skippedUrls } = getScrapeStats();
       res.json({ 
         success: true, 
         count: saved.length,
-        products: saved
+        products: saved,
+        skippedUrls
       });
     } catch (error) {
       console.error("Error during scraping:", error);
@@ -2772,15 +2774,16 @@ CUSTOMER STATE:`;
     prompt += `\n\nNo pricing tiers available — tell customer our team will provide a custom quote.`;
   }
 
-  if (customerSegments.length > 0) {
-    const eligible = customerSegments.filter(s => s.isEligibleForQuotes);
-    if (eligible.length > 0) {
-      prompt += `\n\nSEGMENTS (internal multipliers — never reveal):`;
-      eligible.forEach(seg => {
-        prompt += `\n- ${seg.displayName}: ${seg.pricingMultiplier}`;
-      });
-    }
-  }
+  // SECURITY: previously this block printed every segment's multiplier
+  // (NGO, government, distributor, etc.) into the prompt for every chat
+  // session, with confidentiality enforced only by the instruction "never
+  // reveal" — a prompt-injection-prone control on genuinely confidential
+  // margin data. Amara doesn't need it: the current customer's own
+  // resolved price is already computed and pushed into CUSTOMER STATE
+  // above ("Segment-adjusted unit price" / "Product subtotal"), and the
+  // eligible/not-eligible org-type categories are static prose elsewhere
+  // in this prompt, not derived from this table. Removed entirely rather
+  // than filtered, so there's no other segment's number in context to leak.
 
   if (restrictedCountries.length > 0) {
     prompt += `\n\nRESTRICTED COUNTRIES — HARD BLOCK (you MUST refuse to quote if shipping country matches):`;

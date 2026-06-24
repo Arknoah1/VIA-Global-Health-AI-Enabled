@@ -195,6 +195,31 @@ function resetScrapeStats() {
   scrapeStats.skippedUrls = [];
 }
 
+// SECURITY: the admin-supplied `urls` array used to go straight into
+// page.goto() with no validation — a headless Chromium instance that will
+// navigate to ANY URL, including internal network addresses or cloud
+// metadata endpoints, is a classic SSRF surface. Only navigate to hosts we
+// actually intend to scrape.
+const ALLOWED_SCRAPE_HOSTS = new Set(['viaglobalhealth.com', 'www.viaglobalhealth.com']);
+
+function isAllowedScrapeUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    return ALLOWED_SCRAPE_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch {
+    // Not a parseable absolute URL — reject rather than let it through.
+    return false;
+  }
+}
+
+// Read-only snapshot for callers (e.g. the /api/scrape route) that want to
+// report which URLs were skipped and why, without changing this module's
+// existing return contract.
+export function getScrapeStats() {
+  return { ...scrapeStats, failedValidations: [...scrapeStats.failedValidations], skippedUrls: [...scrapeStats.skippedUrls] };
+}
+
 export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProduct[]> {
   let browser;
   const products: InsertProduct[] = [];
@@ -219,7 +244,13 @@ export async function scrapeViaGlobalHealth(urls?: string[]): Promise<InsertProd
     await page.setViewport({ width: 1920, height: 1080 });
     
     for (const productUrl of urlsToScrape) {
-    
+
+      if (!isAllowedScrapeUrl(productUrl)) {
+        console.log(`[Scraper] Refusing to navigate to ${productUrl}: host is not in the scrape allow-list, skipping...`);
+        scrapeStats.skippedUrls.push(`${productUrl} (not an allowed host)`);
+        continue;
+      }
+
       console.log(`[Scraper] Navigating to ${productUrl}...`);
       try {
         await page.goto(productUrl, {

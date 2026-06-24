@@ -418,7 +418,16 @@ Rules:
         }
       }
       const risksText = (parsed.risks || []).map((r: any) => `**${r.label}:** ${r.detail}`).join("\n");
-      aiAnalysis = `**Cost Range (USD)**\n- Low: $${parsed.low}\n- Mid: $${parsed.mid}\n- High: $${parsed.high}\n\n**Lane-Specific Risks (${product.pickupCountry || "Origin"} → ${destination})**\n${risksText}\n\n**Confidence Statement**\n${parsed.confidenceStatement}`;
+      // BUGFIX: this used to read parsed.low/mid/high directly, so on the
+      // exact invalid-shape path the validation above exists to catch, the
+      // displayed text would still show the original bad numbers (e.g.
+      // "$undefined") right next to a costRange object that had already
+      // been corrected to the fuel-adjusted fallback. Build the text from
+      // the same validated/corrected costRange the rest of the response uses.
+      const costRangeText = costRange
+        ? `- Low: $${costRange.low}\n- Mid: $${costRange.mid}\n- High: $${costRange.high}`
+        : `- Cost range unavailable — insufficient data for an AI or fuel-adjusted estimate.`;
+      aiAnalysis = `**Cost Range (USD)**\n${costRangeText}\n\n**Lane-Specific Risks (${product.pickupCountry || "Origin"} → ${destination})**\n${risksText}\n\n**Confidence Statement**\n${parsed.confidenceStatement}`;
     } else {
       aiAnalysis = text;
     }
