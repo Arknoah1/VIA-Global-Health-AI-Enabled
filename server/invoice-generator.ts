@@ -49,25 +49,35 @@ export async function generateProformaInvoice(quoteRequestId: string): Promise<P
   let basePriceCents = 0;
   let volumePriceCents = 0;
   let productDescription = "";
+  let isPricingRestricted = false;
 
   if (quoteRequest.productId) {
     const product = await storage.getProductById(quoteRequest.productId);
     if (product) {
-      basePriceCents = product.price;
-      volumePriceCents = product.price;
+      isPricingRestricted = product.pricingRestricted ?? false;
+      if (!isPricingRestricted) {
+        basePriceCents = product.price;
+        volumePriceCents = product.price;
+      }
       productDescription = product.description?.substring(0, 200) || "";
     }
 
-    const pricingTiers = await storage.getProductPricingTiers(quoteRequest.productId);
-    if (pricingTiers.length > 0) {
-      const applicableTier = pricingTiers.find(
-        (t) => quantity >= t.minQuantity && (t.maxQuantity === null || quantity <= t.maxQuantity)
-      );
-      if (applicableTier) {
-        volumePriceCents = applicableTier.unitPriceCents;
-        console.log(`[InvoiceGen] Volume tier → $${(volumePriceCents / 100).toFixed(2)}/unit (base was $${(basePriceCents / 100).toFixed(2)})`);
+    if (!isPricingRestricted) {
+      const pricingTiers = await storage.getProductPricingTiers(quoteRequest.productId);
+      if (pricingTiers.length > 0) {
+        const applicableTier = pricingTiers.find(
+          (t) => quantity >= t.minQuantity && (t.maxQuantity === null || quantity <= t.maxQuantity)
+        );
+        if (applicableTier) {
+          volumePriceCents = applicableTier.unitPriceCents;
+          console.log(`[InvoiceGen] Volume tier → $${(volumePriceCents / 100).toFixed(2)}/unit (base was $${(basePriceCents / 100).toFixed(2)})`);
+        }
       }
     }
+  }
+
+  if (isPricingRestricted) {
+    console.log(`[InvoiceGen] Product is pricing-restricted — zeroing out pricing fields`);
   }
 
   let pricingMultiplier = 1.0;
@@ -160,6 +170,11 @@ export async function generateProformaInvoice(quoteRequestId: string): Promise<P
   const referenceNumber = generateReferenceNumber();
   const customerName = [quoteRequest.firstName, quoteRequest.lastName].filter(Boolean).join(" ") || "Customer";
 
+  const deliveryComments = `Delivery to:\n${quoteRequest.shippingCity || ""}\n${quoteRequest.shippingCountry || ""}\n\nShipping: ${quoteRequest.shippingPreference || "TBD"}`;
+  const comments = isPricingRestricted
+    ? `Pricing subject to sales team approval\n\n${deliveryComments}`
+    : deliveryComments;
+
   const invoiceData = {
     referenceNumber,
     quoteRequestId: quoteRequest.id,
@@ -185,7 +200,7 @@ export async function generateProformaInvoice(quoteRequestId: string): Promise<P
     totalCents: subtotalCents,
     currency: "USD",
     quoteExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    comments: `Delivery to:\n${quoteRequest.shippingCity || ""}\n${quoteRequest.shippingCountry || ""}\n\nShipping: ${quoteRequest.shippingPreference || "TBD"}`,
+    comments,
     createdByName: "VIA Global Health",
     createdByEmail: "quotes@viaglobalhealth.com",
   };

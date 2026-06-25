@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Globe, Mail, Phone, Send, Save, Printer } from "lucide-react";
+import { Globe, Mail, Phone, Send, Save, Printer, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LineItem {
@@ -55,6 +55,7 @@ interface ProformaInvoicePreviewProps {
   onSave?: (invoice: ProformaInvoice) => void;
   onSendEmail?: (invoice: ProformaInvoice) => void;
   editable?: boolean;
+  pricingRestricted?: boolean;
 }
 
 function formatCurrency(cents: number, currency: string = "USD"): string {
@@ -71,7 +72,7 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function ProformaInvoicePreview({ invoice: initialInvoice, onSave, onSendEmail, editable = true }: ProformaInvoicePreviewProps) {
+export function ProformaInvoicePreview({ invoice: initialInvoice, onSave, onSendEmail, editable = true, pricingRestricted = false }: ProformaInvoicePreviewProps) {
   const [invoice, setInvoice] = useState(initialInvoice);
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
@@ -172,6 +173,16 @@ export function ProformaInvoicePreview({ invoice: initialInvoice, onSave, onSend
 
       <Separator className="my-6" />
 
+      {(invoice.lineItems as LineItem[]).some(item => item.unitPriceCents === 0) && (invoice.comments?.includes("Pricing subject to sales team approval")) && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-md flex items-start gap-3" data-testid="pricing-restricted-banner">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-amber-800 text-sm">Pricing subject to sales team approval</p>
+            <p className="text-amber-700 text-xs mt-1">This product has manufacturer pricing restrictions. Unit pricing must be confirmed by the sales team before sending to the customer.</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-8 mb-8">
         <div>
           <h3 className="font-semibold mb-2">Bill To:</h3>
@@ -268,8 +279,12 @@ export function ProformaInvoicePreview({ invoice: initialInvoice, onSave, onSend
                     {item.description && <p className="text-gray-600 text-xs mt-1">{item.description}</p>}
                   </td>
                   <td className="text-right py-3">{item.quantity}</td>
-                  <td className="text-right py-3">{formatCurrency(item.unitPriceCents, invoice.currency)}</td>
-                  <td className="text-right py-3">{formatCurrency(item.totalCents, invoice.currency)}</td>
+                  <td className="text-right py-3 text-amber-700 font-medium" data-testid={`unit-price-${idx}`}>
+                    {pricingRestricted && item.unitPriceCents === 0 ? "—" : formatCurrency(item.unitPriceCents, invoice.currency)}
+                  </td>
+                  <td className="text-right py-3 text-amber-700 font-medium" data-testid={`line-total-${idx}`}>
+                    {pricingRestricted && item.totalCents === 0 ? "—" : formatCurrency(item.totalCents, invoice.currency)}
+                  </td>
                 </tr>
               ))}
               <tr className="border-b">

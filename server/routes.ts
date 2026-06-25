@@ -613,10 +613,22 @@ ${childSitemaps
           };
         }
       }
+
+      // Batch-fetch pricingRestricted status for unique productIds
+      const uniqueProductIds = [...new Set(quoteRequests.map((qr) => qr.productId).filter(Boolean))] as string[];
+      const productRestrictedMap: Record<string, boolean> = {};
+      await Promise.all(
+        uniqueProductIds.map(async (pid) => {
+          const product = await storage.getProductById(pid);
+          if (product) productRestrictedMap[pid] = product.pricingRestricted ?? false;
+        })
+      );
+
       const enriched = quoteRequests.map((qr) => ({
         ...qr,
         notifiedAt: invoiceByQuote[qr.id]?.emailSentAt ?? null,
         notifiedTo: invoiceByQuote[qr.id]?.emailSentTo ?? null,
+        pricingRestricted: qr.productId ? (productRestrictedMap[qr.productId] ?? false) : false,
       }));
       res.json(enriched);
     } catch (error) {
@@ -1296,25 +1308,35 @@ ${childSitemaps
       let productDescription = "";
       let appliedTierName = "";
 
+      let isPricingRestricted = false;
       if (quoteRequest.productId) {
         const product = await storage.getProductById(quoteRequest.productId);
         if (product) {
-          basePriceCents = product.price;
-          volumePriceCents = product.price;
+          isPricingRestricted = product.pricingRestricted ?? false;
+          if (!isPricingRestricted) {
+            basePriceCents = product.price;
+            volumePriceCents = product.price;
+          }
           productDescription = product.description?.substring(0, 200) || "";
         }
         
-        const pricingTiers = await storage.getProductPricingTiers(quoteRequest.productId);
-        if (pricingTiers.length > 0) {
-          const applicableTier = pricingTiers.find(t => 
-            quantity >= t.minQuantity && (t.maxQuantity === null || quantity <= t.maxQuantity)
-          );
-          if (applicableTier) {
-            volumePriceCents = applicableTier.unitPriceCents;
-            appliedTierName = applicableTier.tierName || `${applicableTier.minQuantity}-${applicableTier.maxQuantity || '+'} units`;
-            console.log(`[Invoice] Volume pricing applied: ${appliedTierName} → $${(volumePriceCents / 100).toFixed(2)}/unit (base was $${(basePriceCents / 100).toFixed(2)})`);
+        if (!isPricingRestricted) {
+          const pricingTiers = await storage.getProductPricingTiers(quoteRequest.productId);
+          if (pricingTiers.length > 0) {
+            const applicableTier = pricingTiers.find(t => 
+              quantity >= t.minQuantity && (t.maxQuantity === null || quantity <= t.maxQuantity)
+            );
+            if (applicableTier) {
+              volumePriceCents = applicableTier.unitPriceCents;
+              appliedTierName = applicableTier.tierName || `${applicableTier.minQuantity}-${applicableTier.maxQuantity || '+'} units`;
+              console.log(`[Invoice] Volume pricing applied: ${appliedTierName} → $${(volumePriceCents / 100).toFixed(2)}/unit (base was $${(basePriceCents / 100).toFixed(2)})`);
+            }
           }
         }
+      }
+
+      if (isPricingRestricted) {
+        console.log(`[Invoice] Product is pricing-restricted — zeroing out pricing fields`);
       }
 
       // Apply segment pricing multiplier
@@ -1359,12 +1381,21 @@ ${childSitemaps
         const existingUnitPrice = existingLineItems?.[0]?.unitPriceCents || 0;
         const existingQty = existingLineItems?.[0]?.quantity || 0;
 
-        if (existingUnitPrice !== adjustedUnitPriceCents || existingQty !== quantity) {
+        const RESTRICTED_NOTE = "Pricing subject to sales team approval";
+        const existingComments = existing.comments || "";
+        const hasRestrictedNote = existingComments.includes(RESTRICTED_NOTE);
+        const needsRestrictedNote = isPricingRestricted && !hasRestrictedNote;
+
+        if (existingUnitPrice !== adjustedUnitPriceCents || existingQty !== quantity || needsRestrictedNote) {
           console.log(`[Invoice] Updating existing invoice: price $${(existingUnitPrice / 100).toFixed(2)} → $${(adjustedUnitPriceCents / 100).toFixed(2)}/unit, qty ${existingQty} → ${quantity}`);
           const shippingCents = existing.shippingCents || 0;
           const bankFeeCents = existing.bankFeeCents || 3000;
           const newSubtotal = lineItemTotal + shippingCents + bankFeeCents;
           
+          const updatedComments = isPricingRestricted
+            ? (existingComments ? `${RESTRICTED_NOTE}\n\n${existingComments}` : RESTRICTED_NOTE)
+            : existingComments;
+
           const updatedInvoice = await storage.updateProformaInvoice(existing.id, {
             lineItems: [{
               name: existingLineItems[0]?.name || quoteRequest.productName,
@@ -1375,6 +1406,7 @@ ${childSitemaps
             }],
             subtotalCents: newSubtotal,
             totalCents: newSubtotal,
+            ...(isPricingRestricted ? { comments: updatedComments } : {}),
           });
           return res.json(updatedInvoice);
         }

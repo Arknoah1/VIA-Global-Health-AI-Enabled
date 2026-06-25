@@ -18,7 +18,8 @@ import {
   Brain,
   Loader2,
   Ship,
-  Bell
+  Bell,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -73,6 +74,7 @@ interface QuoteRequest {
   shippingEstimate?: any;
   notifiedAt?: string | null;
   notifiedTo?: string | null;
+  pricingRestricted?: boolean;
 }
 
 export default function QuoteRequestsPage() {
@@ -664,13 +666,25 @@ export default function QuoteRequestsPage() {
                         </Button>
                         <Button 
                           size="sm"
+                          variant={request.pricingRestricted ? "outline" : "default"}
                           onClick={() => handleGenerateInvoice(request)}
                           disabled={generateInvoiceMutation.isPending}
                           data-testid={`button-generate-invoice-${request.id}`}
+                          title={request.pricingRestricted ? "Pricing restricted — invoice will show blank pricing" : undefined}
                         >
-                          <FileText className="h-4 w-4 mr-2" />
+                          {request.pricingRestricted ? (
+                            <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+                          ) : (
+                            <FileText className="h-4 w-4 mr-2" />
+                          )}
                           {generateInvoiceMutation.isPending ? "Generating..." : "Generate Invoice"}
                         </Button>
+                        {request.pricingRestricted && (
+                          <span className="text-xs text-amber-600 flex items-center gap-1 mt-1" data-testid={`pricing-restricted-notice-${request.id}`}>
+                            <AlertTriangle className="h-3 w-3" />
+                            Pricing restricted — invoice will have blank pricing
+                          </span>
+                        )}
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -873,6 +887,7 @@ export default function QuoteRequestsPage() {
               onSave={(updatedInvoice) => setCurrentInvoice(updatedInvoice)}
               onSendEmail={(invoice) => sendInvoiceEmailMutation.mutate(invoice)}
               editable={true}
+              pricingRestricted={selectedRequest?.pricingRestricted ?? false}
             />
           )}
         </DialogContent>
