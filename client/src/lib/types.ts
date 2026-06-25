@@ -41,6 +41,7 @@ export interface Product {
   tags?: string[] | null;
   relatedProductIds?: string[] | null;
   buyersGuideUrl?: string | null;
+  pricingRestricted?: boolean;
 }
 
 export type ScrapeStatus = 'idle' | 'scanning' | 'extracting' | 'completed' | 'error';

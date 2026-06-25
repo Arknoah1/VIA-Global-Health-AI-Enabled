@@ -1871,17 +1871,23 @@ ${childSitemaps
 
       let priceText = "";
       let lowestTierPrice = "";
+      let isPricingRestricted = false;
       if (productId) {
         try {
-          const pricingTiers = await storage.getProductPricingTiers(productId);
-          if (pricingTiers.length > 0) {
-            const sortedTiers = [...pricingTiers].sort((a, b) => a.minQuantity - b.minQuantity);
-            const baseTier = sortedTiers[0];
-            const price = ((baseTier.unitPriceCents * defaultMultiplier) / 100).toFixed(2);
-            const maxQtyLabel = baseTier.maxQuantity ? `${baseTier.minQuantity}-${baseTier.maxQuantity} units` : "per unit";
-            priceText = `$${price} ${maxQtyLabel}`;
-            const minUnitPriceCents = Math.min(...pricingTiers.map(t => t.unitPriceCents));
-            lowestTierPrice = `$${((minUnitPriceCents * bestSegmentMultiplier) / 100).toFixed(2)}`;
+          const productRecord = await storage.getProductById(productId);
+          if (productRecord?.pricingRestricted) {
+            isPricingRestricted = true;
+          } else {
+            const pricingTiers = await storage.getProductPricingTiers(productId);
+            if (pricingTiers.length > 0) {
+              const sortedTiers = [...pricingTiers].sort((a, b) => a.minQuantity - b.minQuantity);
+              const baseTier = sortedTiers[0];
+              const price = ((baseTier.unitPriceCents * defaultMultiplier) / 100).toFixed(2);
+              const maxQtyLabel = baseTier.maxQuantity ? `${baseTier.minQuantity}-${baseTier.maxQuantity} units` : "per unit";
+              priceText = `$${price} ${maxQtyLabel}`;
+              const minUnitPriceCents = Math.min(...pricingTiers.map(t => t.unitPriceCents));
+              lowestTierPrice = `$${((minUnitPriceCents * bestSegmentMultiplier) / 100).toFixed(2)}`;
+            }
           }
         } catch (e) {
           console.error("Error fetching pricing for greeting:", e);
@@ -1970,7 +1976,7 @@ ${childSitemaps
 
       // Build pricing tiers array for frontend stepwise flow (apply default multiplier)
       let pricingTiersData: Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }> = [];
-      if (productId) {
+      if (productId && !isPricingRestricted) {
         try {
           const tiers = await storage.getProductPricingTiers(productId);
           pricingTiersData = tiers
@@ -1984,9 +1990,10 @@ ${childSitemaps
       res.json({
         quoteRequestId: quoteRequest.id,
         message: greeting,
-        priceText,
-        lowestTierPrice,
+        priceText: isPricingRestricted ? null : priceText,
+        lowestTierPrice: isPricingRestricted ? null : lowestTierPrice,
         pricingTiers: pricingTiersData,
+        pricingRestricted: isPricingRestricted,
         productName: productName || null
       });
     } catch (error) {
@@ -2006,6 +2013,10 @@ ${childSitemaps
       const productId = quoteRequest.productId;
       if (!productId) {
         return res.json({ pricingTiers: [], lowestTierPrice: "" });
+      }
+      const productForPricing = await storage.getProductById(productId);
+      if (productForPricing?.pricingRestricted) {
+        return res.json({ pricingTiers: [], lowestTierPrice: "", pricingRestricted: true });
       }
       let multiplier = 1.25;
       try {
@@ -2121,7 +2132,9 @@ ${childSitemaps
           restrictionReason: r.restrictionReason
         }));
 
-        const salesRestrictions = productDetails ? (await storage.getProductById(quoteRequest.productId))?.salesRestrictions as { cantShipTo?: string[]; cantSellTo?: string[] } | null : null;
+        const fullProduct = productDetails ? await storage.getProductById(quoteRequest.productId!) : null;
+        const isPricingRestrictedForChat = fullProduct?.pricingRestricted ?? false;
+        const salesRestrictions = fullProduct?.salesRestrictions as { cantShipTo?: string[]; cantSellTo?: string[] } | null;
         if (salesRestrictions) {
           const existingNames = new Set(restrictedCountries.map(r => r.countryName.toLowerCase()));
           const addFromList = (list: string[], reason: string) => {
@@ -2184,7 +2197,7 @@ ${childSitemaps
       if (redFlagResult.isRedFlag) {
         systemPrompt = buildPublicModePrompt(productDetails, existingState, customerLanguage, redFlagResult.reason);
       } else {
-        systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, []);
+        systemPrompt = buildSystemPrompt(productDetails, similarProducts, pricingTiers, restrictedCountries, segmentData, trainingData, existingState, customerLanguage, recentInsights, [], isPricingRestrictedForChat);
       }
 
       const currentDest = (contactData?.shippingCountry || quoteRequest.shippingCountry) as string | undefined;
@@ -2637,7 +2650,8 @@ function buildSystemPrompt(
   existingState: { firstName?: string | null; lastName?: string | null; email?: string | null; organizationType?: string | null; organizationName?: string | null; shippingCountry?: string | null; importCapability?: string | null; orderQuantity?: number | null } = {},
   customerLanguage: string = "en",
   salesInsights: { insightType: string; insight: string; category: string | null; region: string | null; customerType: string | null }[] = [],
-  logisticsData: { productType: string; destinationCountry: string; pickupCountry: string; avgShippingPerUnit: number; minShippingPerUnit: number; maxShippingPerUnit: number; chargeableWeightKg: number | null; sampleSize: number | null }[] = []
+  logisticsData: { productType: string; destinationCountry: string; pickupCountry: string; avgShippingPerUnit: number; minShippingPerUnit: number; maxShippingPerUnit: number; chargeableWeightKg: number | null; sampleSize: number | null }[] = [],
+  pricingRestricted: boolean = false
 ): string {
   const languageInstruction = customerLanguage === "fr"
     ? "Respond entirely in French. Keep product names in English."
@@ -2760,7 +2774,14 @@ CUSTOMER STATE:`;
     }
   }
 
-  if (pricingTiers.length > 0) {
+  if (pricingRestricted) {
+    prompt += `\n\nPRICING RESTRICTION — MANUFACTURER AGREEMENT:
+This product has a manufacturer pricing restriction. You MUST NOT reveal any pricing figures, unit costs, or pricing tiers under any circumstances.
+- If asked about price, respond with: "Due to manufacturer restrictions we are unable to share instant pricing for this product. Please contact our sales team at sales@viaglobalhealth.com and they will provide you with a personalised quote."
+- You may still discuss product specifications, features, shipping timelines, and general information.
+- Do NOT generate a proforma invoice or quote table for this product.
+- Direct all pricing enquiries to sales@viaglobalhealth.com`;
+  } else if (pricingTiers.length > 0) {
     const isKitProduct = productDetails?.unitsPerPack && productDetails?.packType;
     const packLabel = isKitProduct ? productDetails.packType : 'unit';
     prompt += `\n\nBASE TIER PRICES (apply segment multiplier silently):`;

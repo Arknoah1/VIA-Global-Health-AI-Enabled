@@ -108,6 +108,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const [priceText, setPriceText] = useState('');
   const [lowestTierPrice, setLowestTierPrice] = useState('');
   const [pricingTiers, setPricingTiers] = useState<Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>>([]);
+  const [pricingRestricted, setPricingRestricted] = useState(false);
   const [purchasingInfoOpen, setPurchasingInfoOpen] = useState(false);
   const [shippingCountry, setShippingCountry] = useState<string>('');
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
@@ -157,9 +158,13 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       const data = await response.json();
       setQuoteRequestId(data.quoteRequestId);
       setMessages([{ role: 'assistant', content: data.message }]);
-      if (data.priceText) setPriceText(data.priceText);
-      if (data.lowestTierPrice) setLowestTierPrice(data.lowestTierPrice);
-      if (data.pricingTiers) setPricingTiers(data.pricingTiers);
+      if (data.pricingRestricted) {
+        setPricingRestricted(true);
+      } else {
+        if (data.priceText) setPriceText(data.priceText);
+        if (data.lowestTierPrice) setLowestTierPrice(data.lowestTierPrice);
+        if (data.pricingTiers) setPricingTiers(data.pricingTiers);
+      }
       setChatStep('intro');
     } catch (error) {
       console.error('Error starting quote session:', error);
@@ -212,6 +217,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setPriceText('');
     setLowestTierPrice('');
     setPricingTiers([]);
+    setPricingRestricted(false);
     setSelectedOrgType('');
   }, [product?.id]);
 
@@ -345,6 +351,10 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
       const res = await fetch(`/api/quote-requests/${quoteRequestId}/pricing?organizationType=${encodeURIComponent(organizationType)}`);
       if (!res.ok) return;
       const data = await res.json();
+      if (data.pricingRestricted) {
+        setPricingRestricted(true);
+        return;
+      }
       if (data.pricingTiers) setPricingTiers(data.pricingTiers);
       if (data.lowestTierPrice) setLowestTierPrice(data.lowestTierPrice);
     } catch (e) {
@@ -466,6 +476,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setPriceText('');
     setLowestTierPrice('');
     setPricingTiers([]);
+    setPricingRestricted(false);
     setContactFormSubmitted(false);
     setSelectedOrgType('');
   };
@@ -1228,7 +1239,15 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                   <p className="text-sm text-muted-foreground mb-1">Hi! I'm Amara from VIA Global Health</p>
                   <h3 className="text-lg font-bold text-foreground" data-testid="step-product-name">{product.name}</h3>
                 </div>
-                {priceText ? (
+                {pricingRestricted ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 w-full max-w-xs text-center" data-testid="step-pricing-restricted">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 mx-auto mb-2" />
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      Due to manufacturer restrictions we are unable to share instant pricing for this product. Please contact our sales team at{' '}
+                      <a href="mailto:sales@viaglobalhealth.com" className="underline font-medium">sales@viaglobalhealth.com</a>
+                    </p>
+                  </div>
+                ) : priceText ? (
                   <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 w-full max-w-xs" data-testid="step-price-display">
                     <p className="text-2xl font-bold text-primary">{pricingTiers.length > 1 ? 'From ' : ''}{lowestTierPrice || priceText.split(' ')[0]}/unit</p>
                     <p className="text-xs text-muted-foreground mt-1">{t("quote.chat.subsidyText")}</p>
@@ -1382,7 +1401,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                       : t("quote.chat.volumeNudgeAlt")}
                   </p>
                 </div>
-                {quantity && parseInt(quantity) > 0 && pricingTiers.length > 0 && (
+                {!pricingRestricted && quantity && parseInt(quantity) > 0 && pricingTiers.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}

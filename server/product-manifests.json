@@ -2,6 +2,7 @@
   {
     "sku": "HTU-110C",
     "name": "Thermocoagulator",
+    "pricingRestricted": true,
     "documents": [
       {
         "name": "Manual",
@@ -404,6 +405,7 @@
   {
     "sku": "SKU: VIA_Iris",
     "name": "The IRIS by Liger: Colposcope and Coagulator in One",
+    "pricingRestricted": true,
     "documents": [
       {
         "name": "Brochure",

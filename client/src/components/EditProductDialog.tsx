@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Save, Loader2 } from "lucide-react";
 
 interface EditProductDialogProps {
@@ -46,6 +47,7 @@ export function EditProductDialog({ product, isOpen, onClose, onSave, isSaving }
   const [boxContentsText, setBoxContentsText] = useState("");
   const [tagsText, setTagsText] = useState("");
   const [status, setStatus] = useState("active");
+  const [pricingRestricted, setPricingRestricted] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -73,6 +75,7 @@ export function EditProductDialog({ product, isOpen, onClose, onSave, isSaving }
       setBoxContentsText(Array.isArray(product.boxContents) ? (product.boxContents as string[]).join("\n") : "");
       setTagsText(Array.isArray(product.tags) ? (product.tags as string[]).join(", ") : "");
       setStatus(product.status || "active");
+      setPricingRestricted(product.pricingRestricted ?? false);
     }
   }, [product]);
 
@@ -104,6 +107,7 @@ export function EditProductDialog({ product, isOpen, onClose, onSave, isSaving }
       boxContents: boxContentsText.split("\n").filter(l => l.trim()),
       tags: tagsText.split(",").map(t => t.trim()).filter(t => t),
       status,
+      pricingRestricted,
     };
 
     onSave(product.id, updates);
@@ -159,6 +163,18 @@ export function EditProductDialog({ product, isOpen, onClose, onSave, isSaving }
                     <option value="active">Active</option>
                     <option value="out_of_stock">Out of Stock</option>
                   </select>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-900/30 dark:bg-orange-950/20">
+                <Switch
+                  id="edit-pricing-restricted"
+                  checked={pricingRestricted}
+                  onCheckedChange={setPricingRestricted}
+                  data-testid="switch-pricing-restricted"
+                />
+                <div>
+                  <Label htmlFor="edit-pricing-restricted" className="font-medium cursor-pointer">Pricing Restricted</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Hides all pricing; directs customers to the sales team.</p>
                 </div>
               </div>
               <div>

@@ -100,6 +100,7 @@ async function applyEnrichedProductData() {
 interface ManifestEntry {
   sku: string;
   name: string;
+  pricingRestricted?: boolean;
   documents: Array<{name: string, url: string, thumbnailUrl: string}>;
   regulatoryCertificates: Array<{name: string, url: string, thumbnailUrl: string}>;
 }
@@ -146,6 +147,7 @@ async function syncProductManifests() {
       name: products.name,
       documents: products.documents,
       regulatoryCertificates: products.regulatoryCertificates,
+      pricingRestricted: products.pricingRestricted,
     }).from(products);
 
     let updated = 0;
@@ -160,16 +162,22 @@ async function syncProductManifests() {
 
       const docsMatch = docCertHash(currentDocs) === docCertHash(manifest.documents);
       const certsMatch = docCertHash(currentCerts) === docCertHash(manifest.regulatoryCertificates);
+      const restrictedMatch = manifest.pricingRestricted === undefined || p.pricingRestricted === (manifest.pricingRestricted ?? false);
 
-      if (docsMatch && certsMatch) {
+      if (docsMatch && certsMatch && restrictedMatch) {
         alreadyCurrent++;
         continue;
       }
 
-      await db.update(products).set({
+      const updateFields: Record<string, any> = {
         documents: manifest.documents,
         regulatoryCertificates: manifest.regulatoryCertificates,
-      }).where(eq(products.id, p.id));
+      };
+      if (manifest.pricingRestricted !== undefined) {
+        updateFields.pricingRestricted = manifest.pricingRestricted;
+      }
+
+      await db.update(products).set(updateFields).where(eq(products.id, p.id));
       updated++;
     }
 
