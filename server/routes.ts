@@ -2114,6 +2114,7 @@ ${childSitemaps
       // Get pricing tiers and restricted countries for this product
       let pricingTiers: { minQuantity: number; maxQuantity: number | null; unitPriceCents: number; currency: string; tierName: string | null }[] = [];
       let restrictedCountries: { countryName: string; countryCode: string; restrictionReason: string }[] = [];
+      let isPricingRestrictedForChat = false;
       
       if (quoteRequest.productId) {
         const tiers = await storage.getProductPricingTiers(quoteRequest.productId);
@@ -2132,8 +2133,8 @@ ${childSitemaps
           restrictionReason: r.restrictionReason
         }));
 
-        const fullProduct = productDetails ? await storage.getProductById(quoteRequest.productId!) : null;
-        const isPricingRestrictedForChat = fullProduct?.pricingRestricted ?? false;
+        const fullProduct = await storage.getProductById(quoteRequest.productId);
+        isPricingRestrictedForChat = fullProduct?.pricingRestricted ?? false;
         const salesRestrictions = fullProduct?.salesRestrictions as { cantShipTo?: string[]; cantSellTo?: string[] } | null;
         if (salesRestrictions) {
           const existingNames = new Set(restrictedCountries.map(r => r.countryName.toLowerCase()));

@@ -108,7 +108,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   const [priceText, setPriceText] = useState('');
   const [lowestTierPrice, setLowestTierPrice] = useState('');
   const [pricingTiers, setPricingTiers] = useState<Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>>([]);
-  const [pricingRestricted, setPricingRestricted] = useState(false);
+  const [pricingRestricted, setPricingRestricted] = useState(product.pricingRestricted ?? false);
   const [purchasingInfoOpen, setPurchasingInfoOpen] = useState(false);
   const [shippingCountry, setShippingCountry] = useState<string>('');
   const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
@@ -217,7 +217,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setPriceText('');
     setLowestTierPrice('');
     setPricingTiers([]);
-    setPricingRestricted(false);
+    setPricingRestricted(product?.pricingRestricted ?? false);
     setSelectedOrgType('');
   }, [product?.id]);
 
@@ -253,7 +253,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
   }, []);
 
   useEffect(() => {
-    if (!product?.id) return;
+    if (!product?.id || product.pricingRestricted) return;
     fetch(`/api/products/${product.id}/pricing-tiers`)
       .then(r => r.ok ? r.json() : [])
       .then((tiers: Array<{ minQuantity: number; maxQuantity: number | null; unitPriceCents: number }>) => {
