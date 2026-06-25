@@ -547,13 +547,22 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
 
             {/* Desktop CTA */}
             <div ref={desktopCtaRef} className="hidden lg:block pt-4">
+              {product.pricingRestricted && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 flex items-start gap-2" data-testid="product-page-pricing-restricted">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    Due to manufacturer restrictions we are unable to share instant pricing for this product. Please contact our sales team at{' '}
+                    <a href="mailto:sales@viaglobalhealth.com" className="underline font-medium">sales@viaglobalhealth.com</a>
+                  </p>
+                </div>
+              )}
               <Button
                 className="w-full h-14 text-base font-semibold bg-teal-600 hover:bg-teal-700 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
                 data-testid="button-request-quote-unified"
                 onClick={() => { trackCtaClick("product_detail", product?.name); setShowQuoteDialog(true); }}
               >
                 <Stethoscope className="mr-2 h-5 w-5" />
-                Check Bulk Pricing & Availability
+                {product.pricingRestricted ? 'Contact Sales for Pricing' : 'Check Bulk Pricing & Availability'}
               </Button>
               <p className="text-xs text-center text-muted-foreground mt-2">
                 Join 500+ global clinics sourcing through VIA. Response time &lt; 2 mins.
@@ -588,6 +597,17 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
                 </div>
               )}
             </div>
+
+            {/* Pricing Restriction Notice — shown on page for restricted products (mobile + desktop right column) */}
+            {product.pricingRestricted && (
+              <div className="lg:hidden bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2" data-testid="product-page-pricing-restricted-mobile">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Due to manufacturer restrictions we are unable to share instant pricing for this product. Please contact our sales team at{' '}
+                  <a href="mailto:sales@viaglobalhealth.com" className="underline font-medium">sales@viaglobalhealth.com</a>
+                </p>
+              </div>
+            )}
 
             {/* Seller / Manufacturer Info Card */}
             {(product.sellerName || product.regulatoryApproval || product.warrantyTerm) && (
@@ -1144,9 +1164,11 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
             data-testid="button-request-quote-mobile-sticky"
             onClick={() => { trackCtaClick("sticky_bottom", product?.name); setShowQuoteDialog(true); }}
           >
-            {stickyBasePrice
-              ? t("quote.sticky.cta", { price: stickyBasePrice })
-              : t("quote.chat.getQuote")}
+            {product.pricingRestricted
+              ? 'Contact Sales for Pricing'
+              : stickyBasePrice
+                ? t("quote.sticky.cta", { price: stickyBasePrice })
+                : t("quote.chat.getQuote")}
           </Button>
         </div>
       )}
