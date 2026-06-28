@@ -27,6 +27,7 @@ import {
   trackQuoteFormStep3FieldStart,
   trackQuoteFormAbandoned,
   captureUtmParams,
+  getUtmParams,
   initRemarketingTracking,
 } from "@/lib/analytics";
 import { Input } from "@/components/ui/input";
@@ -143,6 +144,7 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
     setInitError(null);
     try {
       const customerProfile = getCustomerProfile();
+      const utmParams = getUtmParams();
       const response = await fetch('/api/quote-requests/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,7 +153,8 @@ export function ProductContent({ product, relatedProducts }: ProductContentProps
           productName: product.name,
           productSku: product.sku,
           customerProfile: customerProfile || undefined,
-          language
+          language,
+          utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined,
         })
       });
       if (!response.ok) throw new Error('Failed to start quote session');

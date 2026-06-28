@@ -1846,7 +1846,7 @@ ${childSitemaps
       return res.status(429).json({ error: "Too many quote sessions created. Please try again tomorrow." });
     }
     try {
-      const { productId, productName, productSku, customerProfile, language } = req.body;
+      const { productId, productName, productSku, customerProfile, language, utmParams } = req.body;
 
       const lang = language || "en";
 
@@ -1867,6 +1867,16 @@ ${childSitemaps
         if (customerProfile.organizationName) initialData.organizationName = customerProfile.organizationName;
         if (customerProfile.shippingCountry) initialData.shippingCountry = customerProfile.shippingCountry;
         if (customerProfile.importCapability) initialData.importAssistance = customerProfile.importCapability;
+      }
+
+      if (utmParams) {
+        if (utmParams.utmSource)   initialData.utmSource   = utmParams.utmSource;
+        if (utmParams.utmMedium)   initialData.utmMedium   = utmParams.utmMedium;
+        if (utmParams.utmCampaign) initialData.utmCampaign = utmParams.utmCampaign;
+        if (utmParams.utmContent)  initialData.utmContent  = utmParams.utmContent;
+        if (utmParams.gclid)       initialData.gclid       = utmParams.gclid;
+        if (utmParams.fbclid)      initialData.fbclid      = utmParams.fbclid;
+        if (utmParams.hubspotutk)  initialData.hubspotutk  = utmParams.hubspotutk;
       }
 
       // Create initial quote request

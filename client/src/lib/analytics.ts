@@ -20,6 +20,11 @@ export function trackEvent(eventName: string, params?: Record<string, any>) {
 const SESSION_CTA_KEY = "via-cta-clicked";
 const SESSION_SUBMITTED_KEY = "via-quote-submitted";
 const SESSION_UTM_KEY = "via-utm-campaign";
+const SESSION_UTM_SOURCE_KEY = "via-utm-source";
+const SESSION_UTM_MEDIUM_KEY = "via-utm-medium";
+const SESSION_UTM_CONTENT_KEY = "via-utm-content";
+const SESSION_GCLID_KEY = "via-gclid";
+const SESSION_FBCLID_KEY = "via-fbclid";
 
 function setSessionFlag(key: string) {
   try { sessionStorage.setItem(key, "1"); } catch {}
@@ -37,18 +42,66 @@ function getSessionValue(key: string): string | null {
   try { return sessionStorage.getItem(key); } catch { return null; }
 }
 
+function getCookieValue(name: string): string | null {
+  try {
+    const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch { return null; }
+}
+
 /**
- * Call once at app init. Reads utm_campaign from the URL and persists it
- * for the session so quote_request_submitted can attribute it.
+ * Call once at app init. Reads UTM params and click IDs from the URL and
+ * persists them for the session so they can be attached to quote requests.
+ * Captures: utm_campaign, utm_source, utm_medium, utm_content, gclid, fbclid.
  */
 export function captureUtmParams() {
   try {
     const params = new URLSearchParams(window.location.search);
-    const campaign = params.get("utm_campaign");
-    if (campaign) {
-      sessionStorage.setItem(SESSION_UTM_KEY, campaign);
-    }
+    const capture = (urlKey: string, storageKey: string) => {
+      const val = params.get(urlKey);
+      if (val) sessionStorage.setItem(storageKey, val);
+    };
+    capture("utm_campaign", SESSION_UTM_KEY);
+    capture("utm_source",   SESSION_UTM_SOURCE_KEY);
+    capture("utm_medium",   SESSION_UTM_MEDIUM_KEY);
+    capture("utm_content",  SESSION_UTM_CONTENT_KEY);
+    capture("gclid",        SESSION_GCLID_KEY);
+    capture("fbclid",       SESSION_FBCLID_KEY);
   } catch {}
+}
+
+export interface UtmParams {
+  utmCampaign?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmContent?: string;
+  gclid?: string;
+  fbclid?: string;
+  hubspotutk?: string;
+}
+
+/**
+ * Returns all captured UTM/click-ID params from sessionStorage plus the
+ * hubspotutk cookie value (if the HubSpot tracking script has set it).
+ * Safe to call before captureUtmParams() — missing values are omitted.
+ */
+export function getUtmParams(): UtmParams {
+  const result: UtmParams = {};
+  const utmCampaign = getSessionValue(SESSION_UTM_KEY);
+  const utmSource   = getSessionValue(SESSION_UTM_SOURCE_KEY);
+  const utmMedium   = getSessionValue(SESSION_UTM_MEDIUM_KEY);
+  const utmContent  = getSessionValue(SESSION_UTM_CONTENT_KEY);
+  const gclid       = getSessionValue(SESSION_GCLID_KEY);
+  const fbclid      = getSessionValue(SESSION_FBCLID_KEY);
+  const hubspotutk  = getCookieValue("hubspotutk");
+  if (utmCampaign) result.utmCampaign = utmCampaign;
+  if (utmSource)   result.utmSource   = utmSource;
+  if (utmMedium)   result.utmMedium   = utmMedium;
+  if (utmContent)  result.utmContent  = utmContent;
+  if (gclid)       result.gclid       = gclid;
+  if (fbclid)      result.fbclid      = fbclid;
+  if (hubspotutk)  result.hubspotutk  = hubspotutk;
+  return result;
 }
 
 /**

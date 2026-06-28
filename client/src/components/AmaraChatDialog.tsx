@@ -44,12 +44,15 @@ export function AmaraChatDialog({ isOpen, onClose }: AmaraChatDialogProps) {
     setIsLoading(true);
     try {
       const customerProfile = getCustomerProfile();
+      const { getUtmParams } = await import("@/lib/analytics");
+      const utmParams = getUtmParams();
       const response = await fetch("/api/quote-requests/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerProfile: customerProfile || undefined,
           language,
+          utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined,
         }),
       });
 
