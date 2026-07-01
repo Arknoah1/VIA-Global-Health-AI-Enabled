@@ -1,0 +1,45 @@
+I want to add a HubSpot attribution integration. The frontend now captures and
+persists utmSource, utmMedium, utmCampaign, utmContent, gclid, fbclid, and
+hubspotutk on the quote_requests row (already done). Now wire up the push:
+
+PART C — New file: server/hubspot-attribution.ts
+
+Create a function pushContactAttribution(quoteRequest) that:
+1. Skips entirely if quoteRequest.email is missing or invalid.
+2. POSTs to:
+   https://api.hsforms.com/submissions/v3/integration/submit/20847317/d4c91f28-c88c-4298-8455-de01f9c47b7d
+   via plain fetch() — no auth needed, does NOT use @replit/connectors-sdk.
+3. Body:
+   {
+     "fields": [
+       { "name": "email", "value": quoteRequest.email },
+       { "name": "firstname", "value": quoteRequest.firstName },
+       { "name": "lastname", "value": quoteRequest.lastName },
+       { "name": "country", "value": quoteRequest.shippingCountry },
+       { "name": "quote_product_interest", "value": quoteRequest.productName },
+       { "name": "quote_quantity", "value": String(quoteRequest.orderQuantity) },
+       { "name": "quote_organization_type", "value": quoteRequest.organizationType },
+       { "name": "original_gclid", "value": quoteRequest.gclid || "" }
+     ],
+     "context": {
+       "hutk": quoteRequest.hubspotutk,   // omit this key entirely if null/empty
+       "pageUri": <construct from product slug/id, e.g. https://viaglobalhealth.com/products/[slug]>,
+       "pageName": quoteRequest.productName
+     }
+   }
+4. Wrap in try/catch, log failures with console.error, never throw — this
+   must not affect the customer-facing chat flow under any circumstances.
+
+PART D — Hook it in
+
+In server/routes.ts, inside POST /api/quote-requests/:id/messages, find
+autoNotifyOnQuoteComplete() (around line 2418). Immediately after that call,
+add a fire-and-forget call to pushContactAttribution(quoteRequest) — do NOT
+await it in the response path.
+
+Only fire it once email AND all 4 required fields (product, quantity,
+shippingCountry, organizationType) are present on the record. If email
+arrives at a different point in the conversation than the other 4, check
+for all 5 being non-null before firing.
+
+Show me the diff before applying anything.

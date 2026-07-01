@@ -1,0 +1,67 @@
+I want to add a HubSpot attribution integration. Here's the full spec, based on
+what we already confirmed about this codebase:
+
+PART A — Capture UTM/gclid/hutk on the frontend
+
+In captureUtmParams() (client/src/lib/analytics.ts), extend it to also capture
+utm_source, utm_medium, utm_content, gclid, and fbclid from window.location.search
+— not just utm_campaign. Store all of them in sessionStorage the same way
+utm_campaign currently is.
+
+Also read the hubspotutk cookie value at the same point (check if it exists first
+— it may not be set until the HubSpot tracking script is installed sitewide,
+which is a separate task outside this codebase). Store it in sessionStorage too.
+
+PART B — Persist this on the quote_requests row
+
+Add new columns to the quote_requests table: utm_source, utm_medium, utm_campaign,
+utm_content, gclid, fbclid, hubspotutk (all nullable text).
+
+Wherever a new quote_requests row is first created (the session-start flow),
+include these captured sessionStorage values in that request body and save them
+on the row.
+
+PART C — New file: server/hubspot-attribution.ts
+
+Create a new function, separate from the existing read-only server/hubspot-sync.ts,
+called pushContactAttribution(quoteRequest). It should:
+
+1. Skip entirely if quoteRequest.email is missing or invalid.
+2. POST to https://api.hsforms.com/submissions/v3/integration/submit/20847317/<FORM_GUID>
+   — this is a plain fetch() call, no auth needed (it does NOT go through the
+   @replit/connectors-sdk HubSpot connector — that's a different, authenticated
+   domain used only by the existing read-only sync).
+3. Body:
+   {
+     "fields": [
+       { "name": "email", "value": quoteRequest.email },
+       { "name": "firstname", "value": quoteRequest.first_name },
+       { "name": "lastname", "value": quoteRequest.last_name },
+       { "name": "country", "value": quoteRequest.shipping_country },
+       { "name": "quote_product_interest", "value": quoteRequest.product_name },
+       { "name": "quote_quantity", "value": String(quoteRequest.order_quantity) },
+       { "name": "quote_organization_type", "value": quoteRequest.organization_type },
+       { "name": "original_gclid", "value": quoteRequest.gclid || "" }
+     ],
+     "context": {
+       // omit hutk key entirely if quoteRequest.hubspotutk is null/empty
+       "hutk": quoteRequest.hubspotutk,
+       "pageUri": <construct from product_id, e.g. https://viaglobalhealth.com/products/...>,
+       "pageName": quoteRequest.product_name
+     }
+   }
+4. Wrap in try/catch, log failures, never throw — this must not break the
+   customer-facing chat flow.
+
+PART D — Hook it in
+
+Call pushContactAttribution(quoteRequest) inside autoNotifyOnQuoteComplete()
+(in server/routes.ts, inside POST /api/quote-requests/:id/messages, ~line 2418)
+— fire it as a fire-and-forget call (don't await it in the response path),
+right alongside whatever autoNotifyOnQuoteComplete() already does when it
+detects the 4 required fields are present. Make sure quoteRequest.email is
+already on the record at that point — if email is captured at a different
+point in the conversation than the other 4 fields, fire this once both
+email AND the 4 fields are present, not before.
+
+Show me the diff before applying it.
