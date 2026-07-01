@@ -91,6 +91,7 @@ export const quoteRequests = pgTable("quote_requests", {
   gclid: text("gclid"),
   fbclid: text("fbclid"),
   hubspotutk: text("hubspotutk"),
+  hubspotAttributedAt: timestamp("hubspot_attributed_at"),
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

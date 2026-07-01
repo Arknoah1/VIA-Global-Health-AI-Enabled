@@ -2435,6 +2435,27 @@ ${childSitemaps
         }
       })();
 
+      // Fire-and-forget: push attribution to HubSpot (one-shot per quote)
+      (async () => {
+        try {
+          const fresh = await storage.getQuoteRequestById(id);
+          if (
+            fresh?.email &&
+            fresh?.productName &&
+            fresh?.orderQuantity &&
+            fresh?.shippingCountry &&
+            fresh?.organizationType &&
+            !fresh?.hubspotAttributedAt
+          ) {
+            const { pushContactAttribution } = await import("./hubspot-attribution");
+            await pushContactAttribution(fresh);
+            await storage.updateQuoteRequest(id, { hubspotAttributedAt: new Date() } as any);
+          }
+        } catch (err) {
+          console.error("[hubspot-attribution] Fire-and-forget failed:", err);
+        }
+      })();
+
       // Post-response: if AI extracted a different quantity, regenerate estimate for next turn
       const aiExtractedQty = parseInt(flags.orderQuantity || "") || 0;
       const updatedEstimate = (await storage.getQuoteRequestById(id))?.shippingEstimate as any;
