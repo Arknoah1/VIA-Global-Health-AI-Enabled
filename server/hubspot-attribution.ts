@@ -56,7 +56,8 @@ export async function pushContactAttribution(quoteRequest: {
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`HubSpot form submit ${response.status}: ${text}`);
+    console.error(`[hubspot-attribution] Submit failed ${response.status}: ${text}`);
+    return;
   }
 
   console.log(`[hubspot-attribution] Attributed: ${quoteRequest.email} (quote ${quoteRequest.id})`);
